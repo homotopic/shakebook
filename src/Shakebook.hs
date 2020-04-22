@@ -1,30 +1,30 @@
 module Shakebook where
 
-import Control.Comonad.Cofree
-import Control.Comonad.Store
-import Control.Comonad.Store.Zipper
-import RIO hiding (view)
-import RIO.List
-import RIO.List.Partial
-import Control.Lens hiding ((:<))
-import qualified RIO.HashMap as HML
-import qualified RIO.Text as T
-import qualified RIO.Text.Partial as T
-import qualified RIO.Vector as V
-import RIO.Time
-import Data.Aeson as A
-import Data.Aeson.Lens
-import Development.Shake
-import Development.Shake.FilePath
-import Slick
-import Slick.Pandoc
-import Text.Atom.Feed as Atom
-import Text.Atom.Feed.Export as Atom
-import Text.Pandoc.Highlighting
-import Data.List.Split
-import Data.Text.Time
-import Text.Pandoc.Options
-import qualified RIO.Text.Lazy as TL
+import           Control.Comonad.Cofree
+import           Control.Comonad.Store
+import           Control.Comonad.Store.Zipper
+import           Control.Lens                 hiding ((:<))
+import           Data.Aeson                   as A
+import           Data.Aeson.Lens
+import           Data.List.Split
+import           Data.Text.Time
+import           Development.Shake
+import           Development.Shake.FilePath
+import           RIO                          hiding (view)
+import qualified RIO.HashMap                  as HML
+import           RIO.List
+import           RIO.List.Partial
+import qualified RIO.Text                     as T
+import qualified RIO.Text.Lazy                as TL
+import qualified RIO.Text.Partial             as T
+import           RIO.Time
+import qualified RIO.Vector                   as V
+import           Slick
+import           Slick.Pandoc
+import           Text.Atom.Feed               as Atom
+import           Text.Atom.Feed.Export        as Atom
+import           Text.Pandoc.Highlighting
+import           Text.Pandoc.Options
 
 type ToC = Cofree [] String
 
@@ -111,7 +111,7 @@ withPostPrevious xs = _Object . at "previous" .~ if pos xs > 0 then Just (peeks 
 
 -- Add "prettydate" field based on input Text.
 withPrettyDate :: Text -> Value -> Value
-withPrettyDate = withStringField "prettydate" 
+withPrettyDate = withStringField "prettydate"
 
 -- Explicitly add recent posts
 withRecentPosts :: Int -> [Value] -> Value -> Value
