@@ -4,13 +4,15 @@ import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Store.Zipper
 import           Control.Lens                 hiding ((:<))
+import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.List.Split
 import           Data.Text.Time
-import           Development.Shake
+import           Development.Shake as S
 import           Development.Shake.FilePath
 import           RIO                          hiding (view)
+import           RIO.Partial
 import qualified RIO.HashMap                  as HML
 import           RIO.List
 import           RIO.List.Partial
@@ -55,11 +57,11 @@ viewTags = toListOf (key "tags" . values . _String)
 viewTitle :: Value -> Text
 viewTitle = view (key "title" . _String)
 
--- View the "url" field of a JSON Value
+-- View the "url" field of a JSON Value.
 viewUrl :: Value -> Text
 viewUrl = view (key "url" . _String)
 
--- Union two JSON values together
+-- Union two JSON values together.
 withJSON :: (ToJSON a) => a -> Value -> Value
 withJSON x (Object obj) = Object $ HML.union obj y
   where Object y = toJSON x
@@ -73,43 +75,77 @@ withStringField f v =  _Object  . at f ?~ String v
 withArrayField :: Text -> [Value] -> Value -> Value
 withArrayField f v = _Object . at f ?~ Array (V.fromList v)
 
--- Add "baseUrl" field from input Text
+-- Add an Object field to a JSON value.
+withObjectField :: Text -> Value -> Value -> Value
+withObjectField f v = _Object . at f ?~ v
+
+-- Maybe add an Object field to a JSON value.
+withObjectFieldMaybe :: Text -> Maybe Value -> Value -> Value
+withObjectFieldMaybe f v = _Object . at f .~ v
+
+-- Add "baseUrl" field from input Text.
 withBaseUrl :: Text -> Value -> Value
 withBaseUrl = withStringField "baseUrl"
 
--- Add "fullUrl" field  from input Text
+-- Add "fullUrl" field  from input Text.
 withFullUrl :: Text -> Value -> Value
 withFullUrl = withStringField "fullUrl"
 
--- Add "url" field from inputText
+-- Add "url" field from input Text.
 withUrl :: Text -> Value -> Value
 withUrl = withStringField "url"
 
--- Add "highlighting-css" field from input Style
+-- Add "highlighting-css" field from input Style.
 withHighlighting :: Style -> Value -> Value
 withHighlighting = withStringField "highlighting-css" . T.pack . styleToCss
 
--- Add "pages" field of peeks within r hops either side of the Zipper target.
-withPageNeighbours :: Int -> Zipper [] Value -> (Value -> Value)
-withPageNeighbours r xs = withArrayField "pages" $ fmap (`peek` xs) [(max 0 (pos xs - r)) .. (min (size xs -1) (pos xs + r))]
+-- Add "pages" field from input [Value].
+withPages :: [Value] -> (Value -> Value)
+withPages = withArrayField "pages"
+
+-- Generate page neighbours within r hops of the zipper target.
+genPageNeighbours :: Int -> Zipper [] Value -> [Value]
+genPageNeighbours = zipperRange 
+
+zipperRange :: Int -> Zipper [] a -> [a]
+zipperRange r xs = (`peek` xs) <$>  [(max 0 (pos xs - r)) .. (min (size xs -1) (pos xs + r))]
 
 -- Add "posts" field containing a list of posts.
 withPosts :: [Value] -> Value -> Value
 withPosts = withArrayField "posts"
 
 -- Add both "next" and "previous" fields using `withPostNext` and `withPostPrevious`
-withPostNeighbours :: Zipper [] Value -> (Value -> Value)
-withPostNeighbours xs = withPostPrevious xs . withPostNext xs
+extendNextPrevious :: Zipper [] Value -> Zipper [] Value
+extendNextPrevious  = extendPrevious . extendNext
 
--- Add "next" field with the peek of the Zipper's next position, if it exists.
-withPostNext :: Zipper [] Value -> (Value -> Value)
-withPostNext xs = _Object . at "next" .~ if pos xs < size xs-1 then Just (peeks (+1) xs) else Nothing
+-- Add "next" field from input Value.
+withNext :: Maybe Value -> (Value -> Value)
+withNext = withObjectFieldMaybe "next"
 
--- Add "previous" field with the peek of the Zipper's previous position, if it exists.
-withPostPrevious :: Zipper [] Value -> (Value -> Value)
-withPostPrevious xs = _Object . at "previous" .~ if pos xs > 0 then Just (peeks (+ (-1)) xs) else Nothing
+-- Return the peek of the next element if it exists.
+genZipperNext :: Zipper [] a -> Maybe a
+genZipperNext xs = if pos xs < size xs-1 then Just (peeks (+1) xs) else Nothing
 
--- Add "prettydate" field based on input Text.
+-- Return the peek of the previous element if it exists.
+genZipperPrevious :: Zipper [] a -> Maybe a
+genZipperPrevious xs = if pos xs > 0 then Just (peeks (+ (-1)) xs) else Nothing
+
+-- Extend a Zipper of JSON Values to add "previous" objects.
+extendPrevious :: Zipper [] Value -> Zipper [] Value
+extendPrevious = extend (liftA2 withPrevious genZipperPrevious extract)
+
+-- Extend a Zipper of JSON Values to add "next" objects.
+extendNext :: Zipper [] Value -> Zipper [] Value
+extendNext = extend (liftA2 withNext genZipperNext extract)
+
+-- Add "previous" field using input Value.
+withPrevious :: Maybe Value -> (Value -> Value)
+withPrevious = withObjectFieldMaybe "previous"
+
+extendPageNeighbours :: Int -> Zipper [] Value -> Zipper [] Value
+extendPageNeighbours r = extend (liftA2 withPages (genPageNeighbours r) extract)
+
+-- Add "prettydate" field using input Text.
 withPrettyDate :: Text -> Value -> Value
 withPrettyDate = withStringField "prettydate"
 
@@ -118,20 +154,24 @@ withRecentPosts :: Int -> [Value] -> Value -> Value
 withRecentPosts n xs = withArrayField "recent-posts" $ take n $ dateSortPosts xs
 
 -- Add "subsections" field based on the immediate children of a Cofree [] Value.
-withSubsections :: Cofree [] Value -> (Value -> Value)
-withSubsections (x :< xs) = withArrayField "subsections" $ map extract xs
+withSubsections :: [Value] -> (Value -> Value)
+withSubsections = withArrayField "subsections"
+
+-- Get the immediate shoots of a Cofree comonad.
+immediateShoots :: Functor f => Cofree f a -> f a 
+immediateShoots (_ :< xs) = fmap extract xs
 
 -- Add "srcPath" field based on input Text
 withSrcPath :: Text -> Value -> Value
 withSrcPath = withStringField "srcPath"
 
 -- Generate tag links for "tagIndex" field based on an input list of tags as Text.
-withTagIndex :: Text -> [Text] -> Value -> Value
-withTagIndex prefix xs = withArrayField "tagindex" $ linkData prefix <$> xs
+withTagIndex :: [Value] -> Value -> Value
+withTagIndex = withArrayField "tagindex"
 
 -- Generate tag links for "taglinks" field based on an input list of tags as Text.
-withTagLinks :: Text -> [Text] -> Value -> Value
-withTagLinks prefix xs = withArrayField "taglinks" $ linkData prefix <$> xs
+withTagLinks :: [Value] -> Value -> Value
+withTagLinks  = withArrayField "taglinks"
 
 -- Add "teaser" field based on input Text.
 withTeaser :: Text -> Value -> Value
@@ -150,8 +190,8 @@ enrichPrettyDate :: (UTCTime -> String) -> Value -> Value
 enrichPrettyDate f v = withPrettyDate (T.pack . f . viewPostTime $ v) v
 
 -- Assuming a "tags" field, enrich using withTagLinks and a prefix.
-enrichTagLinks :: Text -> Value -> Value
-enrichTagLinks p v = withTagLinks p (viewTags v) v
+enrichTagLinks :: (Text -> Text) -> Value -> Value
+enrichTagLinks f v = withTagLinks ((`genLinkData` f) <$> viewTags v) v
 
 -- Assuming a "content" field with a spitter section, enrich using withTeaser
 enrichTeaser :: Text -> Value -> Value
@@ -159,7 +199,7 @@ enrichTeaser s v = withTeaser (head (T.splitOn s (viewContent v))) v
 
 -- Assuming a 'srcPath' field, enrich using withUrl using a typicalHTMLUrl
 enrichTypicalUrl :: Value -> Value
-enrichTypicalUrl v = withUrl (typicalHTMLUrl (viewSrcPath v))v
+enrichTypicalUrl v = withUrl (typicalHTMLUrl (viewSrcPath v)) v
 
 -- Typical Markdown to HTML path transformation, by dropping a directory and
 -- changing the extension.
@@ -179,10 +219,10 @@ getMarkdownData readerOptions writerOptions srcPath = do
   docData <- markdownToHTMLWithOpts readerOptions writerOptions . T.pack $ docContent
   return $ withSrcPath (T.pack srcPath) docData
 
--- Create link data object with fields "id" and "url" using a prefix and an id as input,
--- where url = prefix <> id
-linkData :: Text -> Text -> Value
-linkData prefix id = object ["id" A..= String id, "url" A..= String (prefix <> id)]
+-- Create link data object with fields "id" and "url" using an id and a function
+-- transforming an id into a url.
+genLinkData :: Text -> (Text -> Text) -> Value
+genLinkData id f = object ["id" A..= String id, "url" A..= String (f id)]
 
 -- Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 blogNavbarData :: Text -- "Top level title, e.g "Blog"
@@ -196,9 +236,9 @@ blogNavbarData a b f g xs = object [ "toc1" A..= object [
                                     , "url"   A..= String b
                                     , "toc2"  A..= Array (V.fromList $ map toc2 (partitionToMonths xs)) ]
                                    ] where
-       toc2 t@(x : xs) = object [ "title" A..= String (f (viewPostTime x))
-                                , "url"   A..= String (g (viewPostTime x))
-                                , "toc3"  A..= Array (V.fromList t) ]
+       toc2 t@(x : _) = object [ "title" A..= String (f (viewPostTime x))
+                               , "url"   A..= String (g (viewPostTime x))
+                               , "toc3"  A..= Array (V.fromList t) ]
 
 -- Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
 tocNavbarData :: Cofree [] Value -> Value
@@ -249,3 +289,39 @@ monthFilterPosts time = filter (sameMonth time . viewPostTime)
 -- Partition a list of posts by the month they were posted.
 partitionToMonths :: [Value] -> [[Value]]
 partitionToMonths = groupBy (on sameMonth viewPostTime) . dateSortPosts
+
+genBuildPageAction :: FilePath -- The HTML template
+                   -> (FilePath -> Action Value) -- How to get an initial markdown JSON Object from the out filepath.
+                   -> (Value -> Value) -- Additional modifiers for the value
+                   -> FilePath -- The out filepath 
+                   -> Action Value
+genBuildPageAction template getData withData out = do
+  pageT <- compileTemplate' template
+  dataT <- withData <$> getData out
+  writeFile' out . T.unpack $ substitute pageT dataT
+  return dataT
+
+typicalMarkdownGet :: (FilePath -> Action Value) -> FilePath -> FilePath -> Action Value
+typicalMarkdownGet f srcDir out = do
+  let src = srcDir </> dropDirectory1 out -<.> ".md"
+  ifM (S.doesFileExist src) (f src) (return (Object mempty))
+
+paginateWithFilter :: Int -> ([Value] -> [Value]) -> [Value] -> Zipper [] [Value]
+paginateWithFilter n f = fromJust . paginate n. dateSortPosts . f
+
+genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value 
+genPageData t f xs = withTitle t
+                   . withJSON (genLinkData (T.pack . show $ pos xs + 1) f)
+                   . withPosts (extract xs) $ Object mempty
+
+-- Experimental secret sauce.
+comonadStoreRuleGen :: ComonadStore s w
+                    => FilePattern 
+                    -> (FilePattern -> Action (w a))
+                    -> (FilePattern -> s)
+                    -> (a -> FilePath -> Action ())
+                    -> Rules ()
+comonadStoreRuleGen fp f g m =
+  fp %> \x -> do
+    xs <- seek (g fp) <$> f fp
+    m (extract xs) x

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eaaacdec083a9602fbf2c02053ac0755506b501a681d6d711625b7876d10c208
+-- hash: 787534a863556d8021766a7e9c63dc42f34a8d86aa30571ae91105db654e866a
 
 name:           shakebook
 version:        0.1.0.0
@@ -23,6 +23,7 @@ extra-source-files:
 library
   exposed-modules:
       Shakebook
+      Shakebook.Default
   other-modules:
       Paths_shakebook
   hs-source-dirs:
@@ -34,6 +35,7 @@ library
     , base >=4.7 && <5
     , comonad
     , comonad-extras
+    , extra
     , feed
     , free
     , lens
