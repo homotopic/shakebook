@@ -165,11 +165,11 @@ immediateShoots (_ :< xs) = fmap extract xs
 withSrcPath :: Text -> Value -> Value
 withSrcPath = withStringField "srcPath"
 
--- Generate tag links for "tagIndex" field based on an input list of tags as Text.
+-- Add "tagindex" field based on input [Value]
 withTagIndex :: [Value] -> Value -> Value
 withTagIndex = withArrayField "tagindex"
 
--- Generate tag links for "taglinks" field based on an input list of tags as Text.
+-- Add "taglinks" field based on input [Value]
 withTagLinks :: [Value] -> Value -> Value
 withTagLinks  = withArrayField "taglinks"
 
@@ -189,7 +189,7 @@ enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
 enrichPrettyDate :: (UTCTime -> String) -> Value -> Value
 enrichPrettyDate f v = withPrettyDate (T.pack . f . viewPostTime $ v) v
 
--- Assuming a "tags" field, enrich using withTagLinks and a prefix.
+-- Assuming a "tags" field, enrich using withTagLinks.
 enrichTagLinks :: (Text -> Text) -> Value -> Value
 enrichTagLinks f v = withTagLinks ((`genLinkData` f) <$> viewTags v) v
 
@@ -314,14 +314,24 @@ genPageData t f xs = withTitle t
                    . withJSON (genLinkData (T.pack . show $ pos xs + 1) f)
                    . withPosts (extract xs) $ Object mempty
 
--- Experimental secret sauce.
 comonadStoreRuleGen :: ComonadStore s w
-                    => FilePattern 
-                    -> (FilePattern -> Action (w a))
-                    -> (FilePattern -> s)
-                    -> (a -> FilePath -> Action ())
+                    => FilePattern -- The filepattern rule.
+                    -> (FilePattern -> s) -- How to extract a position marker from the filepattern.
+                    -> (FilePattern -> a) -- How to extract an id from the filepattern.
+                    -> (a -> Action (w b)) -- How to turn the id into a searchable store.
+                    -> (b -> FilePath -> Action ())
                     -> Rules ()
-comonadStoreRuleGen fp f g m =
+comonadStoreRuleGen fp f g h k = do
   fp %> \x -> do
-    xs <- seek (g fp) <$> f fp
-    m (extract xs) x
+    xs <- h (g x)
+    k (extract (seek (f x) xs)) x
+
+
+cofreeRuleGen :: (Traversable w, ComonadCofree f w)
+              => w FilePath
+              -> (FilePath -> FilePath)
+              -> (w FilePath -> FilePath -> Action ())
+              -> Rules ()
+cofreeRuleGen xs h k = do
+  let f ys = h (extract ys) %> k ys
+  void . sequence . extend f $ xs
