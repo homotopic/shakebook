@@ -107,7 +107,7 @@ genDefaultDocAction sourceFolder toc f xs out = do
   ys <- mapM defaultReadMarkdownFile toc
   zs <- mapM defaultReadMarkdownFile xs
   void $ genBuildPageAction (sourceFolder </> "templates/docs.html")
-                            (typicalMarkdownGet defaultReadMarkdownFile sourceFolder)
+                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (sourceFolder </>))
                             (f . withJSON (tocNavbarData ys) . withSubsections (immediateShoots zs))
                             out
 
@@ -128,26 +128,26 @@ getDefaultTagPageData dir pat  tag = genDefaultIndexPageData (getEnrichedPostDat
 getDefaultMonthPageData :: FilePath -> [FilePattern] -> UTCTime -> Action (Zipper [] Value)
 getDefaultMonthPageData dir pat time = genDefaultIndexPageData (getEnrichedPostData dir pat) (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) 5 2
 
-genDefaultPostIndexRule :: FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
-genDefaultPostIndexRule fp f g h = comonadStoreRuleGen fp f g h
-  (\a -> void <$> genBuildPageAction "site/templates/post-list.html" (const $ return a) (withHighlighting pygments))
+genDefaultPostIndexRule :: FilePath -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
+genDefaultPostIndexRule dir fp f g h = comonadStoreRuleGen fp f g h
+  (\a -> void <$> genBuildPageAction (dir </> "templates/post-list.html") (const $ return a) (withHighlighting pygments))
 
 defaultPostIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Rules ()
 defaultPostIndexPatterns dir pat outputFolder = do
-   genDefaultPostIndexRule (outputFolder </> "posts/index.html") (const 0) (const ()) (const (getDefaultIndexPageData dir pat))
-   genDefaultPostIndexRule (outputFolder </> "posts/pages/*/index.html") ((+ (-1)) . read . (!! 3) . splitOn "/")
+   genDefaultPostIndexRule dir (outputFolder </> "posts/index.html") (const 0) (const ()) (const (getDefaultIndexPageData dir pat))
+   genDefaultPostIndexRule dir (outputFolder </> "posts/pages/*/index.html") ((+ (-1)) . read . (!! 3) . splitOn "/")
                                                              (const ())
                                                              (const (getDefaultIndexPageData dir pat))
-   genDefaultPostIndexRule (outputFolder </> "posts/tags/*/index.html") (const 0)
+   genDefaultPostIndexRule dir (outputFolder </> "posts/tags/*/index.html") (const 0)
                                                             (T.pack . (!! 3) . splitOn "/")
                                                             (getDefaultTagPageData dir pat)
-   genDefaultPostIndexRule (outputFolder </> "posts/tags/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
+   genDefaultPostIndexRule dir (outputFolder </> "posts/tags/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
                                                  (T.pack . (!! 3) . splitOn "/") 
                                                             (getDefaultTagPageData dir pat)
-   genDefaultPostIndexRule (outputFolder </> "posts/months/*/index.html") (const 0)
+   genDefaultPostIndexRule dir (outputFolder </> "posts/months/*/index.html") (const 0)
                                            (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                                             (getDefaultMonthPageData dir pat)
-   genDefaultPostIndexRule (outputFolder </> "posts/months/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
+   genDefaultPostIndexRule dir (outputFolder </> "posts/months/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
                                                    (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                                             (getDefaultMonthPageData dir pat)
 
@@ -168,8 +168,10 @@ copyStatic srcFolder out = do
 defaultBuildPost :: FilePath -> [FilePattern] -> FilePath -> Action ()
 defaultBuildPost dir pat out = do
   xs <- defaultGetDirectoryMarkdown dir pat
+  putNormal out
+  putNormal $ (-<.> ".md") . (dir </>) $ out
   void $ genBuildPageAction (dir </> "templates/post.html")
-                            (typicalMarkdownGet defaultReadMarkdownFile dir)
+                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (dir </>))
                             ( enrichPost . withJSON (myBlogNavbar xs))
                             out
 
@@ -196,7 +198,7 @@ defaultPostsPhony :: FilePath -> [FilePattern] -> FilePath -> Rules ()
 defaultPostsPhony sourceFolder pattern outputFolder = do
   phony "posts" $ do
     fp <- getDirectoryFiles sourceFolder pattern
-    need [outputFolder </> dropDirectory1 x -<.> ".html" | x <- fp]
+    need [outputFolder </> x -<.> ".html" | x <- fp]
 
 defaultPostIndexPhony :: FilePath -> [FilePattern] -> FilePath -> Int -> Rules ()
 defaultPostIndexPhony sourceFolder pattern outputFolder postsPerPage = 

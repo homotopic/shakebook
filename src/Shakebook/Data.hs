@@ -219,9 +219,12 @@ readMarkdownFile' readerOptions writerOptions srcPath = do
   docData <- markdownToHTMLWithOpts readerOptions writerOptions . T.pack $ docContent
   return $ withSrcPath (T.pack srcPath) docData
 
+loadIfExists :: (FilePath -> Action Value) -> FilePath -> Action Value
+loadIfExists f src = ifM (S.doesFileExist src) (f src) (return (Object mempty))
+
 getDirectoryMarkdown :: ReaderOptions -> WriterOptions -> FilePath -> [FilePattern] -> Action [Value]
 getDirectoryMarkdown readOpts writeOpts dir pat = do
-  getDirectoryFiles dir pat >>= mapM (readMarkdownFile' readOpts writeOpts)
+  getDirectoryFiles dir pat >>= mapM (readMarkdownFile' readOpts writeOpts . (dir </>))
 
 getEnrichedMarkdown :: ReaderOptions -> WriterOptions -> (Value -> Value) -> FilePath -> [FilePattern] -> Action [Value]
 getEnrichedMarkdown readOpts writeOpts f dir pat = fmap f <$> getDirectoryMarkdown readOpts writeOpts dir pat
@@ -307,11 +310,6 @@ genBuildPageAction template getData withData out = do
   dataT <- withData <$> getData out
   writeFile' out . T.unpack $ substitute pageT dataT
   return dataT
-
-typicalMarkdownGet :: (FilePath -> Action Value) -> FilePath -> FilePath -> Action Value
-typicalMarkdownGet f srcDir out = do
-  let src = srcDir </> dropDirectory1 out -<.> ".md"
-  ifM (S.doesFileExist src) (f src) (return (Object mempty))
 
 paginateWithFilter :: Int -> ([Value] -> [Value]) -> [Value] -> Zipper [] [Value]
 paginateWithFilter n f = fromJust . paginate n. dateSortPosts . f
