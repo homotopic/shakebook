@@ -1,0 +1,12 @@
+image: nixos/nix:latest
+
+before_script:
+- export LC_ALL=C.UTF-8
+- nix-env -iA nixpkgs.stack
+- cachix use iohk
+- cachix use shakebook
+
+build:
+  stage: build
+  script:
+  - stack --nix build
