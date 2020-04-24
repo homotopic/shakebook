@@ -3,36 +3,23 @@ module Shakebook.Defaults where
 
 import           Control.Comonad
 import           Control.Comonad.Cofree
-import           Control.Comonad.Store.Class
 import           Control.Comonad.Store.Zipper
-import           Control.Lens               hiding ((:<), Context)
 import           Control.Monad.Extra
 import           Data.Aeson                 as A
-import           Data.Aeson.Lens
 import           Data.List.Split
 import           Data.Text.Time
 import           Development.Shake          as S
 import           Development.Shake.Classes
 import           Development.Shake.FilePath
-import           Development.Shake.Forward
-import           GHC.Generics               (Generic)
 import           RIO                        hiding (view)
 import qualified RIO.ByteString.Lazy        as LBS
-import           RIO.Directory
-import qualified RIO.HashMap                as HML
-import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Map                    as M
 import           RIO.Partial
 import qualified RIO.Text                   as T
-import qualified RIO.Text.Partial           as T
-import qualified RIO.Text.Lazy              as TL
 import           RIO.Time
-import qualified RIO.Vector                 as V
-import           Slick
 import           Shakebook.Data
 import           Shakebook.Rules
-import           Slick.Pandoc
 import           Text.DocTemplates
 import           Text.Pandoc.Class
 import           Text.Pandoc.Definition
@@ -94,18 +81,24 @@ makePDFLaTeX p = do
   makePDF "pdflatex" [] writeLaTeX latexWriterOptions { writerTemplate = Just t } p
 
 handleImages :: (Text -> Text) -> Inline -> Inline
-handleImages f x@(Image attr ins (src,txt)) =
+handleImages f (Image attr ins (src,txt)) =
   if T.takeEnd 4 src == ".mp4" then Str (f src)
   else Image attr ins ("public/" <> src, txt)
-handleImages f x = x
+handleImages _ x = x
 
 handleHeaders :: Int -> Block -> Block
-handleHeaders i x@(Header a as xs) = Header (max 1 (a + i)) as xs
+handleHeaders i (Header a as xs) = Header (max 1 (a + i)) as xs
 handleHeaders _ x                  = x
 
 pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
 pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
 
+genDefaultDocAction :: FilePath
+                    -> Cofree [] FilePath
+                    -> (Value -> Value)
+                    -> Cofree [] FilePath
+                    -> FilePath
+                    -> Action ()
 genDefaultDocAction sourceFolder toc f xs out = do
   ys <- mapM defaultReadMarkdownFile toc
   zs <- mapM defaultReadMarkdownFile xs
@@ -114,22 +107,29 @@ genDefaultDocAction sourceFolder toc f xs out = do
                             (f . withJSON (tocNavbarData ys) . withSubsections (immediateShoots zs))
                             out
 
+genDefaultDocsAction :: FilePath -> FilePath -> Cofree [] FilePath -> (Value -> Value) -> Rules ()
 genDefaultDocsAction dir outputFolder toc f = cofreeRuleGen toc (\x -> outputFolder </> typicalHTMLPath x) (genDefaultDocAction dir toc f)
 
+enrichPages :: [Value] -> Int -> Zipper [] Value -> Zipper [] Value
+enrichPages xs n = fmap (withJSON (myBlogNavbar xs)) . extendPageNeighbours n
 
-genDefaultIndexPageData k f g h n m = do
-  xs <- k
-  let ys = paginateWithFilter n f xs
-  return $ fmap (withJSON (myBlogNavbar xs)) . extendPageNeighbours m . extend (genPageData g h) $ ys
+genDefaultIndexPageData :: [Value]
+                        -> ([Value] -> [Value])
+                        -> Text
+                        -> (Text -> Text)
+                        -> Int
+                        -> Int
+                        -> Zipper [] Value
+genDefaultIndexPageData xs f g h n m = enrichPages xs m . extend (genPageData g h) $ paginateWithFilter n f xs
 
 getDefaultIndexPageData :: FilePath -> [FilePattern] -> Action (Zipper [] Value)
-getDefaultIndexPageData dir pat = genDefaultIndexPageData (getEnrichedPostData dir pat) (id) "Posts" ("/posts/pages/" <>) 5 2
+getDefaultIndexPageData dir pat = getEnrichedPostData dir pat >>= return . \a -> genDefaultIndexPageData a (id) "Posts" ("/posts/pages/" <>) 5 2
 
 getDefaultTagPageData :: FilePath -> [FilePattern] -> Text -> Action (Zipper [] Value)
-getDefaultTagPageData dir pat  tag = genDefaultIndexPageData (getEnrichedPostData dir pat) (tagFilterPosts tag) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) 5 2
+getDefaultTagPageData dir pat  tag = getEnrichedPostData dir pat >>= return . \a -> genDefaultIndexPageData a (tagFilterPosts tag) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) 5 2
 
 getDefaultMonthPageData :: FilePath -> [FilePattern] -> UTCTime -> Action (Zipper [] Value)
-getDefaultMonthPageData dir pat time = genDefaultIndexPageData (getEnrichedPostData dir pat) (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) 5 2
+getDefaultMonthPageData dir pat time = getEnrichedPostData dir pat >>= return . \a -> genDefaultIndexPageData a (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) 5 2
 
 genDefaultPostIndexRule :: FilePath -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
 genDefaultPostIndexRule dir fp f g h = comonadStoreRuleGen fp f g h
