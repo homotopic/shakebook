@@ -213,11 +213,18 @@ typicalHTMLUrl = T.pack . ("/" <>) . typicalHTMLPath . T.unpack
 
 -- Get a JSON Value of Markdown Data with markdown body as "contents" field
 -- and the srcPath as "srcPath" field.
-getMarkdownData :: ReaderOptions -> WriterOptions -> String -> Action Value
-getMarkdownData readerOptions writerOptions srcPath = do
+readMarkdownFile' :: ReaderOptions -> WriterOptions -> String -> Action Value
+readMarkdownFile' readerOptions writerOptions srcPath = do
   docContent <- readFile' srcPath
   docData <- markdownToHTMLWithOpts readerOptions writerOptions . T.pack $ docContent
   return $ withSrcPath (T.pack srcPath) docData
+
+getDirectoryMarkdown :: ReaderOptions -> WriterOptions -> FilePath -> [FilePattern] -> Action [Value]
+getDirectoryMarkdown readOpts writeOpts dir pat = do
+  getDirectoryFiles dir pat >>= mapM (readMarkdownFile' readOpts writeOpts)
+
+getEnrichedMarkdown :: ReaderOptions -> WriterOptions -> (Value -> Value) -> FilePath -> [FilePattern] -> Action [Value]
+getEnrichedMarkdown readOpts writeOpts f dir pat = fmap f <$> getDirectoryMarkdown readOpts writeOpts dir pat
 
 -- Create link data object with fields "id" and "url" using an id and a function
 -- transforming an id into a url.

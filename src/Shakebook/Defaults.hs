@@ -1,4 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
 module Shakebook.Defaults where
                                                                                                         
 
@@ -65,20 +64,17 @@ enrichPost = enrichTeaser "<!--more-->" . enrichTagLinks ("/posts/tags/" <>) . e
 
 --Data models-------------------------------------------------------------------
 
-getMarkdownData' = getMarkdownData markdownReaderOptions html5WriterOptions
-
 withNavCover :: Value -> Value
 withNavCover = withStringField "nav-class" "td-navbar-cover"
 
-getAllPostData :: Action [Value]
-getAllPostData = getDirectoryFiles "" ["site/posts/*.md"] >>= mapM (fmap enrichPost . getMarkdownData')
+defaultReadMarkdownFile :: FilePath -> Action Value
+defaultReadMarkdownFile = readMarkdownFile' markdownReaderOptions html5WriterOptions
 
-discoverAllPostTags :: Action [Text]
-discoverAllPostTags = viewAllPostTags <$> getAllPostData
+defaultGetDirectoryMarkdown :: FilePath -> [FilePattern] -> Action [Value]  
+defaultGetDirectoryMarkdown = getDirectoryMarkdown markdownReaderOptions html5WriterOptions
 
-discoverAllPostTimes :: Action [UTCTime]
-discoverAllPostTimes = viewAllPostTimes <$> getAllPostData
-
+getEnrichedPostData :: FilePath -> [FilePattern] -> Action [Value]
+getEnrichedPostData = getEnrichedMarkdown markdownReaderOptions html5WriterOptions enrichPost 
 
 markdownReaderOptions :: ReaderOptions
 markdownReaderOptions = def { readerExtensions = pandocExtensions }
@@ -87,7 +83,7 @@ html5WriterOptions :: WriterOptions
 html5WriterOptions = def { writerHTMLMathMethod = MathJax ""}
 
 latexWriterOptions :: WriterOptions
-latexWriterOptions = def { writerTableOfContents = True, writerVariables = Context (M.fromList [("geometry",SimpleVal "margin=3cm"), ("fontsize", (SimpleVal "10")), ("linkcolor",SimpleVal "blue")]) }
+latexWriterOptions = def { writerTableOfContents = True, writerVariables = Context (M.fromList [("geometry",SimpleVal "margin=3cm"), ("fontsize", SimpleVal "10"), ("linkcolor",SimpleVal "blue")]) }
 
 makePDFLaTeX :: Pandoc -> PandocIO (Either LBS.ByteString LBS.ByteString)
 makePDFLaTeX p = do
@@ -107,53 +103,53 @@ handleHeaders _ x                  = x
 pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
 pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
 
-generateBuildDocAction toc f xs out = do
-  ys <- mapM getMarkdownData' toc
-  zs <- mapM getMarkdownData' xs
-  void $ genBuildPageAction "site/templates/docs.html"
-                            (typicalMarkdownGet getMarkdownData' "site")
+genDefaultDocAction sourceFolder toc f xs out = do
+  ys <- mapM defaultReadMarkdownFile toc
+  zs <- mapM defaultReadMarkdownFile xs
+  void $ genBuildPageAction (sourceFolder </> "templates/docs.html")
+                            (typicalMarkdownGet defaultReadMarkdownFile sourceFolder)
                             (f . withJSON (tocNavbarData ys) . withSubsections (immediateShoots zs))
                             out
 
-generateAllDocRules outputFolder toc f = cofreeRuleGen toc (\x -> outputFolder </> typicalHTMLPath x) (generateBuildDocAction toc f)
+genDefaultDocsAction dir outputFolder toc f = cofreeRuleGen toc (\x -> outputFolder </> typicalHTMLPath x) (genDefaultDocAction dir toc f)
 
 
-genIndexPageData f g h n m = do
-  xs <- getAllPostData
+genDefaultIndexPageData k f g h n m = do
+  xs <- k
   let ys = paginateWithFilter n f xs
   return $ fmap (withJSON (myBlogNavbar xs)) . extendPageNeighbours m . extend (genPageData g h) $ ys
 
-indexPageData :: Action (Zipper [] Value)
-indexPageData = genIndexPageData id ("Posts") (\x -> ("/posts/pages/" <> x)) 5 2
+getDefaultIndexPageData :: FilePath -> [FilePattern] -> Action (Zipper [] Value)
+getDefaultIndexPageData dir pat = genDefaultIndexPageData (getEnrichedPostData dir pat) (id) "Posts" ("/posts/pages/" <>) 5 2
 
-tagPageData :: Text -> Action (Zipper [] Value)
-tagPageData tag = genIndexPageData (tagFilterPosts tag) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) 5 2
+getDefaultTagPageData :: FilePath -> [FilePattern] -> Text -> Action (Zipper [] Value)
+getDefaultTagPageData dir pat  tag = genDefaultIndexPageData (getEnrichedPostData dir pat) (tagFilterPosts tag) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) 5 2
 
-monthPageData :: UTCTime -> Action (Zipper [] Value)
-monthPageData time = genIndexPageData (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) ((\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x)) 5 2
+getDefaultMonthPageData :: FilePath -> [FilePattern] -> UTCTime -> Action (Zipper [] Value)
+getDefaultMonthPageData dir pat time = genDefaultIndexPageData (getEnrichedPostData dir pat) (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) 5 2
 
-genPostIndexRule :: FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
-genPostIndexRule fp f g h = comonadStoreRuleGen fp f g h
-  (\a -> void <$> genBuildPageAction "site/templates/post-list.html" (const $ return $ a) (withHighlighting pygments))
+genDefaultPostIndexRule :: FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
+genDefaultPostIndexRule fp f g h = comonadStoreRuleGen fp f g h
+  (\a -> void <$> genBuildPageAction "site/templates/post-list.html" (const $ return a) (withHighlighting pygments))
 
-postIndexRules :: FilePath -> Rules ()
-postIndexRules outputFolder = do
-   genPostIndexRule (outputFolder </> "posts/index.html") (const 0) (const ()) (const indexPageData)
-   genPostIndexRule (outputFolder </> "posts/pages/*/index.html") ((+ (-1)) . read . (!! 3) . splitOn "/")
+defaultPostIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Rules ()
+defaultPostIndexPatterns dir pat outputFolder = do
+   genDefaultPostIndexRule (outputFolder </> "posts/index.html") (const 0) (const ()) (const (getDefaultIndexPageData dir pat))
+   genDefaultPostIndexRule (outputFolder </> "posts/pages/*/index.html") ((+ (-1)) . read . (!! 3) . splitOn "/")
                                                              (const ())
-                                                             (const indexPageData)
-   genPostIndexRule (outputFolder </> "posts/tags/*/index.html") (const 0)
+                                                             (const (getDefaultIndexPageData dir pat))
+   genDefaultPostIndexRule (outputFolder </> "posts/tags/*/index.html") (const 0)
                                                             (T.pack . (!! 3) . splitOn "/")
-                                                            tagPageData
-   genPostIndexRule (outputFolder </> "posts/tags/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
-                                                 (T.pack . (!! 3) . splitOn "/")
-                                                 tagPageData
-   genPostIndexRule (outputFolder </> "posts/months/*/index.html") (const 0)
+                                                            (getDefaultTagPageData dir pat)
+   genDefaultPostIndexRule (outputFolder </> "posts/tags/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
+                                                 (T.pack . (!! 3) . splitOn "/") 
+                                                            (getDefaultTagPageData dir pat)
+   genDefaultPostIndexRule (outputFolder </> "posts/months/*/index.html") (const 0)
                                            (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                           monthPageData
-   genPostIndexRule (outputFolder </> "posts/months/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
+                                                            (getDefaultMonthPageData dir pat)
+   genDefaultPostIndexRule (outputFolder </> "posts/months/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
                                                    (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                                   monthPageData
+                                                            (getDefaultMonthPageData dir pat)
 
 buildPDF :: Cofree [] String -> Text -> FilePath -> Action ()
 buildPDF toc baseUrl out = do
@@ -164,58 +160,76 @@ buildPDF toc baseUrl out = do
     makePDFLaTeX z
   LBS.writeFile out f
 
-copyStatic :: FilePath -> Action ()
-copyStatic out = do
-  let src = "site" </> dropDirectory1 out
+copyStatic :: FilePath -> FilePath -> Action ()
+copyStatic srcFolder out = do
+  let src = srcFolder </> dropDirectory1 out
   copyFileChanged src out
 
-buildPost :: FilePath -> Action ()
-buildPost out = do
-  xs <- getAllPostData
-  void $ genBuildPageAction "site/templates/post.html"
-                            (typicalMarkdownGet getMarkdownData' "site")
+defaultBuildPost :: FilePath -> [FilePattern] -> FilePath -> Action ()
+defaultBuildPost dir pat out = do
+  xs <- defaultGetDirectoryMarkdown dir pat
+  void $ genBuildPageAction (dir </> "templates/post.html")
+                            (typicalMarkdownGet defaultReadMarkdownFile dir)
                             ( enrichPost . withJSON (myBlogNavbar xs))
                             out
 
+defaultStaticsPatterns :: FilePath -> FilePath -> Rules ()
+defaultStaticsPatterns srcFolder outputFolder = do
+  outputFolder </> "css//*"    %> copyStatic srcFolder
+  outputFolder </> "images//*" %> copyStatic srcFolder
+  outputFolder </> "js//*"     %> copyStatic srcFolder
+  outputFolder </> "webfonts//*" %> copyStatic srcFolder
 
-staticRules outputFolder = do
-    outputFolder </> "css//*"    %> copyStatic
-    outputFolder </> "images//*" %> copyStatic
-    outputFolder </> "js//*"     %> copyStatic
-    outputFolder </> "webfonts//*" %> copyStatic
+defaultCleanPhony :: FilePath -> Rules ()
+defaultCleanPhony outputFolder = 
+  phony "clean" $ do
+      putInfo $ "Cleaning files in " ++ outputFolder
+      removeFilesAfter outputFolder ["//*"]
 
+defaultStaticsPhony :: FilePath -> FilePath -> Rules ()
+defaultStaticsPhony srcFolder outputFolder = do
+  phony "statics" $ do
+    fp <- getDirectoryFiles srcFolder ["images//*", "css//*", "js//*", "webfonts//*"]
+    need $ [outputFolder </> x | x <- fp]
 
-phonyPostIndexRules :: FilePath -> Int -> Rules ()
-phonyPostIndexRules outputFolder postsPerPage = 
-    phony "posts" $ do
-      fp <- getDirectoryFiles "" ["site/posts/*.md"]
-      need ["public/posts/index.html"]
-      need [outputFolder </> "posts/pages/" ++ show x ++ "/index.html" | x <- [1..size (fromJust $ paginate postsPerPage fp)]]
-      need [outputFolder </> dropDirectory1 x -<.> ".html" | x <- fp]
+defaultPostsPhony :: FilePath -> [FilePattern] -> FilePath -> Rules ()
+defaultPostsPhony sourceFolder pattern outputFolder = do
+  phony "posts" $ do
+    fp <- getDirectoryFiles sourceFolder pattern
+    need [outputFolder </> dropDirectory1 x -<.> ".html" | x <- fp]
 
+defaultPostIndexPhony :: FilePath -> [FilePattern] -> FilePath -> Int -> Rules ()
+defaultPostIndexPhony sourceFolder pattern outputFolder postsPerPage = 
+    phony "posts-index" $ do
+      fp <- defaultGetDirectoryMarkdown sourceFolder pattern
+      need [outputFolder </> "posts/index.html"]
+      need [outputFolder </> "posts/pages/" ++ show x ++ "/index.html"
+           | x <- [1..size (fromJust $ paginate postsPerPage fp)]]
 
-phonyTagIndexRules outputFolder postsPerPage = 
-      phony "tags" $ do
-      tags <- discoverAllPostTags
-      need [outputFolder </> "posts/tags" </> T.unpack x </> "index.html" | x <- tags]
-      xs <- getAllPostData
-      need [outputFolder </> "posts/tags" </> T.unpack x </> "pages" </> (show p) </> "index.html"
-           |  x <- tags
-           ,  p <- [1..size (fromJust $ paginate postsPerPage $ tagFilterPosts x xs)]
-           ]
+defaultTagIndexPhony :: FilePath -> [FilePattern] -> FilePath -> Int -> Rules ()
+defaultTagIndexPhony sourceFolder pattern outputFolder postsPerPage = 
+  phony "tag-index" $ do
+    fp <- defaultGetDirectoryMarkdown sourceFolder pattern
+    let tags = viewAllPostTags fp
+    need [outputFolder </> "posts/tags" </> T.unpack x </> "index.html" | x <- tags]
+    need [outputFolder </> "posts/tags" </> T.unpack x </> "pages" </> show p </> "index.html"
+         |  x <- tags
+         ,  p <- [1..size (fromJust $ paginate postsPerPage $ tagFilterPosts x fp)]
+         ]
 
-
-phonyMonthIndexRules outputFolder postsPerPage =
-   phony "months" $ do
-      times <- discoverAllPostTimes
+defaultMonthIndexPhony :: FilePath -> [FilePattern] -> FilePath -> Int -> Rules ()
+defaultMonthIndexPhony sourceFolder pattern outputFolder postsPerPage = 
+   phony "month-index" $ do
+      fp <- defaultGetDirectoryMarkdown sourceFolder pattern
+      let times = viewAllPostTimes fp
       need [outputFolder </> "posts/months" </> monthURLFormat t </> "index.html" | t <- times]
-      xs <- getAllPostData
       need [outputFolder </> "posts/months" </> monthURLFormat t </> "pages" </> show p </> "index.html"
            | t <- times
-           , p <- [1..length (fromJust $ paginate postsPerPage $ monthFilterPosts t xs)]
+           , p <- [1..length (fromJust $ paginate postsPerPage $ monthFilterPosts t fp)]
            ]
 
-phonyDocsRules outputFolder toc = 
+defaultDocsPhony :: FilePath -> Cofree [] String -> Rules ()
+defaultDocsPhony outputFolder toc = 
     phony "docs" $ do
       fp <- getDirectoryFiles "" (foldr ((<>) . pure) [] toc)
       need $ [ outputFolder </> typicalHTMLPath x | x <- fp]
