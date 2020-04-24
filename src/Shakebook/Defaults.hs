@@ -60,7 +60,10 @@ myBlogNavbar :: [Value] -> Value
 myBlogNavbar = blogNavbarData "Blog" "/posts/" (T.pack . prettyMonthFormat) (T.pack . monthIndexUrl)
 
 enrichPost :: Value -> Value
-enrichPost = enrichTeaser "<!--more-->" . enrichTagLinks ("/posts/tags/" <>) . enrichPrettyDate prettyTimeFormat
+enrichPost = enrichTeaser "<!--more-->"
+           . enrichTagLinks ("/posts/tags/" <>)
+           . enrichPrettyDate prettyTimeFormat
+           . enrichTypicalUrl
 
 --Data models-------------------------------------------------------------------
 
@@ -107,7 +110,7 @@ genDefaultDocAction sourceFolder toc f xs out = do
   ys <- mapM defaultReadMarkdownFile toc
   zs <- mapM defaultReadMarkdownFile xs
   void $ genBuildPageAction (sourceFolder </> "templates/docs.html")
-                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (sourceFolder </>))
+                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (sourceFolder </>) . dropDirectory1)
                             (f . withJSON (tocNavbarData ys) . withSubsections (immediateShoots zs))
                             out
 
@@ -171,7 +174,7 @@ defaultBuildPost dir pat out = do
   putNormal out
   putNormal $ (-<.> ".md") . (dir </>) $ out
   void $ genBuildPageAction (dir </> "templates/post.html")
-                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (dir </>))
+                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (dir </>) . dropDirectory1)
                             ( enrichPost . withJSON (myBlogNavbar xs))
                             out
 
