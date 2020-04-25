@@ -141,41 +141,42 @@ getDefaultMonthPageData dir pat postsPerPage time = do
   xs <- getEnrichedPostData dir pat
   return $ genDefaultIndexPageData xs (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) postsPerPage
 
-genDefaultPostIndexRule :: FilePath -> FilePattern -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
-genDefaultPostIndexRule dir fp f g h = comonadStoreRuleGen fp f g h
-  (\a -> void <$> genBuildPageAction (dir </> "templates/post-list.html") (const $ return a) id)
+genDefaultPostIndexRule :: FilePath -> FilePattern -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
+genDefaultPostIndexRule dir fp template f g h = comonadStoreRuleGen fp f g h
+  (\a -> void <$> genBuildPageAction (dir </> template) (const $ return a) id)
 
-defaultPostIndexPatterns :: [FilePattern] -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultPostIndexPatterns pat extData = Shakebook $ ask >>=
+defaultPostIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultPostIndexPatterns pat template extData = Shakebook $ ask >>=
   \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/index.html")
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/index.html") template
                                       (const 0)
                                       (const ())
                                       (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/pages/*/index.html")
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/pages/*/index.html") template
                                       ((+ (-1)) . read . (!! 3) . splitOn "/")
                                       (const ())
                                       (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
 
-defaultTagIndexPatterns :: [FilePattern] -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultTagIndexPatterns pat extData = Shakebook $ ask >>= 
+defaultTagIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultTagIndexPatterns pat template extData = Shakebook $ ask >>= 
   \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
-   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/index.html")
+   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/index.html") template
                                     (const 0)
                                     (T.pack . (!! 3) . splitOn "/")
                                     (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
-   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/pages/*/index.html")
+   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/pages/*/index.html") template
                                     ((+ (-1)) . read . (!! 5) . splitOn "/")
                                     (T.pack . (!! 3) . splitOn "/") 
                                     (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
 
-defaultMonthIndexPatterns :: [FilePattern] -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultMonthIndexPatterns pat extData = Shakebook $ ask >>=
+defaultMonthIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultMonthIndexPatterns pat template extData = Shakebook $ ask >>=
   \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/index.html") (const 0)
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/index.html") template
+                                      (const 0)
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                       (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/pages/*/index.html")
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/pages/*/index.html") template
                                       ((+ (-1)) . read . (!! 5) . splitOn "/")
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                       (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
