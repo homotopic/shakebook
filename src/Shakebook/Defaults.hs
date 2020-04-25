@@ -81,7 +81,7 @@ latexWriterOptions = def { writerTableOfContents = True
                          , writerVariables = Context $ M.fromList [
                                                ("geometry", SimpleVal "margin=3cm")
                                              , ("fontsize", SimpleVal "10")
-                                             , ("linkcolor",SimpleVal "blue")]]
+                                             , ("linkcolor",SimpleVal "blue")]
                          }
 
 makePDFLaTeX :: Pandoc -> PandocIO (Either LBS.ByteString LBS.ByteString)
