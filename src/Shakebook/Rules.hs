@@ -17,7 +17,6 @@ comonadStoreRuleGen fp f g h k = do
     xs <- h (g x)
     k (extract (seek (f x) xs)) x
 
-
 cofreeRuleGen :: (Traversable w, ComonadCofree f w)
               => w FilePath
               -> (FilePath -> FilePath)

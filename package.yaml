@@ -72,6 +72,7 @@ dependencies:
 - free
 - lens
 - lens-aeson
+- relude
 - rio
 - pandoc
 - pandoc-types

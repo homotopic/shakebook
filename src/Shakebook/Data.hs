@@ -149,9 +149,9 @@ extendPageNeighbours r = extend (liftA2 withPages (genPageNeighbours r) extract)
 withPrettyDate :: Text -> Value -> Value
 withPrettyDate = withStringField "prettydate"
 
--- Explicitly add recent posts
-withRecentPosts :: Int -> [Value] -> Value -> Value
-withRecentPosts n xs = withArrayField "recent-posts" $ take n $ dateSortPosts xs
+-- Add "recentposts" field using input Value. 
+withRecentPosts :: [Value] -> Value -> Value
+withRecentPosts = withArrayField "recent-posts" 
 
 -- Add "subsections" field based on the immediate children of a Cofree [] Value.
 withSubsections :: [Value] -> (Value -> Value)
@@ -184,6 +184,7 @@ withTitle = withStringField "title"
 -- Assuming a "url" field, enrich via a baseURL
 enrichFullUrl :: Text -> Value -> Value
 enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
+
 
 -- Assuming a "date" field, enrich using withPrettyDate and a format string.
 enrichPrettyDate :: (UTCTime -> String) -> Value -> Value
@@ -313,6 +314,8 @@ genBuildPageAction template getData withData out = do
 
 paginateWithFilter :: Int -> ([Value] -> [Value]) -> [Value] -> Zipper [] [Value]
 paginateWithFilter n f = fromJust . paginate n. dateSortPosts . f
+
+traverseToSnd f a = (a,) <$> f a
 
 genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value 
 genPageData t f xs = withTitle t

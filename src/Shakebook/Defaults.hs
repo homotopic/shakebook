@@ -3,6 +3,7 @@ module Shakebook.Defaults where
 
 import           Control.Comonad
 import           Control.Comonad.Cofree
+import           Control.Comonad.Store.Class
 import           Control.Comonad.Store.Zipper
 import           Control.Monad.Extra
 import           Data.Aeson                 as A
@@ -13,6 +14,7 @@ import           Development.Shake.Classes
 import           Development.Shake.FilePath
 import           RIO                        hiding (view)
 import qualified RIO.ByteString.Lazy        as LBS
+import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Map                    as M
 import           RIO.Partial
@@ -40,11 +42,8 @@ prettyMonthFormat = formatTime defaultTimeLocale "%B, %Y"
 prettyTimeFormat :: UTCTime -> String
 prettyTimeFormat = formatTime defaultTimeLocale "%A, %B %d, %Y"
 
-monthIndexUrl :: UTCTime -> String
-monthIndexUrl t = "/posts/months" </> monthURLFormat t
-
-myBlogNavbar :: [Value] -> Value
-myBlogNavbar = blogNavbarData "Blog" "/posts/" (T.pack . prettyMonthFormat) (T.pack . monthIndexUrl)
+monthIndexUrlFormat :: UTCTime -> String
+monthIndexUrlFormat t = "/posts/months" </> monthURLFormat t
 
 enrichPost :: Value -> Value
 enrichPost = enrichTeaser "<!--more-->"
@@ -54,8 +53,13 @@ enrichPost = enrichTeaser "<!--more-->"
 
 --Data models-------------------------------------------------------------------
 
-withNavCover :: Value -> Value
-withNavCover = withStringField "nav-class" "td-navbar-cover"
+sortAndFilterValues :: Ord a => [FilePath] -> (Value -> a) -> (Value -> Bool) -> Action [(FilePath, Value)]
+sortAndFilterValues xs s f = do
+  ys <- forM xs $ \x -> do
+    k <- defaultReadMarkdownFile x
+    return (x, k)
+  return $ sortOn (s . snd) $ filter (f . snd) ys
+
 
 defaultReadMarkdownFile :: FilePath -> Action Value
 defaultReadMarkdownFile = readMarkdownFile' markdownReaderOptions html5WriterOptions
@@ -73,7 +77,12 @@ html5WriterOptions :: WriterOptions
 html5WriterOptions = def { writerHTMLMathMethod = MathJax ""}
 
 latexWriterOptions :: WriterOptions
-latexWriterOptions = def { writerTableOfContents = True, writerVariables = Context (M.fromList [("geometry",SimpleVal "margin=3cm"), ("fontsize", SimpleVal "10"), ("linkcolor",SimpleVal "blue")]) }
+latexWriterOptions = def { writerTableOfContents = True
+                         , writerVariables = Context $ M.fromList [
+                                               ("geometry", SimpleVal "margin=3cm")
+                                             , ("fontsize", SimpleVal "10")
+                                             , ("linkcolor",SimpleVal "blue")]]
+                         }
 
 makePDFLaTeX :: Pandoc -> PandocIO (Either LBS.ByteString LBS.ByteString)
 makePDFLaTeX p = do
@@ -93,70 +102,98 @@ handleHeaders _ x                  = x
 pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
 pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
 
-genDefaultDocAction :: FilePath
-                    -> Cofree [] FilePath
-                    -> (Value -> Value)
-                    -> Cofree [] FilePath
-                    -> FilePath
-                    -> Action ()
-genDefaultDocAction sourceFolder toc f xs out = do
-  ys <- mapM defaultReadMarkdownFile toc
-  zs <- mapM defaultReadMarkdownFile xs
-  void $ genBuildPageAction (sourceFolder </> "templates/docs.html")
-                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (sourceFolder </>) . dropDirectory1)
-                            (f . withJSON (tocNavbarData ys) . withSubsections (immediateShoots zs))
+defaultDocAction :: FilePath -- Source Folder e.g "site".
+                 -> Cofree [] FilePath -- Full table of contents for generating the navbar.
+                 -> Cofree [] FilePath -- The subtree whose target is the doc to be built.
+                 -> (Value -> Value) -- Extra data modifiers.
+                 -> FilePath -- Out Filepath
+                 -> Action ()
+defaultDocAction srcDir toc doc withData out = do
+  ys <- mapM defaultReadMarkdownFile (fmap (srcDir </>) toc)
+  zs <- mapM defaultReadMarkdownFile (fmap (srcDir </>) doc)
+  void $ genBuildPageAction (srcDir </> "templates/docs.html")
+                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (srcDir </>) . dropDirectory1)
+                            (withData . withJSON (tocNavbarData ys) . withSubsections (immediateShoots zs))
                             out
 
-genDefaultDocsAction :: FilePath -> FilePath -> Cofree [] FilePath -> (Value -> Value) -> Rules ()
-genDefaultDocsAction dir outputFolder toc f = cofreeRuleGen toc (\x -> outputFolder </> typicalHTMLPath x) (genDefaultDocAction dir toc f)
-
-enrichPages :: [Value] -> Int -> Zipper [] Value -> Zipper [] Value
-enrichPages xs n = fmap (withJSON (myBlogNavbar xs)) . extendPageNeighbours n
+defaultDocsPatterns :: FilePath -- Source Folder e.g "site".
+                    -> Cofree [] FilePath -- Rosetree Table of Contents.
+                    -> FilePath -- Output Folder e.g "public".
+                    -> (Value -> Value) -- Extra data modifiers.
+                    -> Rules ()
+defaultDocsPatterns srcDir toc outDir withData  =
+  cofreeRuleGen toc ((outDir </>) . (-<.> ".html"))
+                (\x -> defaultDocAction srcDir toc x withData)
 
 genDefaultIndexPageData :: [Value]
                         -> ([Value] -> [Value])
                         -> Text
                         -> (Text -> Text)
                         -> Int
-                        -> Int
                         -> Zipper [] Value
-genDefaultIndexPageData xs f g h n m = enrichPages xs m . extend (genPageData g h) $ paginateWithFilter n f xs
+genDefaultIndexPageData xs f g h n  =  extend (genPageData g h) $ paginateWithFilter n f xs
 
-getDefaultIndexPageData :: FilePath -> [FilePattern] -> Action (Zipper [] Value)
-getDefaultIndexPageData dir pat = getEnrichedPostData dir pat >>= return . \a -> genDefaultIndexPageData a (id) "Posts" ("/posts/pages/" <>) 5 2
+getDefaultIndexPageData :: FilePath -> [FilePattern] -> Int -> Action (Zipper [] Value)
+getDefaultIndexPageData dir pat postsPerPage = do
+  xs <- getEnrichedPostData dir pat
+  return $ genDefaultIndexPageData xs (id) "Posts" ("/posts/pages/" <>) postsPerPage
 
-getDefaultTagPageData :: FilePath -> [FilePattern] -> Text -> Action (Zipper [] Value)
-getDefaultTagPageData dir pat  tag = getEnrichedPostData dir pat >>= return . \a -> genDefaultIndexPageData a (tagFilterPosts tag) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) 5 2
+getDefaultTagPageData :: FilePath -> [FilePattern] -> Int -> Text -> Action (Zipper [] Value)
+getDefaultTagPageData dir pat postsPerPage tag = do
+  xs <- getEnrichedPostData dir pat
+  return $ genDefaultIndexPageData xs (tagFilterPosts tag) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) postsPerPage
 
-getDefaultMonthPageData :: FilePath -> [FilePattern] -> UTCTime -> Action (Zipper [] Value)
-getDefaultMonthPageData dir pat time = getEnrichedPostData dir pat >>= return . \a -> genDefaultIndexPageData a (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) 5 2
+getDefaultMonthPageData :: FilePath -> [FilePattern] -> Int -> UTCTime -> Action (Zipper [] Value)
+getDefaultMonthPageData dir pat postsPerPage time = do
+  xs <- getEnrichedPostData dir pat
+  return $ genDefaultIndexPageData xs (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) postsPerPage
 
-genDefaultPostIndexRule :: FilePath -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
+genDefaultPostIndexRule :: FilePath -> FilePattern -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
 genDefaultPostIndexRule dir fp f g h = comonadStoreRuleGen fp f g h
-  (\a -> void <$> genBuildPageAction (dir </> "templates/post-list.html") (const $ return a) (withHighlighting pygments))
+  (\a -> void <$> genBuildPageAction (dir </> "templates/post-list.html") (const $ return a) id)
 
-defaultPostIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Rules ()
-defaultPostIndexPatterns dir pat outputFolder = do
-   genDefaultPostIndexRule dir (outputFolder </> "posts/index.html") (const 0) (const ()) (const (getDefaultIndexPageData dir pat))
+defaultPostIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Int -> (Zipper [] Value -> Action (Zipper [] Value)) -> Rules ()
+defaultPostIndexPatterns dir pat outputFolder postsPerPage extData = do
+   genDefaultPostIndexRule dir (outputFolder </> "posts/index.html") (const 0) (const ()) (extData <=< const (getDefaultIndexPageData dir pat postsPerPage))
    genDefaultPostIndexRule dir (outputFolder </> "posts/pages/*/index.html") ((+ (-1)) . read . (!! 3) . splitOn "/")
                                                              (const ())
-                                                             (const (getDefaultIndexPageData dir pat))
+                                                             (extData <=< const (getDefaultIndexPageData dir pat postsPerPage))
+
+defaultTagIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Int -> (Zipper [] Value -> Action (Zipper [] Value)) ->  Rules ()
+defaultTagIndexPatterns dir pat outputFolder postsPerPage extData = do
    genDefaultPostIndexRule dir (outputFolder </> "posts/tags/*/index.html") (const 0)
                                                             (T.pack . (!! 3) . splitOn "/")
-                                                            (getDefaultTagPageData dir pat)
+                                                            (extData <=< getDefaultTagPageData dir pat postsPerPage)
    genDefaultPostIndexRule dir (outputFolder </> "posts/tags/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
                                                  (T.pack . (!! 3) . splitOn "/") 
-                                                            (getDefaultTagPageData dir pat)
+                                                            (extData <=< getDefaultTagPageData dir pat postsPerPage)
+
+
+defaultMonthIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Int -> (Zipper [] Value -> Action (Zipper [] Value)) -> Rules ()
+defaultMonthIndexPatterns dir pat outputFolder postsPerPage extData = do
    genDefaultPostIndexRule dir (outputFolder </> "posts/months/*/index.html") (const 0)
                                            (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                                            (getDefaultMonthPageData dir pat)
+                                                            (extData <=< getDefaultMonthPageData dir pat postsPerPage)
    genDefaultPostIndexRule dir (outputFolder </> "posts/months/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
                                                    (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                                            (getDefaultMonthPageData dir pat)
+                                                            (extData <=< getDefaultMonthPageData dir pat postsPerPage)
 
-buildPDF :: Cofree [] String -> Text -> FilePath -> Action ()
-buildPDF toc baseUrl out = do
-  y <- mapM readFile' toc
+defaultPostsPatterns :: FilePath -> FilePattern -> FilePath -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Rules ()
+defaultPostsPatterns srcDir pat outDir template extData = do
+  outDir </> pat %> \out -> do
+    xs <- getDirectoryFiles srcDir [pat -<.> ".md"]
+    ys <- sortAndFilterValues (fmap (srcDir </>) xs) (Down . viewPostTime) (const True)
+    let k = fromJust $ elemIndex ((-<.> ".md") . (srcDir </>) . dropDirectory1 $ out) (fst <$> ys)
+    let z = fromJust $ seek k <$> zipper (snd <$> ys)
+    void $ genBuildPageAction (srcDir </> template)
+                              (const $ extract <$> extData z)
+                              id out
+    
+  
+
+buildPDF :: FilePath -> Cofree [] String -> Text -> FilePath -> Action ()
+buildPDF srcDir toc baseUrl out = do
+  y <- mapM readFile' ((srcDir </>) <$> toc)
   Right f <- liftIO . runIOorExplode $ do
     k <- mapM (readMarkdown markdownReaderOptions . T.pack) y
     let z = walk (handleImages (\x -> "[Video available at " <> baseUrl <> x <> "]")) $ foldr (<>) mempty $ pushHeaders (-1) k
@@ -168,15 +205,18 @@ copyStatic srcFolder out = do
   let src = srcFolder </> dropDirectory1 out
   copyFileChanged src out
 
-defaultBuildPost :: FilePath -> [FilePattern] -> FilePath -> Action ()
-defaultBuildPost dir pat out = do
-  xs <- defaultGetDirectoryMarkdown dir pat
-  putNormal out
-  putNormal $ (-<.> ".md") . (dir </>) $ out
-  void $ genBuildPageAction (dir </> "templates/post.html")
-                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (dir </>) . dropDirectory1)
-                            ( enrichPost . withJSON (myBlogNavbar xs))
-                            out
+defaultSinglePagePattern :: FilePath -- Source directory e.g "site".
+                         -> FilePath -- The output filename e.g "index.html".
+                         -> FilePath -- The output directory e.g "public".
+                         -> FilePath -- A template file.
+                         -> (Value -> Action Value) -- Last minute enrichment.
+                         -> Rules ()
+defaultSinglePagePattern srcDir fileName outDir template withDataM =
+  outDir </> fileName %>
+    void . genBuildPageAction
+             (srcDir </> template)
+             (withDataM <=< loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (srcDir </>) . dropDirectory1)
+                    id
 
 defaultStaticsPatterns :: FilePath -> FilePath -> Rules ()
 defaultStaticsPatterns srcFolder outputFolder = do
@@ -233,9 +273,8 @@ defaultMonthIndexPhony sourceFolder pattern outputFolder postsPerPage =
            , p <- [1..length (fromJust $ paginate postsPerPage $ monthFilterPosts t fp)]
            ]
 
-defaultDocsPhony :: FilePath -> Cofree [] String -> Rules ()
-defaultDocsPhony outputFolder toc = 
+defaultDocsPhony :: FilePath -> Cofree [] String -> FilePath -> Rules ()
+defaultDocsPhony sourceFolder toc outputFolder  = 
     phony "docs" $ do
-      fp <- getDirectoryFiles "" (foldr ((<>) . pure) [] toc)
-      need $ [ outputFolder </> typicalHTMLPath x | x <- fp]
-
+      fp <- getDirectoryFiles sourceFolder (foldr ((<>) . pure) [] toc)
+      need $ [ (outputFolder </>) . (-<.> ".html") $ x | x <- fp]
