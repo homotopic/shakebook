@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Shakebook.Defaults where
                                                                                                         
 
@@ -25,7 +26,6 @@ import           Shakebook.Rules
 import           Text.DocTemplates
 import           Text.Pandoc.Class
 import           Text.Pandoc.Definition
-import           Text.Pandoc.Highlighting
 import           Text.Pandoc.Options
 import           Text.Pandoc.PDF
 import           Text.Pandoc.Readers
@@ -102,28 +102,21 @@ handleHeaders _ x                  = x
 pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
 pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
 
-defaultDocAction :: FilePath -- Source Folder e.g "site".
-                 -> Cofree [] FilePath -- Full table of contents for generating the navbar.
-                 -> Cofree [] FilePath -- The subtree whose target is the doc to be built.
-                 -> (Value -> Value) -- Extra data modifiers.
-                 -> FilePath -- Out Filepath
-                 -> Action ()
-defaultDocAction srcDir toc doc withData out = do
-  ys <- mapM defaultReadMarkdownFile (fmap (srcDir </>) toc)
-  zs <- mapM defaultReadMarkdownFile (fmap (srcDir </>) doc)
-  void $ genBuildPageAction (srcDir </> "templates/docs.html")
-                            (loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (srcDir </>) . dropDirectory1)
-                            (withData . withJSON (tocNavbarData ys) . withSubsections (immediateShoots zs))
-                            out
-
-defaultDocsPatterns :: FilePath -- Source Folder e.g "site".
-                    -> Cofree [] FilePath -- Rosetree Table of Contents.
-                    -> FilePath -- Output Folder e.g "public".
+defaultDocsPatterns :: Cofree [] FilePath -- Rosetree Table of Contents.
+                    -> FilePath
                     -> (Value -> Value) -- Extra data modifiers.
-                    -> Rules ()
-defaultDocsPatterns srcDir toc outDir withData  =
-  cofreeRuleGen toc ((outDir </>) . (-<.> ".html"))
-                (\x -> defaultDocAction srcDir toc x withData)
+                    -> Shakebook ()
+defaultDocsPatterns toc template withData = Shakebook $ ask >>=
+  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite} -> do
+    let r = readMarkdownFile' sbMdRead sbHTWrite
+    lift $ cofreeRuleGen toc ((sbOutDir </>) . (-<.> ".html")) (
+           \xs -> \out -> do 
+               ys <- mapM r (fmap (sbSrcDir </>) toc)
+               zs <- mapM r (fmap (sbSrcDir </>) xs)
+               void $ genBuildPageAction (sbSrcDir </> template)
+                        (loadIfExists r . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
+                        (withData . withJSON (tocNavbarData (fmap enrichTypicalUrl ys)) . withSubsections (immediateShoots (enrichTypicalUrl <$> zs)))
+                        out)
 
 genDefaultIndexPageData :: [Value]
                         -> ([Value] -> [Value])
@@ -152,42 +145,52 @@ genDefaultPostIndexRule :: FilePath -> FilePattern -> (FilePattern -> Int) -> (F
 genDefaultPostIndexRule dir fp f g h = comonadStoreRuleGen fp f g h
   (\a -> void <$> genBuildPageAction (dir </> "templates/post-list.html") (const $ return a) id)
 
-defaultPostIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Int -> (Zipper [] Value -> Action (Zipper [] Value)) -> Rules ()
-defaultPostIndexPatterns dir pat outputFolder postsPerPage extData = do
-   genDefaultPostIndexRule dir (outputFolder </> "posts/index.html") (const 0) (const ()) (extData <=< const (getDefaultIndexPageData dir pat postsPerPage))
-   genDefaultPostIndexRule dir (outputFolder </> "posts/pages/*/index.html") ((+ (-1)) . read . (!! 3) . splitOn "/")
-                                                             (const ())
-                                                             (extData <=< const (getDefaultIndexPageData dir pat postsPerPage))
+defaultPostIndexPatterns :: [FilePattern] -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultPostIndexPatterns pat extData = Shakebook $ ask >>=
+  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/index.html")
+                                      (const 0)
+                                      (const ())
+                                      (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/pages/*/index.html")
+                                      ((+ (-1)) . read . (!! 3) . splitOn "/")
+                                      (const ())
+                                      (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
 
-defaultTagIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Int -> (Zipper [] Value -> Action (Zipper [] Value)) ->  Rules ()
-defaultTagIndexPatterns dir pat outputFolder postsPerPage extData = do
-   genDefaultPostIndexRule dir (outputFolder </> "posts/tags/*/index.html") (const 0)
-                                                            (T.pack . (!! 3) . splitOn "/")
-                                                            (extData <=< getDefaultTagPageData dir pat postsPerPage)
-   genDefaultPostIndexRule dir (outputFolder </> "posts/tags/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
-                                                 (T.pack . (!! 3) . splitOn "/") 
-                                                            (extData <=< getDefaultTagPageData dir pat postsPerPage)
+defaultTagIndexPatterns :: [FilePattern] -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultTagIndexPatterns pat extData = Shakebook $ ask >>= 
+  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
+   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/index.html")
+                                    (const 0)
+                                    (T.pack . (!! 3) . splitOn "/")
+                                    (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
+   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/pages/*/index.html")
+                                    ((+ (-1)) . read . (!! 5) . splitOn "/")
+                                    (T.pack . (!! 3) . splitOn "/") 
+                                    (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
 
+defaultMonthIndexPatterns :: [FilePattern] -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultMonthIndexPatterns pat extData = Shakebook $ ask >>=
+  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/index.html") (const 0)
+                                      (parseISODateTime . T.pack . (!! 3) . splitOn "/")
+                                      (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/pages/*/index.html")
+                                      ((+ (-1)) . read . (!! 5) . splitOn "/")
+                                      (parseISODateTime . T.pack . (!! 3) . splitOn "/")
+                                      (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
 
-defaultMonthIndexPatterns :: FilePath -> [FilePattern] -> FilePath -> Int -> (Zipper [] Value -> Action (Zipper [] Value)) -> Rules ()
-defaultMonthIndexPatterns dir pat outputFolder postsPerPage extData = do
-   genDefaultPostIndexRule dir (outputFolder </> "posts/months/*/index.html") (const 0)
-                                           (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                                            (extData <=< getDefaultMonthPageData dir pat postsPerPage)
-   genDefaultPostIndexRule dir (outputFolder </> "posts/months/*/pages/*/index.html") ((+ (-1)) . read . (!! 5) . splitOn "/")
-                                                   (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                                            (extData <=< getDefaultMonthPageData dir pat postsPerPage)
-
-defaultPostsPatterns :: FilePath -> FilePattern -> FilePath -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Rules ()
-defaultPostsPatterns srcDir pat outDir template extData = do
-  outDir </> pat %> \out -> do
-    xs <- getDirectoryFiles srcDir [pat -<.> ".md"]
-    ys <- sortAndFilterValues (fmap (srcDir </>) xs) (Down . viewPostTime) (const True)
-    let k = fromJust $ elemIndex ((-<.> ".md") . (srcDir </>) . dropDirectory1 $ out) (fst <$> ys)
-    let z = fromJust $ seek k <$> zipper (snd <$> ys)
-    void $ genBuildPageAction (srcDir </> template)
-                              (const $ extract <$> extData z)
-                              id out
+defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultPostsPatterns pat template extData = Shakebook $ ask >>=
+  \ShakebookConfig {sbSrcDir, sbOutDir} -> 
+    lift $ sbOutDir </> pat %> \out -> do
+      xs <- getDirectoryFiles sbSrcDir [pat -<.> ".md"]
+      ys <- sortAndFilterValues (fmap (sbSrcDir </>) xs) (Down . viewPostTime) (const True)
+      let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> ys)
+      let z = fromJust $ seek k <$> zipper (snd <$> ys)
+      void $ genBuildPageAction (sbSrcDir </> template)
+                                (const $ extract <$> extData z)
+                                id out
     
   
 
@@ -205,17 +208,29 @@ copyStatic srcFolder out = do
   let src = srcFolder </> dropDirectory1 out
   copyFileChanged src out
 
-defaultSinglePagePattern :: FilePath -- Source directory e.g "site".
-                         -> FilePath -- The output filename e.g "index.html".
-                         -> FilePath -- The output directory e.g "public".
+data ShakebookConfig = ShakebookConfig {
+   sbSrcDir  :: FilePath
+,  sbOutDir  :: FilePath
+,  sbMdRead  :: ReaderOptions
+,  sbHTWrite :: WriterOptions
+,  sbPPP :: Int
+} deriving (Show)
+
+newtype Shakebook a = Shakebook ( ReaderT ShakebookConfig Rules a )
+  deriving (Functor, Applicative, Monad)
+
+runShakebook :: ShakebookConfig -> Shakebook a -> Rules a
+runShakebook c (Shakebook f) = runReaderT f c
+
+defaultSinglePagePattern :: FilePath -- The output filename e.g "index.html".
                          -> FilePath -- A template file.
                          -> (Value -> Action Value) -- Last minute enrichment.
-                         -> Rules ()
-defaultSinglePagePattern srcDir fileName outDir template withDataM =
-  outDir </> fileName %>
-    void . genBuildPageAction
-             (srcDir </> template)
-             (withDataM <=< loadIfExists defaultReadMarkdownFile . (-<.> ".md") . (srcDir </>) . dropDirectory1)
+                         -> Shakebook ()
+defaultSinglePagePattern fileName template withDataM = Shakebook $ ask >>=
+  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite} -> 
+    lift $ sbOutDir </> fileName %> void . genBuildPageAction
+             (sbSrcDir </> template)
+             (withDataM <=< readMarkdownFile' sbMdRead sbHTWrite . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
                     id
 
 defaultStaticsPatterns :: FilePath -> FilePath -> Rules ()
