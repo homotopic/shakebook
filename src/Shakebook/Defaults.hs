@@ -106,17 +106,16 @@ defaultDocsPatterns :: Cofree [] FilePath -- Rosetree Table of Contents.
                     -> FilePath
                     -> (Value -> Value) -- Extra data modifiers.
                     -> Shakebook ()
-defaultDocsPatterns toc template withData = Shakebook $ ask >>=
-  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite} -> do
-    let r = readMarkdownFile' sbMdRead sbHTWrite
-    lift $ cofreeRuleGen toc ((sbOutDir </>) . (-<.> ".html")) (
-           \xs -> \out -> do 
-               ys <- mapM r (fmap (sbSrcDir </>) toc)
-               zs <- mapM r (fmap (sbSrcDir </>) xs)
-               void $ genBuildPageAction (sbSrcDir </> template)
-                        (loadIfExists r . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
-                        (withData . withJSON (tocNavbarData (fmap enrichTypicalUrl ys)) . withSubsections (immediateShoots (enrichTypicalUrl <$> zs)))
-                        out)
+defaultDocsPatterns toc tmpl withData = Shakebook $ ask >>= \SbConfig {..} -> do
+  let r = readMarkdownFile' sbMdRead sbHTWrite
+  lift $ cofreeRuleGen toc ((sbOutDir </>) . (-<.> ".html")) (
+         \xs -> \out -> do 
+             ys <- mapM r (fmap (sbSrcDir </>) toc)
+             zs <- mapM r (fmap (sbSrcDir </>) xs)
+             void $ genBuildPageAction (sbSrcDir </> tmpl)
+                      (loadIfExists r . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
+                      (withData . withJSON (tocNavbarData (fmap enrichTypicalUrl ys)) . withSubsections (immediateShoots (enrichTypicalUrl <$> zs)))
+                      out)
 
 genDefaultIndexPageData :: [Value]
                         -> ([Value] -> [Value])
@@ -142,58 +141,53 @@ getDefaultMonthPageData dir pat postsPerPage time = do
   return $ genDefaultIndexPageData xs (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) postsPerPage
 
 genDefaultPostIndexRule :: FilePath -> FilePattern -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
-genDefaultPostIndexRule dir fp template f g h = comonadStoreRuleGen fp f g h
-  (\a -> void <$> genBuildPageAction (dir </> template) (const $ return a) id)
+genDefaultPostIndexRule dir fp tmpl f g h = comonadStoreRuleGen fp f g h
+  (\a -> void <$> genBuildPageAction (dir </> tmpl) (const $ return a) id)
 
 defaultPostIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultPostIndexPatterns pat template extData = Shakebook $ ask >>=
-  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/index.html") template
-                                      (const 0)
-                                      (const ())
-                                      (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/pages/*/index.html") template
-                                      ((+ (-1)) . read . (!! 3) . splitOn "/")
-                                      (const ())
-                                      (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
+defaultPostIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $ do
+   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/index.html") tmpl
+                                    (const 0)
+                                    (const ())
+                                    (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
+   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/pages/*/index.html") tmpl
+                                    ((+ (-1)) . read . (!! 3) . splitOn "/")
+                                    (const ())
+                                    (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
 
 defaultTagIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultTagIndexPatterns pat template extData = Shakebook $ ask >>= 
-  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
-   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/index.html") template
-                                    (const 0)
-                                    (T.pack . (!! 3) . splitOn "/")
-                                    (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
-   genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/pages/*/index.html") template
-                                    ((+ (-1)) . read . (!! 5) . splitOn "/")
-                                    (T.pack . (!! 3) . splitOn "/") 
-                                    (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
+defaultTagIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $ do
+ genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/index.html") tmpl
+                                  (const 0)
+                                  (T.pack . (!! 3) . splitOn "/")
+                                  (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
+ genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/pages/*/index.html") tmpl
+                                  ((+ (-1)) . read . (!! 5) . splitOn "/")
+                                  (T.pack . (!! 3) . splitOn "/") 
+                                  (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
 
 defaultMonthIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultMonthIndexPatterns pat template extData = Shakebook $ ask >>=
-  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite, sbPPP} -> lift $ do
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/index.html") template
+defaultMonthIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $ do
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/index.html") tmpl
                                       (const 0)
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                       (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
-     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/pages/*/index.html") template
+     genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/pages/*/index.html") tmpl
                                       ((+ (-1)) . read . (!! 5) . splitOn "/")
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                       (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
 
 defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultPostsPatterns pat template extData = Shakebook $ ask >>=
-  \ShakebookConfig {sbSrcDir, sbOutDir} -> 
-    lift $ sbOutDir </> pat %> \out -> do
-      xs <- getDirectoryFiles sbSrcDir [pat -<.> ".md"]
-      ys <- sortAndFilterValues (fmap (sbSrcDir </>) xs) (Down . viewPostTime) (const True)
-      let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> ys)
-      let z = fromJust $ seek k <$> zipper (snd <$> ys)
-      void $ genBuildPageAction (sbSrcDir </> template)
-                                (const $ extract <$> extData z)
-                                id out
+defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $
+  sbOutDir </> pat %> \out -> do
+    xs <- getDirectoryFiles sbSrcDir [pat -<.> ".md"]
+    ys <- sortAndFilterValues (fmap (sbSrcDir </>) xs) (Down . viewPostTime) (const True)
+    let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> ys)
+    let z = fromJust $ seek k <$> zipper (snd <$> ys)
+    void $ genBuildPageAction (sbSrcDir </> tmpl)
+                              (const $ extract <$> extData z)
+                              id out
     
-  
 
 buildPDF :: FilePath -> Cofree [] String -> Text -> FilePath -> Action ()
 buildPDF srcDir toc baseUrl out = do
@@ -204,12 +198,7 @@ buildPDF srcDir toc baseUrl out = do
     makePDFLaTeX z
   LBS.writeFile out f
 
-copyStatic :: FilePath -> FilePath -> Action ()
-copyStatic srcFolder out = do
-  let src = srcFolder </> dropDirectory1 out
-  copyFileChanged src out
-
-data ShakebookConfig = ShakebookConfig {
+data SbConfig = SbConfig {
    sbSrcDir  :: FilePath
 ,  sbOutDir  :: FilePath
 ,  sbMdRead  :: ReaderOptions
@@ -217,80 +206,76 @@ data ShakebookConfig = ShakebookConfig {
 ,  sbPPP :: Int
 } deriving (Show)
 
-newtype Shakebook a = Shakebook ( ReaderT ShakebookConfig Rules a )
+newtype Shakebook a = Shakebook ( ReaderT SbConfig Rules a )
   deriving (Functor, Applicative, Monad)
 
-runShakebook :: ShakebookConfig -> Shakebook a -> Rules a
+runShakebook :: SbConfig -> Shakebook a -> Rules a
 runShakebook c (Shakebook f) = runReaderT f c
 
 defaultSinglePagePattern :: FilePath -- The output filename e.g "index.html".
-                         -> FilePath -- A template file.
+                         -> FilePath -- A tmpl file.
                          -> (Value -> Action Value) -- Last minute enrichment.
                          -> Shakebook ()
-defaultSinglePagePattern fileName template withDataM = Shakebook $ ask >>=
-  \ShakebookConfig {sbSrcDir, sbOutDir, sbMdRead, sbHTWrite} -> 
-    lift $ sbOutDir </> fileName %> void . genBuildPageAction
-             (sbSrcDir </> template)
-             (withDataM <=< readMarkdownFile' sbMdRead sbHTWrite . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
-                    id
+defaultSinglePagePattern out tmpl withDataM = Shakebook $ ask >>= \SbConfig {..} -> lift $
+  sbOutDir </> out %> void . genBuildPageAction
+                 (sbSrcDir </> tmpl)
+                 (withDataM <=< readMarkdownFile' sbMdRead sbHTWrite . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
+                 id
 
-defaultStaticsPatterns :: FilePath -> FilePath -> Rules ()
-defaultStaticsPatterns srcFolder outputFolder = do
-  outputFolder </> "css//*"    %> copyStatic srcFolder
-  outputFolder </> "images//*" %> copyStatic srcFolder
-  outputFolder </> "js//*"     %> copyStatic srcFolder
-  outputFolder </> "webfonts//*" %> copyStatic srcFolder
+defaultStaticsPatterns :: [FilePattern] -> Shakebook ()
+defaultStaticsPatterns xs = Shakebook $ ask >>= \SbConfig {..} -> lift $
+  mconcat $ map (\x -> sbOutDir </> x %> \y -> copyFileChanged ((sbSrcDir </>) . dropDirectory1 $ y) y) xs
 
-defaultCleanPhony :: FilePath -> Rules ()
-defaultCleanPhony outputFolder = 
+defaultCleanPhony :: Shakebook ()
+defaultCleanPhony = Shakebook $ ask >>= \SbConfig {..} -> lift $
   phony "clean" $ do
-      putInfo $ "Cleaning files in " ++ outputFolder
-      removeFilesAfter outputFolder ["//*"]
+      putInfo $ "Cleaning files in " ++ sbOutDir
+      removeFilesAfter sbOutDir ["//*"]
 
-defaultStaticsPhony :: FilePath -> FilePath -> Rules ()
-defaultStaticsPhony srcFolder outputFolder = do
+defaultStaticsPhony :: Shakebook ()
+defaultStaticsPhony = Shakebook $ ask >>= \SbConfig {..} -> lift $
   phony "statics" $ do
-    fp <- getDirectoryFiles srcFolder ["images//*", "css//*", "js//*", "webfonts//*"]
-    need $ [outputFolder </> x | x <- fp]
+    fp <- getDirectoryFiles sbSrcDir ["images//*", "css//*", "js//*", "webfonts//*"]
+    need $ [sbOutDir </> x | x <- fp]
 
-defaultPostsPhony :: FilePath -> [FilePattern] -> FilePath -> Rules ()
-defaultPostsPhony sourceFolder pattern outputFolder = do
+defaultPostsPhony :: [FilePattern] -> Shakebook ()
+defaultPostsPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
   phony "posts" $ do
-    fp <- getDirectoryFiles sourceFolder pattern
-    need [outputFolder </> x -<.> ".html" | x <- fp]
+    fp <- getDirectoryFiles sbSrcDir pattern
+    need [sbOutDir </> x -<.> ".html" | x <- fp]
 
-defaultPostIndexPhony :: FilePath -> [FilePattern] -> FilePath -> Int -> Rules ()
-defaultPostIndexPhony sourceFolder pattern outputFolder postsPerPage = 
+defaultPostIndexPhony :: [FilePattern] -> Shakebook ()
+defaultPostIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
     phony "posts-index" $ do
-      fp <- defaultGetDirectoryMarkdown sourceFolder pattern
-      need [outputFolder </> "posts/index.html"]
-      need [outputFolder </> "posts/pages/" ++ show x ++ "/index.html"
-           | x <- [1..size (fromJust $ paginate postsPerPage fp)]]
+      fp <- defaultGetDirectoryMarkdown sbSrcDir pattern
+      need [sbOutDir </> "posts/index.html"]
+      need [sbOutDir </> "posts/pages/" ++ show x ++ "/index.html"
+           | x <- [1..size (fromJust $ paginate sbPPP fp)]]
 
-defaultTagIndexPhony :: FilePath -> [FilePattern] -> FilePath -> Int -> Rules ()
-defaultTagIndexPhony sourceFolder pattern outputFolder postsPerPage = 
+defaultTagIndexPhony :: [FilePattern] -> Shakebook ()
+defaultTagIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
   phony "tag-index" $ do
-    fp <- defaultGetDirectoryMarkdown sourceFolder pattern
+    fp <- defaultGetDirectoryMarkdown sbSrcDir pattern
     let tags = viewAllPostTags fp
-    need [outputFolder </> "posts/tags" </> T.unpack x </> "index.html" | x <- tags]
-    need [outputFolder </> "posts/tags" </> T.unpack x </> "pages" </> show p </> "index.html"
+    need [sbOutDir </> "posts/tags" </> T.unpack x </> "index.html" | x <- tags]
+    need [sbOutDir </> "posts/tags" </> T.unpack x </> "pages" </> show p </> "index.html"
          |  x <- tags
-         ,  p <- [1..size (fromJust $ paginate postsPerPage $ tagFilterPosts x fp)]
+         ,  p <- [1..size (fromJust $ paginate sbPPP $ tagFilterPosts x fp)]
          ]
 
-defaultMonthIndexPhony :: FilePath -> [FilePattern] -> FilePath -> Int -> Rules ()
-defaultMonthIndexPhony sourceFolder pattern outputFolder postsPerPage = 
+defaultMonthIndexPhony :: [FilePattern] -> Shakebook ()
+defaultMonthIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
    phony "month-index" $ do
-      fp <- defaultGetDirectoryMarkdown sourceFolder pattern
+      fp <- defaultGetDirectoryMarkdown sbSrcDir pattern
       let times = viewAllPostTimes fp
-      need [outputFolder </> "posts/months" </> monthURLFormat t </> "index.html" | t <- times]
-      need [outputFolder </> "posts/months" </> monthURLFormat t </> "pages" </> show p </> "index.html"
+      need [sbOutDir </> "posts/months" </> monthURLFormat t </> "index.html" | t <- times]
+      need [sbOutDir </> "posts/months" </> monthURLFormat t </> "pages" </> show p </> "index.html"
            | t <- times
-           , p <- [1..length (fromJust $ paginate postsPerPage $ monthFilterPosts t fp)]
+           , p <- [1..length (fromJust $ paginate sbPPP $ monthFilterPosts t fp)]
            ]
 
-defaultDocsPhony :: FilePath -> Cofree [] String -> FilePath -> Rules ()
-defaultDocsPhony sourceFolder toc outputFolder  = 
+defaultDocsPhony :: Cofree [] String -> Shakebook ()
+defaultDocsPhony toc = Shakebook $ ask >>= \SbConfig {..} -> lift $
     phony "docs" $ do
-      fp <- getDirectoryFiles sourceFolder (foldr ((<>) . pure) [] toc)
-      need $ [ (outputFolder </>) . (-<.> ".html") $ x | x <- fp]
+      fp <- getDirectoryFiles sbSrcDir (foldr ((<>) . pure) [] toc)
+      need $ [ (sbOutDir </>) . (-<.> ".html") $ x | x <- fp]
