@@ -173,7 +173,8 @@ defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Z
 defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \sbc@(SbConfig {..}) -> lift $
   sbOutDir </> pat %> \out -> do
     sortedPosts <- runShakebookA sbc $ loadSortedPosts [pat] enrichPost
-    let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> sortedPosts)
+    let i = (-<.> ".md") . dropDirectory1 $ out
+    let k = fromJust $ elemIndex i (fst <$> sortedPosts)
     let z = fromJust $ seek k <$> zipper (snd <$> sortedPosts)
     void $ genBuildPageAction (sbSrcDir </> tmpl)
                               (const $ extract <$> extData z)
