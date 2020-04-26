@@ -200,26 +200,6 @@ buildPDF srcDir toc baseUrl out = do
     makePDFLaTeX z
   LBS.writeFile out f
 
-data SbConfig = SbConfig {
-   sbSrcDir  :: FilePath
-,  sbOutDir  :: FilePath
-,  sbMdRead  :: ReaderOptions
-,  sbHTWrite :: WriterOptions
-,  sbPPP :: Int
-} deriving (Show)
-
-newtype Shakebook a = Shakebook ( ReaderT SbConfig Rules a )
-  deriving (Functor, Applicative, Monad)
-
-newtype ShakebookA a = ShakebookA ( ReaderT SbConfig Action a )
-  deriving (Functor, Applicative, Monad)
-
-runShakebook :: SbConfig -> Shakebook a -> Rules a
-runShakebook c (Shakebook f) = runReaderT f c
-
-runShakebookA :: SbConfig -> ShakebookA a -> Action a
-runShakebookA c (ShakebookA f) = runReaderT f c
-
 defaultSinglePagePattern :: FilePath -- The output filename e.g "index.html".
                          -> FilePath -- A tmpl file.
                          -> (Value -> Action Value) -- Last minute enrichment.

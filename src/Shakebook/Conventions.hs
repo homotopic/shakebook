@@ -63,26 +63,18 @@ import           Control.Lens                 hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
-import           Data.List.Split
 import           Data.Text.Time
-import           Development.Shake as S
 import           Development.Shake.FilePath
 import           RIO                          hiding (view)
-import           RIO.Partial
-import qualified RIO.HashMap                  as HML
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text                     as T
-import qualified RIO.Text.Lazy                as TL
 import qualified RIO.Text.Partial             as T
 import           RIO.Time
 import qualified RIO.Vector                   as V
 import           Shakebook.Aeson
 import           Shakebook.Zipper
-import           Text.Atom.Feed               as Atom
-import           Text.Atom.Feed.Export        as Atom
 import           Text.Pandoc.Highlighting
-import           Text.Pandoc.Options
 
 
 -- View the "content" field of a JSON Value.

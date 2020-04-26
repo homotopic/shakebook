@@ -2,30 +2,14 @@ module Shakebook.Data where
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
-import           Control.Comonad.Store.Zipper
-import           Control.Lens                 hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
-import           Data.Aeson.Lens
-import           Data.List.Split
-import           Data.Text.Time
 import           Development.Shake as S
 import           Development.Shake.FilePath
 import           RIO                          hiding (view)
-import           RIO.Partial
-import qualified RIO.HashMap                  as HML
-import           RIO.List
-import           RIO.List.Partial
 import qualified RIO.Text                     as T
-import qualified RIO.Text.Lazy                as TL
-import qualified RIO.Text.Partial             as T
-import           RIO.Time
-import qualified RIO.Vector                   as V
 import           Slick
 import           Slick.Pandoc
-import           Text.Atom.Feed               as Atom
-import           Text.Atom.Feed.Export        as Atom
-import           Text.Pandoc.Highlighting
 import           Shakebook.Conventions
 import           Text.Pandoc.Options
 
@@ -64,3 +48,24 @@ traverseToSnd f a = (a,) <$> f a
 
 lower :: Cofree [] Value -> [Value]
 lower (_ :< xs) = extract <$> xs
+
+data SbConfig = SbConfig {
+   sbSrcDir  :: FilePath
+,  sbOutDir  :: FilePath
+,  sbMdRead  :: ReaderOptions
+,  sbHTWrite :: WriterOptions
+,  sbPPP :: Int
+} deriving (Show)
+
+newtype Shakebook a = Shakebook ( ReaderT SbConfig Rules a )
+  deriving (Functor, Applicative, Monad)
+
+newtype ShakebookA a = ShakebookA ( ReaderT SbConfig Action a )
+  deriving (Functor, Applicative, Monad)
+
+runShakebook :: SbConfig -> Shakebook a -> Rules a
+runShakebook c (Shakebook f) = runReaderT f c
+
+runShakebookA :: SbConfig -> ShakebookA a -> Action a
+runShakebookA c (ShakebookA f) = runReaderT f c
+
