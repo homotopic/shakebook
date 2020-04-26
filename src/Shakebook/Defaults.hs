@@ -163,14 +163,18 @@ defaultMonthIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} 
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                       (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
 
+loadSortedPosts :: [FilePattern] -> (Value -> Value) -> ShakebookA [(String, Value)]
+loadSortedPosts patterns enrich = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
+  allPosts <- getDirectoryFiles sbSrcDir $ map (-<.> ".md") patterns
+  readPosts <- sequence $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>)) <$> allPosts
+  return $ fmap (second enrich) $ sortOn (Down . viewPostTime . snd) readPosts
+
 defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \sbc@(SbConfig {..}) -> lift $
   sbOutDir </> pat %> \out -> do
-    xs <- getDirectoryFiles sbSrcDir [pat -<.> ".md"]
-    ys <- forM xs $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>))
-    let zs = sortOn (Down . viewPostTime . snd) ys
-    let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> zs)
-    let z = fromJust $ seek k <$> zipper (snd <$> zs)
+    sortedPosts <- runShakebookA sbc $ loadSortedPosts [pat] enrichPost
+    let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> sortedPosts)
+    let z = fromJust $ seek k <$> zipper (snd <$> sortedPosts)
     void $ genBuildPageAction (sbSrcDir </> tmpl)
                               (const $ extract <$> extData z)
                               id out
@@ -196,8 +200,14 @@ data SbConfig = SbConfig {
 newtype Shakebook a = Shakebook ( ReaderT SbConfig Rules a )
   deriving (Functor, Applicative, Monad)
 
+newtype ShakebookA a = ShakebookA ( ReaderT SbConfig Action a )
+  deriving (Functor, Applicative, Monad)
+
 runShakebook :: SbConfig -> Shakebook a -> Rules a
 runShakebook c (Shakebook f) = runReaderT f c
+
+runShakebookA :: SbConfig -> ShakebookA a -> Action a
+runShakebookA c (ShakebookA f) = runReaderT f c
 
 defaultSinglePagePattern :: FilePath -- The output filename e.g "index.html".
                          -> FilePath -- A tmpl file.
