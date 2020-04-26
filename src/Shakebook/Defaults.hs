@@ -171,7 +171,7 @@ defaultMonthIndexPatterns pat tmpl extData = do
                            (\x y -> ("/posts/months/" <> T.pack (monthURLFormat x) <> "/pages" <> y)))
                        extData
 
-defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
+defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
 defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \sbc@(SbConfig {..}) -> lift $
   sbOutDir </> pat %> \out -> do
     sortedPosts <- runShakebookA sbc $ loadSortEnrich [pat] (Down . viewPostTime) enrichPost
@@ -179,7 +179,7 @@ defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \sbc@(SbConfig {..})
     let k = fromJust $ elemIndex i (fst <$> sortedPosts)
     let z = fromJust $ seek k <$> zipper (snd <$> sortedPosts)
     void $ genBuildPageAction (sbSrcDir </> tmpl)
-                              (const $ extract <$> extData z)
+                              (const $ runShakebookA sbc $ extract <$> extData z)
                               id out
     
 
@@ -194,12 +194,14 @@ buildPDF srcDir toc baseUrl out = do
 
 defaultSinglePagePattern :: FilePath -- The output filename e.g "index.html".
                          -> FilePath -- A tmpl file.
-                         -> (Value -> Action Value) -- Last minute enrichment.
+                         -> (Value -> ShakebookA Value) -- Last minute enrichment.
                          -> Shakebook ()
-defaultSinglePagePattern out tmpl withDataM = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultSinglePagePattern out tmpl withDataM = Shakebook $ ask >>= \sbc@(SbConfig {..}) -> lift $
   sbOutDir </> out %> void . genBuildPageAction
                  (sbSrcDir </> tmpl)
-                 (withDataM <=< readMarkdownFile' sbMdRead sbHTWrite . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
+                 (\fp -> do
+                   x <- readMarkdownFile' sbMdRead sbHTWrite . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ fp
+                   runShakebookA sbc $ withDataM x)
                  id
 
 defaultStaticsPatterns :: [FilePattern] -> Shakebook ()
