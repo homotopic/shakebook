@@ -53,20 +53,6 @@ enrichPost = enrichTeaser "<!--more-->"
 
 --Data models-------------------------------------------------------------------
 
-sortAndFilterValues :: Ord a => [FilePath] -> (Value -> a) -> (Value -> Bool) -> Action [(FilePath, Value)]
-sortAndFilterValues xs s f = do
-  ys <- forM xs $ \x -> do
-    k <- defaultReadMarkdownFile x
-    return (x, k)
-  return $ sortOn (s . snd) $ filter (f . snd) ys
-
-
-defaultReadMarkdownFile :: FilePath -> Action Value
-defaultReadMarkdownFile = readMarkdownFile' markdownReaderOptions html5WriterOptions
-
-defaultGetDirectoryMarkdown :: FilePath -> [FilePattern] -> Action [Value]  
-defaultGetDirectoryMarkdown = getDirectoryMarkdown markdownReaderOptions html5WriterOptions
-
 getEnrichedPostData :: FilePath -> [FilePattern] -> Action [Value]
 getEnrichedPostData = getEnrichedMarkdown markdownReaderOptions html5WriterOptions enrichPost 
 
@@ -181,9 +167,10 @@ defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Z
 defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $
   sbOutDir </> pat %> \out -> do
     xs <- getDirectoryFiles sbSrcDir [pat -<.> ".md"]
-    ys <- sortAndFilterValues (fmap (sbSrcDir </>) xs) (Down . viewPostTime) (const True)
-    let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> ys)
-    let z = fromJust $ seek k <$> zipper (snd <$> ys)
+    ys <- forM xs $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>))
+    let zs = sortOn (Down . viewPostTime . snd) ys
+    let k = fromJust $ elemIndex ((-<.> ".md") . (sbSrcDir </>) . dropDirectory1 $ out) (fst <$> zs)
+    let z = fromJust $ seek k <$> zipper (snd <$> zs)
     void $ genBuildPageAction (sbSrcDir </> tmpl)
                               (const $ extract <$> extData z)
                               id out
@@ -247,7 +234,7 @@ defaultPostsPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
 defaultPostIndexPhony :: [FilePattern] -> Shakebook ()
 defaultPostIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
     phony "posts-index" $ do
-      fp <- defaultGetDirectoryMarkdown sbSrcDir pattern
+      fp <- getDirectoryMarkdown sbMdRead sbHTWrite sbSrcDir pattern
       need [sbOutDir </> "posts/index.html"]
       need [sbOutDir </> "posts/pages/" ++ show x ++ "/index.html"
            | x <- [1..size (fromJust $ paginate sbPPP fp)]]
@@ -255,7 +242,7 @@ defaultPostIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
 defaultTagIndexPhony :: [FilePattern] -> Shakebook ()
 defaultTagIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
   phony "tag-index" $ do
-    fp <- defaultGetDirectoryMarkdown sbSrcDir pattern
+    fp <- getDirectoryMarkdown sbMdRead sbHTWrite sbSrcDir pattern
     let tags = viewAllPostTags fp
     need [sbOutDir </> "posts/tags" </> T.unpack x </> "index.html" | x <- tags]
     need [sbOutDir </> "posts/tags" </> T.unpack x </> "pages" </> show p </> "index.html"
@@ -266,7 +253,7 @@ defaultTagIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
 defaultMonthIndexPhony :: [FilePattern] -> Shakebook ()
 defaultMonthIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
    phony "month-index" $ do
-      fp <- defaultGetDirectoryMarkdown sbSrcDir pattern
+      fp <- getDirectoryMarkdown sbMdRead sbHTWrite sbSrcDir pattern
       let times = viewAllPostTimes fp
       need [sbOutDir </> "posts/months" </> monthURLFormat t </> "index.html" | t <- times]
       need [sbOutDir </> "posts/months" </> monthURLFormat t </> "pages" </> show p </> "index.html"
