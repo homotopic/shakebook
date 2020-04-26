@@ -105,7 +105,8 @@ defaultDocsPatterns toc tmpl withData = Shakebook $ ask >>= \SbConfig {..} -> do
 defaultPostIndexData :: [FilePattern] -> (a -> Value -> Bool) -> (a -> Text) -> (a -> Text -> Text) -> a -> ShakebookA (Zipper [] Value)
 defaultPostIndexData pat f t l a = ask >>= \SbConfig {..} -> do
   xs <- loadSortFilterEnrich pat (Down . viewPostTime) (f a) enrichPost
-  return $ fromJust $ genIndexPageData (snd <$> xs) (t a) (l a) sbPPP
+  let ys = genIndexPageData (snd <$> xs) (t a) (l a) sbPPP
+  return $ fromJust $ ys
 
 defaultPagerPattern :: FilePattern
                     -> FilePath
@@ -115,7 +116,7 @@ defaultPagerPattern :: FilePattern
                     -> (Zipper [] Value -> ShakebookA (Zipper [] Value))
                     -> Shakebook ()
 defaultPagerPattern fp tmpl f g h w = Shakebook $ ask >>= \x@SbConfig{..} -> lift $
-  comonadStoreRuleGen (sbOutDir </> fp) (f . (sbOutDir </>)) g (runShakebookA x . (w <=< h))
+  comonadStoreRuleGen (sbOutDir </> fp) (f . dropDirectory1) (g . dropDirectory1) (runShakebookA x . (w <=< h))
   (\a -> void <$> genBuildPageAction (sbSrcDir </> tmpl) (const $ return a) id)
 
 defaultPostIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
