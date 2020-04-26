@@ -1,6 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Shakebook.Defaults where
-                                                                                                        
 
 import           Control.Comonad
 import           Control.Comonad.Cofree
@@ -21,8 +20,11 @@ import qualified RIO.Map                    as M
 import           RIO.Partial
 import qualified RIO.Text                   as T
 import           RIO.Time
+import           Shakebook.Aeson
 import           Shakebook.Data
 import           Shakebook.Rules
+import           Shakebook.Conventions
+import           Shakebook.Zipper
 import           Text.DocTemplates
 import           Text.Pandoc.Class
 import           Text.Pandoc.Definition
@@ -100,31 +102,31 @@ defaultDocsPatterns toc tmpl withData = Shakebook $ ask >>= \SbConfig {..} -> do
              zs <- mapM r (fmap (sbSrcDir </>) xs)
              void $ genBuildPageAction (sbSrcDir </> tmpl)
                       (loadIfExists r . (-<.> ".md") . (sbSrcDir </>) . dropDirectory1)
-                      (withData . withJSON (tocNavbarData (fmap enrichTypicalUrl ys)) . withSubsections (immediateShoots (enrichTypicalUrl <$> zs)))
+                      (withData . withJSON (genTocNavbarData (fmap enrichTypicalUrl ys)) . withSubsections (lower (enrichTypicalUrl <$> zs)))
                       out)
 
 genDefaultIndexPageData :: [Value]
-                        -> ([Value] -> [Value])
+                        -> (Value -> Bool)
                         -> Text
                         -> (Text -> Text)
                         -> Int
                         -> Zipper [] Value
-genDefaultIndexPageData xs f g h n  =  extend (genPageData g h) $ paginateWithFilter n f xs
+genDefaultIndexPageData xs f g h n  = extend (genPageData g h) $ fromJust $ paginate n . filter f $ xs
 
 getDefaultIndexPageData :: FilePath -> [FilePattern] -> Int -> Action (Zipper [] Value)
 getDefaultIndexPageData dir pat postsPerPage = do
   xs <- getEnrichedPostData dir pat
-  return $ genDefaultIndexPageData xs (id) "Posts" ("/posts/pages/" <>) postsPerPage
+  return $ genDefaultIndexPageData xs (const True) "Posts" ("/posts/pages/" <>) postsPerPage
 
 getDefaultTagPageData :: FilePath -> [FilePattern] -> Int -> Text -> Action (Zipper [] Value)
 getDefaultTagPageData dir pat postsPerPage tag = do
   xs <- getEnrichedPostData dir pat
-  return $ genDefaultIndexPageData xs (tagFilterPosts tag) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) postsPerPage
+  return $ genDefaultIndexPageData xs (elem tag . viewTags) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) postsPerPage
 
 getDefaultMonthPageData :: FilePath -> [FilePattern] -> Int -> UTCTime -> Action (Zipper [] Value)
 getDefaultMonthPageData dir pat postsPerPage time = do
   xs <- getEnrichedPostData dir pat
-  return $ genDefaultIndexPageData xs (monthFilterPosts time) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) postsPerPage
+  return $ genDefaultIndexPageData xs (sameMonth time . viewPostTime) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) postsPerPage
 
 genDefaultPostIndexRule :: FilePath -> FilePattern -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
 genDefaultPostIndexRule dir fp tmpl f g h = comonadStoreRuleGen fp f g h
@@ -163,16 +165,24 @@ defaultMonthIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} 
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
                                       (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
 
-loadSortedPosts :: [FilePattern] -> (Value -> Value) -> ShakebookA [(String, Value)]
-loadSortedPosts patterns enrich = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
-  allPosts <- getDirectoryFiles sbSrcDir $ map (-<.> ".md") patterns
+loadSortFilterEnrich :: Ord b => [FilePattern] -- Filepattern
+                              -> (Value -> b) -- A value to sortOn e.g (Down . viewPostTime)
+                              -> (Value -> Bool) -- A filtering predicate e.g (elem tag . viewTags)
+                              -> (Value -> Value) -- An initial enrichment. This is pure so can only be data derived from the initial markdown.
+                              -> ShakebookA [(String, Value)]
+loadSortFilterEnrich pat s f e = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
+  allPosts <- getDirectoryFiles sbSrcDir $ map (-<.> ".md") pat
   readPosts <- sequence $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>)) <$> allPosts
-  return $ fmap (second enrich) $ sortOn (Down . viewPostTime . snd) readPosts
+  return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) $ readPosts
+
+loadSortEnrich pat s e = loadSortFilterEnrich pat s (const True) e
+
+loadAndSort pat s = loadSortEnrich pat s id
 
 defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
 defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \sbc@(SbConfig {..}) -> lift $
   sbOutDir </> pat %> \out -> do
-    sortedPosts <- runShakebookA sbc $ loadSortedPosts [pat] enrichPost
+    sortedPosts <- runShakebookA sbc $ loadSortEnrich [pat] (Down . viewPostTime) enrichPost
     let i = (-<.> ".md") . dropDirectory1 $ out
     let k = fromJust $ elemIndex i (fst <$> sortedPosts)
     let z = fromJust $ seek k <$> zipper (snd <$> sortedPosts)
