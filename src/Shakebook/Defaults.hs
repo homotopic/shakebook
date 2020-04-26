@@ -55,9 +55,6 @@ enrichPost = enrichTeaser "<!--more-->"
 
 --Data models-------------------------------------------------------------------
 
-getEnrichedPostData :: FilePath -> [FilePattern] -> Action [Value]
-getEnrichedPostData = getEnrichedMarkdown markdownReaderOptions html5WriterOptions enrichPost 
-
 markdownReaderOptions :: ReaderOptions
 markdownReaderOptions = def { readerExtensions = pandocExtensions }
 
@@ -105,79 +102,58 @@ defaultDocsPatterns toc tmpl withData = Shakebook $ ask >>= \SbConfig {..} -> do
                       (withData . withJSON (genTocNavbarData (fmap enrichTypicalUrl ys)) . withSubsections (lower (enrichTypicalUrl <$> zs)))
                       out)
 
-genDefaultIndexPageData :: [Value]
-                        -> (Value -> Bool)
-                        -> Text
-                        -> (Text -> Text)
-                        -> Int
-                        -> Zipper [] Value
-genDefaultIndexPageData xs f g h n  = extend (genPageData g h) $ fromJust $ paginate n . filter f $ xs
+getDefaultIndexPageData :: [FilePattern] -> ShakebookA (Zipper [] Value)
+getDefaultIndexPageData pat = ask >>= \SbConfig {..} -> do
+  xs <- loadSortEnrich pat (Down . viewPostTime) enrichPost
+  return $ fromJust $ genIndexPageData (snd <$> xs) "Posts" ("/posts/pages/" <>) sbPPP
 
-getDefaultIndexPageData :: FilePath -> [FilePattern] -> Int -> Action (Zipper [] Value)
-getDefaultIndexPageData dir pat postsPerPage = do
-  xs <- getEnrichedPostData dir pat
-  return $ genDefaultIndexPageData xs (const True) "Posts" ("/posts/pages/" <>) postsPerPage
+getDefaultTagPageData ::  [FilePattern] -> Text -> ShakebookA (Zipper [] Value)
+getDefaultTagPageData pat tag = ask >>= \SbConfig {..} -> do
+  xs <- loadSortFilterEnrich pat (Down . viewPostTime) (elem tag . viewTags) enrichPost
+  return $ fromJust $ genIndexPageData (snd <$> xs) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) sbPPP
 
-getDefaultTagPageData :: FilePath -> [FilePattern] -> Int -> Text -> Action (Zipper [] Value)
-getDefaultTagPageData dir pat postsPerPage tag = do
-  xs <- getEnrichedPostData dir pat
-  return $ genDefaultIndexPageData xs (elem tag . viewTags) ("Posts tagged " <> tag) (\x -> "/posts/tags/" <> tag <> "/pages/" <> x) postsPerPage
+getDefaultMonthPageData :: [FilePattern] -> UTCTime -> ShakebookA (Zipper [] Value)
+getDefaultMonthPageData pat time = ask >>= \SbConfig {..} -> do
+  xs <- loadSortFilterEnrich pat (Down . viewPostTime) (sameMonth time . viewPostTime) enrichPost
+  return $ fromJust $ genIndexPageData (snd <$> xs) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) sbPPP
 
-getDefaultMonthPageData :: FilePath -> [FilePattern] -> Int -> UTCTime -> Action (Zipper [] Value)
-getDefaultMonthPageData dir pat postsPerPage time = do
-  xs <- getEnrichedPostData dir pat
-  return $ genDefaultIndexPageData xs (sameMonth time . viewPostTime) ("Posts from " <> T.pack (prettyMonthFormat time)) (\x -> "/posts/months/" <> T.pack (monthURLFormat time) <> "/pages/" <> x) postsPerPage
-
-genDefaultPostIndexRule :: FilePath -> FilePattern -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> Action (Zipper [] Value)) -> Rules ()
-genDefaultPostIndexRule dir fp tmpl f g h = comonadStoreRuleGen fp f g h
+genDefaultPostIndexRule :: FilePath -> FilePattern -> FilePath -> (FilePattern -> Int) -> (FilePattern -> a) -> (a -> ShakebookA (Zipper [] Value)) -> Shakebook ()
+genDefaultPostIndexRule dir fp tmpl f g h = Shakebook $ ask >>= \x -> lift $
+  comonadStoreRuleGen fp f g (runShakebookA x . h)
   (\a -> void <$> genBuildPageAction (dir </> tmpl) (const $ return a) id)
 
-defaultPostIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultPostIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $ do
+defaultPostIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
+defaultPostIndexPatterns pat tmpl extData = ask >>= \SbConfig {..} -> do
    genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/index.html") tmpl
                                     (const 0)
                                     (const ())
-                                    (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
+                                    (extData <=< const (getDefaultIndexPageData pat))
    genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/pages/*/index.html") tmpl
                                     ((+ (-1)) . read . (!! 3) . splitOn "/")
                                     (const ())
-                                    (extData <=< const (getDefaultIndexPageData sbSrcDir pat sbPPP))
+                                    (extData <=< const (getDefaultIndexPageData pat))
 
-defaultTagIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultTagIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $ do
+defaultTagIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
+defaultTagIndexPatterns pat tmpl extData = ask >>= \SbConfig {..} -> do
  genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/index.html") tmpl
                                   (const 0)
                                   (T.pack . (!! 3) . splitOn "/")
-                                  (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
+                                  (extData <=< getDefaultTagPageData pat)
  genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/tags/*/pages/*/index.html") tmpl
                                   ((+ (-1)) . read . (!! 5) . splitOn "/")
                                   (T.pack . (!! 3) . splitOn "/") 
-                                  (extData <=< getDefaultTagPageData sbSrcDir pat sbPPP)
+                                  (extData <=< getDefaultTagPageData pat)
 
-defaultMonthIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
-defaultMonthIndexPatterns pat tmpl extData = Shakebook $ ask >>= \SbConfig {..} -> lift $ do
+defaultMonthIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
+defaultMonthIndexPatterns pat tmpl extData = ask >>= \SbConfig {..} -> do
      genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/index.html") tmpl
                                       (const 0)
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                      (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
+                                      (extData <=< getDefaultMonthPageData pat)
      genDefaultPostIndexRule sbSrcDir (sbOutDir </> "posts/months/*/pages/*/index.html") tmpl
                                       ((+ (-1)) . read . (!! 5) . splitOn "/")
                                       (parseISODateTime . T.pack . (!! 3) . splitOn "/")
-                                      (extData <=< getDefaultMonthPageData sbSrcDir pat sbPPP)
-
-loadSortFilterEnrich :: Ord b => [FilePattern] -- Filepattern
-                              -> (Value -> b) -- A value to sortOn e.g (Down . viewPostTime)
-                              -> (Value -> Bool) -- A filtering predicate e.g (elem tag . viewTags)
-                              -> (Value -> Value) -- An initial enrichment. This is pure so can only be data derived from the initial markdown.
-                              -> ShakebookA [(String, Value)]
-loadSortFilterEnrich pat s f e = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
-  allPosts <- getDirectoryFiles sbSrcDir $ map (-<.> ".md") pat
-  readPosts <- sequence $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>)) <$> allPosts
-  return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) $ readPosts
-
-loadSortEnrich pat s e = loadSortFilterEnrich pat s (const True) e
-
-loadAndSort pat s = loadSortEnrich pat s id
+                                      (extData <=< getDefaultMonthPageData pat)
 
 defaultPostsPatterns :: FilePattern -> FilePath -> (Zipper [] Value -> Action (Zipper [] Value)) -> Shakebook ()
 defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \sbc@(SbConfig {..}) -> lift $

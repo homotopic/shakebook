@@ -2,15 +2,18 @@ module Shakebook.Data where
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
+import           Control.Comonad.Store.Zipper
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Development.Shake as S
 import           Development.Shake.FilePath
 import           RIO                          hiding (view)
+import           RIO.List
 import qualified RIO.Text                     as T
 import           Slick
 import           Slick.Pandoc
 import           Shakebook.Conventions
+import           Shakebook.Zipper
 import           Text.Pandoc.Options
 
 type ToC = Cofree [] String
@@ -44,6 +47,14 @@ genBuildPageAction template getData withData out = do
   writeFile' out . T.unpack $ substitute pageT dataT
   return dataT
 
+genIndexPageData :: [Value]
+                 -> Text
+                 -> (Text -> Text)
+                 -> Int
+                 -> Maybe (Zipper [] Value)
+genIndexPageData xs g h n = fmap (extend (genPageData g h)) $ paginate n xs
+
+traverseToSnd :: Functor f => (a -> f b) -> a -> f (a, b)
 traverseToSnd f a = (a,) <$> f a
 
 lower :: Cofree [] Value -> [Value]
@@ -58,10 +69,10 @@ data SbConfig = SbConfig {
 } deriving (Show)
 
 newtype Shakebook a = Shakebook ( ReaderT SbConfig Rules a )
-  deriving (Functor, Applicative, Monad)
+  deriving (Functor, Applicative, Monad, MonadReader SbConfig)
 
 newtype ShakebookA a = ShakebookA ( ReaderT SbConfig Action a )
-  deriving (Functor, Applicative, Monad)
+  deriving (Functor, Applicative, Monad, MonadReader SbConfig)
 
 runShakebook :: SbConfig -> Shakebook a -> Rules a
 runShakebook c (Shakebook f) = runReaderT f c
@@ -69,3 +80,16 @@ runShakebook c (Shakebook f) = runReaderT f c
 runShakebookA :: SbConfig -> ShakebookA a -> Action a
 runShakebookA c (ShakebookA f) = runReaderT f c
 
+
+loadSortFilterEnrich :: Ord b => [FilePattern] -- Filepattern
+                              -> (Value -> b) -- A value to sortOn e.g (Down . viewPostTime)
+                              -> (Value -> Bool) -- A filtering predicate e.g (elem tag . viewTags)
+                              -> (Value -> Value) -- An initial enrichment. This is pure so can only be data derived from the initial markdown.
+                              -> ShakebookA [(String, Value)]
+loadSortFilterEnrich pat s f e = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
+  allPosts <- getDirectoryFiles sbSrcDir $ map (-<.> ".md") pat
+  readPosts <- sequence $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>)) <$> allPosts
+  return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) $ readPosts
+
+loadSortEnrich :: Ord b => [FilePattern] -> (Value -> b) -> (Value -> Value) -> ShakebookA [(String, Value)]
+loadSortEnrich pat s e = loadSortFilterEnrich pat s (const True) e
