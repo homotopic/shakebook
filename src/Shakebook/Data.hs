@@ -63,6 +63,7 @@ lower (_ :< xs) = extract <$> xs
 data SbConfig = SbConfig {
    sbSrcDir  :: FilePath
 ,  sbOutDir  :: FilePath
+,  sbBaseUrl :: Text
 ,  sbMdRead  :: ReaderOptions
 ,  sbHTWrite :: WriterOptions
 ,  sbPPP :: Int

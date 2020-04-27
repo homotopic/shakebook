@@ -184,12 +184,13 @@ defaultPostsPatterns pat tmpl extData = Shakebook $ ask >>= \sbc@(SbConfig {..})
                               id out
     
 
-buildPDF :: FilePath -> Cofree [] String -> Text -> FilePath -> Action ()
-buildPDF srcDir toc baseUrl out = do
-  y <- mapM readFile' ((srcDir </>) <$> toc)
+buildPDF :: Cofree [] String -> String -> FilePath -> ShakebookA ()
+buildPDF toc meta out = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
+  y <- mapM readFile' ((sbSrcDir </>) <$> toc)
   Right f <- liftIO . runIOorExplode $ do
-    k <- mapM (readMarkdown markdownReaderOptions . T.pack) y
-    let z = walk (handleImages (\x -> "[Video available at " <> baseUrl <> x <> "]")) $ foldr (<>) mempty $ pushHeaders (-1) k
+    k <- mapM (readMarkdown sbMdRead . T.pack) y
+    m <- readMarkdown sbMdRead . T.pack $ meta
+    let z = walk (handleImages (\x -> "[Video available at " <> sbBaseUrl <> x <> "]")) $ foldr (<>) m $ pushHeaders (-1) k
     makePDFLaTeX z
   LBS.writeFile out f
 
