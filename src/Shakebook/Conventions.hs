@@ -141,7 +141,7 @@ withPrettyDate = withStringField "prettydate"
 withPrevious :: Maybe Value -> (Value -> Value)
 withPrevious = withObjectFieldMaybe "previous"
 
--- Add "posts" field containing a list of posts.
+-- Add "posts" field based on input [Value].
 withPosts :: [Value] -> Value -> Value
 withPosts = withArrayField "posts"
 
@@ -149,19 +149,19 @@ withPosts = withArrayField "posts"
 withRecentPosts :: [Value] -> Value -> Value
 withRecentPosts = withArrayField "recent-posts" 
 
--- Add "srcPath" field based on input Text
+-- Add "srcPath" field based on input Text.
 withSrcPath :: Text -> Value -> Value
 withSrcPath = withStringField "srcPath"
 
--- Add "subsections" field based on the immediate children of a Cofree [] Value.
+-- Add "subsections" field based on inpt [Value].
 withSubsections :: [Value] -> (Value -> Value)
 withSubsections = withArrayField "subsections"
 
--- Add "tagindex" field based on input [Value]
+-- Add "tagindex" field based on input [Value].
 withTagIndex :: [Value] -> Value -> Value
 withTagIndex = withArrayField "tagindex"
 
--- Add "taglinks" field based on input [Value]
+-- Add "taglinks" field based on input [Value].
 withTagLinks :: [Value] -> Value -> Value
 withTagLinks  = withArrayField "taglinks"
 
@@ -176,7 +176,6 @@ withTitle = withStringField "title"
 -- Add "url" field from input Text.
 withUrl :: Text -> Value -> Value
 withUrl = withStringField "url"
-
 
 -- Add both "next" and "previous" fields using `withPostNext` and `withPostPrevious`
 extendNextPrevious :: Zipper [] Value -> Zipper [] Value
