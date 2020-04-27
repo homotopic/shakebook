@@ -1,15 +1,15 @@
 name:                shakebook
-version:             0.1.0.0
-license:             BSD3
-author:              "Me"
-maintainer:          "example@example.com"
-copyright:           "20XX Me"
+version:             0.1.5.0
+license:             MIT
+author:              "Daniel Firth"
+maintainer:          "dan.firt@homotopic.tech"
+copyright:           "2020 Daniel Firth"
 
 extra-source-files:
 - README.md
 - ChangeLog.md
 
-synopsis:            Shake-based markdown/latex webbook.
+synopsis:            Shake-based technical documentation generator.
 category:            Web
 
 default-extensions:
