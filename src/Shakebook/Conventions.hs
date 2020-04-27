@@ -192,10 +192,6 @@ extendNext = extend (liftA2 withNext zipperNextMaybe extract)
 extendPageNeighbours :: Int -> Zipper [] Value -> Zipper [] Value
 extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 
--- Get the immediate shoots of a Cofree comonad.
-immediateShoots :: Functor f => Cofree f a -> f a 
-immediateShoots (_ :< xs) = fmap extract xs
-
 
 -- Assuming a "url" field, enrich via a baseURL
 enrichFullUrl :: Text -> Value -> Value
