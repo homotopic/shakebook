@@ -34,7 +34,7 @@ module Shakebook.Conventions (
 , enrichPrettyDate
 , enrichTagLinks
 , enrichTeaser
-, enrichTypicalUrl
+, enrichUrl
 
   -- * Affixes
  
@@ -46,6 +46,7 @@ module Shakebook.Conventions (
 
   -- * Generations
 , genBlogNavbarData
+, genIndexPageData
 , genLinkData
 , genPageData
 , genTocNavbarData
@@ -73,6 +74,7 @@ import qualified RIO.Text.Partial             as T
 import           RIO.Time
 import qualified RIO.Vector                   as V
 import           Shakebook.Aeson
+import           Shakebook.Data
 import           Shakebook.Zipper
 import           Text.Pandoc.Highlighting
 
@@ -88,10 +90,6 @@ viewPostTime = parseISODateTime . view (key "date" . _String)
 -- View the "date" field of a JSON Value as Text.
 viewPostTimeRaw :: Value -> Text
 viewPostTimeRaw = view (key "date" . _String)
-
--- View the "srcPath" field of a JSON Value.
-viewSrcPath :: Value -> Text
-viewSrcPath = view (key "srcPath" . _String)
 
 -- View the "tags" field of a JSON Value as a list.
 viewTags :: Value -> [Text]
@@ -149,10 +147,6 @@ withPosts = withArrayField "posts"
 withRecentPosts :: [Value] -> Value -> Value
 withRecentPosts = withArrayField "recent-posts" 
 
--- Add "srcPath" field based on input Text.
-withSrcPath :: Text -> Value -> Value
-withSrcPath = withStringField "srcPath"
-
 -- Add "subsections" field based on inpt [Value].
 withSubsections :: [Value] -> (Value -> Value)
 withSubsections = withArrayField "subsections"
@@ -177,22 +171,6 @@ withTitle = withStringField "title"
 withUrl :: Text -> Value -> Value
 withUrl = withStringField "url"
 
--- Add both "next" and "previous" fields using `withPostNext` and `withPostPrevious`
-extendNextPrevious :: Zipper [] Value -> Zipper [] Value
-extendNextPrevious  = extendPrevious . extendNext
-
--- Extend a Zipper of JSON Values to add "previous" objects.
-extendPrevious :: Zipper [] Value -> Zipper [] Value
-extendPrevious = extend (liftA2 withPrevious zipperPreviousMaybe extract)
-
--- Extend a Zipper of JSON Values to add "next" objects.
-extendNext :: Zipper [] Value -> Zipper [] Value
-extendNext = extend (liftA2 withNext zipperNextMaybe extract)
-
-extendPageNeighbours :: Int -> Zipper [] Value -> Zipper [] Value
-extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
-
-
 -- Assuming a "url" field, enrich via a baseURL
 enrichFullUrl :: Text -> Value -> Value
 enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
@@ -209,19 +187,24 @@ enrichTagLinks f v = withTagLinks ((`genLinkData` f) <$> viewTags v) v
 enrichTeaser :: Text -> Value -> Value
 enrichTeaser s v = withTeaser (head (T.splitOn s (viewContent v))) v
 
--- Assuming a 'srcPath' field, enrich using withUrl using a typicalHTMLUrl
-enrichTypicalUrl :: Value -> Value
-enrichTypicalUrl v = withUrl (typicalHTMLUrl (viewSrcPath v)) v
+-- Assuming a 'srcPath' field, enrich using withUrl using a Text -> Text transformation.
+enrichUrl :: (Text -> Text) -> Value -> Value
+enrichUrl f v = withUrl (f (viewSrcPath v)) v
 
--- Typical Markdown to HTML path transformation, by dropping a directory and
--- changing the extension.
-typicalHTMLPath :: String -> String
-typicalHTMLPath = dropDirectory1 . (-<.> "html")
+-- Add both "next" and "previous" fields using `withPostNext` and `withPostPrevious`
+extendNextPrevious :: Zipper [] Value -> Zipper [] Value
+extendNextPrevious  = extendPrevious . extendNext
 
--- Typical URL transformation, dropping the first directory, chagnging the
--- extension to "html", and adding a preslash.
-typicalHTMLUrl :: Text -> Text
-typicalHTMLUrl = T.pack . ("/" <>) . typicalHTMLPath . T.unpack
+-- Extend a Zipper of JSON Values to add "previous" objects.
+extendPrevious :: Zipper [] Value -> Zipper [] Value
+extendPrevious = extend (liftA2 withPrevious zipperPreviousMaybe extract)
+
+-- Extend a Zipper of JSON Values to add "next" objects.
+extendNext :: Zipper [] Value -> Zipper [] Value
+extendNext = extend (liftA2 withNext zipperNextMaybe extract)
+
+extendPageNeighbours :: Int -> Zipper [] Value -> Zipper [] Value
+extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 
 -- Create link data object with fields "id" and "url" using an id and a function
 -- transforming an id into a url.
@@ -277,4 +260,12 @@ genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value
 genPageData t f xs = withTitle t
                    . withJSON (genLinkData (T.pack . show $ pos xs + 1) f)
                    . withPosts (extract xs) $ Object mempty
+
+
+genIndexPageData :: [Value]
+                 -> Text
+                 -> (Text -> Text)
+                 -> Int
+                 -> Maybe (Zipper [] Value)
+genIndexPageData xs g h n = fmap (extend (genPageData g h)) $ paginate n xs
 

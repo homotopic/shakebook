@@ -8,3 +8,5 @@ extra-deps:
 nix:
   enable: false
   packages: [zlib]
+ghc-options:
+  "$locals": -fwrite-ide-info

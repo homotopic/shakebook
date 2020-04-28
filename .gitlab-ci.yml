@@ -11,3 +11,8 @@ build:
   stage: build
   script:
   - stack --nix build
+
+test:
+  stage: test
+  script:
+  - stack --nix test

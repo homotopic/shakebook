@@ -3,8 +3,10 @@ module Shakebook.Data where
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Store.Zipper
+import           Control.Lens hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
+import           Data.Aeson.Lens
 import           Development.Shake as S
 import           Development.Shake.FilePath
 import           RIO                          hiding (view)
@@ -12,11 +14,19 @@ import           RIO.List
 import qualified RIO.Text                     as T
 import           Slick
 import           Slick.Pandoc
-import           Shakebook.Conventions
+import           Shakebook.Aeson
 import           Shakebook.Zipper
 import           Text.Pandoc.Options
 
 type ToC = Cofree [] String
+
+-- View the "srcPath" field of a JSON Value.
+viewSrcPath :: Value -> Text
+viewSrcPath = view (key "srcPath" . _String)
+
+-- Add "srcPath" field based on input Text.
+withSrcPath :: Text -> Value -> Value
+withSrcPath = withStringField "srcPath"
 
 -- Get a JSON Value of Markdown Data with markdown body as "contents" field
 -- and the srcPath as "srcPath" field.
@@ -44,15 +54,9 @@ genBuildPageAction :: FilePath -- The HTML template
 genBuildPageAction template getData withData out = do
   pageT <- compileTemplate' template
   dataT <- withData <$> getData out
+  putNormal $ show $ dataT
   writeFile' out . T.unpack $ substitute pageT dataT
   return dataT
-
-genIndexPageData :: [Value]
-                 -> Text
-                 -> (Text -> Text)
-                 -> Int
-                 -> Maybe (Zipper [] Value)
-genIndexPageData xs g h n = fmap (extend (genPageData g h)) $ paginate n xs
 
 traverseToSnd :: Functor f => (a -> f b) -> a -> f (a, b)
 traverseToSnd f a = (a,) <$> f a
@@ -70,10 +74,10 @@ data SbConfig = SbConfig {
 } deriving (Show)
 
 newtype Shakebook a = Shakebook ( ReaderT SbConfig Rules a )
-  deriving (Functor, Applicative, Monad, MonadReader SbConfig)
+  deriving (Functor, Applicative, Monad, MonadReader SbConfig, MonadIO)
 
 newtype ShakebookA a = ShakebookA ( ReaderT SbConfig Action a )
-  deriving (Functor, Applicative, Monad, MonadReader SbConfig)
+  deriving (Functor, Applicative, Monad, MonadReader SbConfig, MonadIO)
 
 runShakebook :: SbConfig -> Shakebook a -> Rules a
 runShakebook c (Shakebook f) = runReaderT f c
@@ -85,12 +89,13 @@ runShakebookA c (ShakebookA f) = runReaderT f c
 loadSortFilterEnrich :: Ord b => [FilePattern] -- Filepattern
                               -> (Value -> b) -- A value to sortOn e.g (Down . viewPostTime)
                               -> (Value -> Bool) -- A filtering predicate e.g (elem tag . viewTags)
-                              -> (Value -> Value) -- An initial enrichment. This is pure so can only be data derived from the initial markdown.
+                              -> ShakebookA (Value -> Value) -- An initial enrichment. This is pure so can only be data derived from the initial markdown, or directly from the SbConfig.
                               -> ShakebookA [(String, Value)]
-loadSortFilterEnrich pat s f e = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
-  allPosts <- getDirectoryFiles sbSrcDir $ map (-<.> ".md") pat
-  readPosts <- sequence $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>)) <$> allPosts
-  return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) $ readPosts
+loadSortFilterEnrich pat s f e = ask >>= \SbConfig {..} -> e >>= \e' ->
+  ShakebookA $ lift $ do
+    allPosts <- getDirectoryFiles sbSrcDir $ map (-<.> ".md") pat
+    readPosts <- sequence $ traverseToSnd (readMarkdownFile' sbMdRead sbHTWrite . (sbSrcDir </>)) <$> allPosts
+    return $ fmap (second e') $ sortOn (s . snd) $ filter (f . snd) $ readPosts
 
-loadSortEnrich :: Ord b => [FilePattern] -> (Value -> b) -> (Value -> Value) -> ShakebookA [(String, Value)]
+loadSortEnrich :: Ord b => [FilePattern] -> (Value -> b) -> ShakebookA (Value -> Value) -> ShakebookA [(String, Value)]
 loadSortEnrich pat s e = loadSortFilterEnrich pat s (const True) e
