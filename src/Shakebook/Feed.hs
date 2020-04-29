@@ -24,5 +24,6 @@ buildFeed :: Text -> Text -> [Value] -> FilePath -> Action ()
 buildFeed title baseUrl xs out = do
   let fs = asAtomEntry <$> dateSortPosts xs
   let t = Atom.nullFeed baseUrl (Atom.TextString title) $ Atom.entryUpdated (head fs)
-  let (Just a) = textFeed (t { Atom.feedEntries = fs })
-  writeFile' out (T.unpack . TL.toStrict $ a)
+  case  textFeed (t { Atom.feedEntries = fs }) of
+    Just a -> writeFile' out (T.unpack . TL.toStrict $ a)
+    Nothing -> return ()

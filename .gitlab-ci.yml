@@ -10,9 +10,10 @@ before_script:
 build:
   stage: build
   script:
-  - stack --nix build
+  - stack --nix build --ghc-options "-Wall -Werror"
 
 test:
   stage: test
   script:
-  - stack --nix test
+  - stack --nix test --ghc-options "-Wall -Werror"
+

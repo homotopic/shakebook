@@ -12,7 +12,7 @@ comonadStoreRuleGen :: ComonadStore s w
                     -> (a -> Action (w b)) -- How to turn the id into a searchable store.
                     -> (b -> FilePath -> Action ())
                     -> Rules ()
-comonadStoreRuleGen fp f g h k = do
+comonadStoreRuleGen fp f g h k = 
   fp %> \x -> do
     xs <- h (g x)
     k (extract (seek (f x) xs)) x

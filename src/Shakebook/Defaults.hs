@@ -112,7 +112,7 @@ defaultDocsPatterns :: MonadShakebookRules r m
                     -> FilePath
                     -> (Value -> Value) -- Extra data modifiers.
                     -> m ()
-defaultDocsPatterns toc tmpl withData = ask >>= \r -> view sbConfigL >>= \sbc@SbConfig {..} -> do
+defaultDocsPatterns toc tmpl withData = ask >>= \r -> view sbConfigL >>= \SbConfig {..} -> do
   let e = typicalUrlEnricher
   m <- typicalFullOutHTMLToMdSrcPath
   liftRules $ cofreeRuleGen toc ((sbOutDir </>) . (-<.> ".html")) (
@@ -146,7 +146,7 @@ defaultPagerPattern :: MonadShakebookRules r m
                     -> (a -> ShakebookA r (Zipper [] Value))
                     -> (Zipper [] Value -> ShakebookA r (Zipper [] Value))
                     -> m ()
-defaultPagerPattern fp tmpl f g h w = ask >>= \r -> view sbConfigL >>= \x@SbConfig{..} -> liftRules $
+defaultPagerPattern fp tmpl f g h w = ask >>= \r -> view sbConfigL >>= \SbConfig{..} -> liftRules $
   comonadStoreRuleGen (sbOutDir </> fp) (f . drop 1 . fromJust . stripPrefix sbOutDir) (g . drop 1 . fromJust . stripPrefix sbOutDir) (runShakebookA r . (w <=< h))
   (\a -> void <$> runShakebookA r . genBuildPageAction (sbSrcDir </> tmpl) (const $ return a) id)
 
@@ -209,10 +209,8 @@ defaultPostsPatterns :: MonadShakebookRules r m
                      -> (Value -> ShakebookA r Value)
                      -> (Zipper [] Value -> ShakebookA r (Zipper [] Value))
                      -> m ()
-defaultPostsPatterns pat tmpl e extData = ask >>= \r -> view sbConfigL >>= \sbc@(SbConfig {..}) -> do
-  m <- typicalFullOutHTMLToMdSrcPath
-  liftRules $ do
-    sbOutDir </> pat %> \out -> do
+defaultPostsPatterns pat tmpl e extData = ask >>= \r -> view sbConfigL >>= \SbConfig {..} ->
+  liftRules $ sbOutDir </> pat %> \out -> do
       sortedPosts <- runShakebookA r $ do
         xs <- loadSortEnrich [pat] (Down . viewPostTime) defaultEnrichPost
         mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
@@ -243,7 +241,7 @@ defaultSinglePagePattern :: MonadShakebookRules r m
                          -> FilePath -- A tmpl file.
                          -> (Value -> ShakebookA r Value) -- Last minute enrichment.
                          -> m ()
-defaultSinglePagePattern out tmpl withDataM = ask >>= \r -> view sbConfigL >>= \sbc@(SbConfig {..}) -> do
+defaultSinglePagePattern out tmpl withDataM = ask >>= \r -> view sbConfigL >>= \SbConfig {..} -> do
   m <- typicalFullOutHTMLToMdSrcPath
   liftRules $ sbOutDir </> out %> void . runShakebookA r . genBuildPageAction
                  tmpl
@@ -264,7 +262,7 @@ defaultCleanPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $
       removeFilesAfter sbOutDir ["//*"]
 
 defaultStaticsPhony :: MonadShakebookRules r m => m ()
-defaultStaticsPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $ 
+defaultStaticsPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $
   phony "statics" $ do
     fp <- getDirectoryFiles sbSrcDir ["images//*", "css//*", "js//*", "webfonts//*"]
     need $ [sbOutDir </> x | x <- fp]

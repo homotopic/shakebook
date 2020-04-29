@@ -59,7 +59,6 @@ import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.Text.Time
-import           Development.Shake.FilePath
 import           RIO                          hiding (view)
 import           RIO.List
 import           RIO.List.Partial
@@ -179,7 +178,7 @@ extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 -- Create link data object with fields "id" and "url" using an id and a function
 -- transforming an id into a url.
 genLinkData :: Text -> (Text -> Text) -> Value
-genLinkData id f = object ["id" A..= String id, "url" A..= String (f id)]
+genLinkData x f = object ["id" A..= String x, "url" A..= String (f x)]
 
 -- Filter a lists of posts by tag.
 tagFilterPosts :: Text -> [Value] -> [Value]
@@ -216,6 +215,7 @@ genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
                                       , "url"   A..= String b
                                       , "toc2"  A..= Array (V.fromList $ map toc2 (partitionToMonths xs)) ]
                                      ] where
+       toc2 [] = object []
        toc2 t@(x : _) = object [ "title" A..= String (f (viewPostTime x))
                                , "url"   A..= String (g (viewPostTime x))
                                , "toc3"  A..= Array (V.fromList t) ]
@@ -224,7 +224,7 @@ genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
 genTocNavbarData :: Cofree [] Value -> Value
 genTocNavbarData (x :< xs) =
   object ["toc1" A..= [_Object . at "toc2" ?~ Array (V.fromList $ map toc2 xs) $ x]] where
-      toc2 (x :< xs) = (_Object . at "toc3" ?~ Array (V.fromList $ map extract xs)) x
+      toc2 (y :< ys) = (_Object . at "toc3" ?~ Array (V.fromList $ map extract ys)) y
 
 genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value 
 genPageData t f xs = withTitle t
@@ -237,5 +237,5 @@ genIndexPageData :: [Value]
                  -> (Text -> Text)
                  -> Int
                  -> Maybe (Zipper [] Value)
-genIndexPageData xs g h n = fmap (extend (genPageData g h)) $ paginate n xs
+genIndexPageData xs g h n = extend (genPageData g h) <$> paginate n xs
 

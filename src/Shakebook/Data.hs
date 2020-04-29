@@ -2,7 +2,6 @@ module Shakebook.Data where
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
-import           Control.Comonad.Store.Zipper
 import           Control.Lens hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
@@ -16,7 +15,6 @@ import qualified RIO.Text                     as T
 import           Slick
 import           Slick.Pandoc
 import           Shakebook.Aeson
-import           Shakebook.Zipper
 import           Text.Pandoc.Options
 
 type ToC = Cofree [] String
@@ -109,7 +107,7 @@ enrichUrl f v = withUrl (f (viewSrcPath v)) v
 
 typicalFullOutToSrcPath :: MonadShakebook r m => m (String -> String)
 typicalFullOutToSrcPath = view sbConfigL >>= \SbConfig{..} -> pure $
-   (drop 1 . fromJust . stripPrefix sbOutDir)
+   drop 1 . fromJust . stripPrefix sbOutDir
 
 typicalFullOutHTMLToMdSrcPath :: MonadShakebook r m => m (String -> String)
 typicalFullOutHTMLToMdSrcPath = liftA2 (.) (pure (-<.> "md")) typicalFullOutToSrcPath
@@ -138,8 +136,8 @@ loadIfExists :: (FilePath -> Action Value) -> FilePath -> Action Value
 loadIfExists f src = ifM (S.doesFileExist src) (f src) (return (Object mempty))
 
 getMarkdown :: MonadShakebookAction r m => [FilePattern] -> m [Value]
-getMarkdown pat = view sbConfigL >>= \SbConfig{..} -> do
-  liftAction (getDirectoryFiles sbSrcDir pat) >>= mapM (readMarkdownFile')
+getMarkdown pat = view sbConfigL >>= \SbConfig{..} ->
+  liftAction (getDirectoryFiles sbSrcDir pat) >>= mapM readMarkdownFile'
 
 {--
 getEnrichedMarkdown :: ReaderOptions -> WriterOptions -> (Value -> Value) -> FilePath -> [FilePattern] -> Action [Value]
@@ -155,7 +153,7 @@ genBuildPageAction template getData withData out = do
   logInfo $ displayShow $ "Generating page with fullpath " <> out
   pageT <- liftAction $ compileTemplate' template
   dataT <- withData . typicalUrlEnricher <$> getData out
-  logDebug $ displayShow $ dataT
+  logDebug $ displayShow dataT
   writeFile' out . T.unpack $ substitute pageT dataT
   return dataT
 
@@ -174,7 +172,7 @@ loadSortFilterEnrich :: (MonadShakebookAction r m, Ord b)
 loadSortFilterEnrich pat s f e = view sbConfigL >>= \SbConfig {..} -> do
     allPosts <- liftAction $ getDirectoryFiles sbSrcDir $ map (-<.> ".md") pat
     readPosts <- sequence $ traverseToSnd readMarkdownFile' <$> allPosts
-    return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) $ readPosts
+    return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) readPosts
 
 loadSortEnrich :: (MonadShakebookAction r m, Ord b) => [FilePattern] -> (Value -> b) -> (Value -> Value) -> m [(String, Value)]
-loadSortEnrich pat s e = loadSortFilterEnrich pat s (const True) e
+loadSortEnrich pat s = loadSortFilterEnrich pat s (const True)

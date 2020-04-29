@@ -11,15 +11,20 @@ import Test.Tasty
 import Test.Tasty.Golden
 import Data.Aeson
 import Control.Comonad.Store.Zipper
-import Shakebook.Data
 import Shakebook.Aeson
 import Shakebook.Conventions
 import Text.Pandoc.Highlighting
 
+srcDir :: String
 srcDir = "test/site"
+
+outDir :: String
 outDir = "test/public"
+
+baseUrl :: Text
 baseUrl = "http://blanky.test"
 
+toc :: ToC
 toc = "docs/index.md" :< [
         "docs/1/index.md" :< []
       , "docs/2/index.md" :< [
@@ -27,14 +32,16 @@ toc = "docs/index.md" :< [
         ]
       ]
 
-
 myBlogNavbar :: [Value] -> Value
 myBlogNavbar = genBlogNavbarData "Blog" "/posts/" (T.pack . prettyMonthFormat) (T.pack . monthIndexUrlFormat)
 
+numRecentPosts :: Int
 numRecentPosts = 3
 
+numPageNeighbours :: Int
 numPageNeighbours = 1
 
+sbc :: SbConfig
 sbc = SbConfig srcDir outDir baseUrl markdownReaderOptions html5WriterOptions 5
 
 extendPostsZipper :: MonadShakebookAction r m => Zipper [] Value -> m (Zipper [] Value)
@@ -46,9 +53,7 @@ enrichPostIndexPage patterns x = do
   return $ fmap (withJSON (myBlogNavbar (snd <$> sortedPosts)))
          . extendPageNeighbours numPageNeighbours $ x
 
-
-replace from to = intercalate to . splitOn from
-
+rules :: MonadShakebookRules r m => m ()
 rules = do
   defaultSinglePagePattern "index.html" "templates/index.html"
          (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost)
@@ -85,9 +90,10 @@ rules = do
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
-  map ( \x ->  (goldenVsFile x x
+  map ( \x -> goldenVsFile x x
      (replace "golden" "public" x)
-     (return ()))) xs
+     (return ())) xs
+  where replace from to' = intercalate to' . splitOn from
 
 main :: IO ()
 main = do
@@ -99,3 +105,5 @@ main = do
    shake shakeOptions $ want ["docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakebook f rules
    defaultMain $ tests xs
    snd lf
+
+

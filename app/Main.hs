@@ -25,11 +25,13 @@ data SimpleOpts = SimpleOpts {
 , ppp :: Int
 }
 
+opts :: ParserInfo SimpleOpts
 opts = info (sample <**> helper)
     ( fullDesc
    <> progDesc "Creates a simple blog from source with default settings."
    <> header "shakebook-simple-blog - A simple blog using standard shakebook conventions." )
 
+main :: IO ()
 main = do
   (x :: SimpleOpts) <- execParser opts
 
