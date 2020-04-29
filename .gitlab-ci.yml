@@ -4,8 +4,17 @@ before_script:
 - export LC_ALL=C.UTF-8
 - nix-env -iA nixpkgs.cachix
 - nix-env -iA nixpkgs.stack
-- cachix use iohk
-- cachix use shakebook
+- nix-env -iA nixpkgs.hlint
+
+stages:
+- lint
+- build
+- test
+
+lint:
+  stage: lint
+  script:
+  - hlint .
 
 build:
   stage: build
@@ -16,4 +25,3 @@ test:
   stage: test
   script:
   - stack --nix test --ghc-options "-Wall -Werror"
-
