@@ -8,6 +8,7 @@ import Development.Shake
 import RIO
 import RIO.List.Partial
 import Shakebook.Conventions
+import Shakebook.Data
 import qualified RIO.Text as T
 import qualified RIO.Text.Lazy as TL
 import Text.Atom.Feed as Atom

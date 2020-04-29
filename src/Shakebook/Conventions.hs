@@ -9,11 +9,8 @@ module Shakebook.Conventions (
 , viewSrcPath
 , viewTags
 , viewTitle
-, viewUrl
 , viewAllPostTags
 , viewAllPostTimes
-, withBaseUrl
-, withFullUrl
 , withHighlighting
 , withNext
 , withPages
@@ -27,14 +24,11 @@ module Shakebook.Conventions (
 , withTagLinks
 , withTeaser
 , withTitle
-, withUrl
 
   -- * Enrichment
-, enrichFullUrl
 , enrichPrettyDate
 , enrichTagLinks
 , enrichTeaser
-, enrichUrl
 
   -- * Affixes
  
@@ -99,10 +93,6 @@ viewTags = toListOf (key "tags" . values . _String)
 viewTitle :: Value -> Text
 viewTitle = view (key "title" . _String)
 
--- View the "url" field of a JSON Value.
-viewUrl :: Value -> Text
-viewUrl = view (key "url" . _String)
-
 -- View all post tags for a list of posts.
 viewAllPostTags :: [Value] -> [Text]
 viewAllPostTags = (>>= viewTags)
@@ -110,14 +100,6 @@ viewAllPostTags = (>>= viewTags)
 -- View all posts times for a list of posts.
 viewAllPostTimes :: [Value] -> [UTCTime]
 viewAllPostTimes = fmap viewPostTime
-
--- Add "baseUrl" field from input Text.
-withBaseUrl :: Text -> Value -> Value
-withBaseUrl = withStringField "baseUrl"
-
--- Add "fullUrl" field  from input Text.
-withFullUrl :: Text -> Value -> Value
-withFullUrl = withStringField "fullUrl"
 
 -- Add "highlighting-css" field from input Style.
 withHighlighting :: Style -> Value -> Value
@@ -167,14 +149,6 @@ withTeaser = withStringField "teaser"
 withTitle :: Text -> Value -> Value
 withTitle = withStringField "title"
 
--- Add "url" field from input Text.
-withUrl :: Text -> Value -> Value
-withUrl = withStringField "url"
-
--- Assuming a "url" field, enrich via a baseURL
-enrichFullUrl :: Text -> Value -> Value
-enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
-
 -- Assuming a "date" field, enrich using withPrettyDate and a format string.
 enrichPrettyDate :: (UTCTime -> String) -> Value -> Value
 enrichPrettyDate f v = withPrettyDate (T.pack . f . viewPostTime $ v) v
@@ -186,10 +160,6 @@ enrichTagLinks f v = withTagLinks ((`genLinkData` f) <$> viewTags v) v
 -- Assuming a "content" field with a spitter section, enrich using withTeaser
 enrichTeaser :: Text -> Value -> Value
 enrichTeaser s v = withTeaser (head (T.splitOn s (viewContent v))) v
-
--- Assuming a 'srcPath' field, enrich using withUrl using a Text -> Text transformation.
-enrichUrl :: (Text -> Text) -> Value -> Value
-enrichUrl f v = withUrl (f (viewSrcPath v)) v
 
 -- Add both "next" and "previous" fields using `withPostNext` and `withPostPrevious`
 extendNextPrevious :: Zipper [] Value -> Zipper [] Value

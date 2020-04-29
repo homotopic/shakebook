@@ -1,3 +1,4 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
 import Control.Comonad.Cofree
 import Development.Shake
 import RIO
@@ -19,10 +20,10 @@ srcDir = "test/site"
 outDir = "test/public"
 baseUrl = "http://blanky.test"
 
-toc = "docs/foo.md" :< [
-        "docs/bar.md" :< []
-      , "docs/baz.md" :< [
-          "docs/quux.md" :< []
+toc = "docs/index.md" :< [
+        "docs/1/index.md" :< []
+      , "docs/2/index.md" :< [
+          "docs/2/champ.md" :< []
         ]
       ]
 
@@ -36,10 +37,10 @@ numPageNeighbours = 1
 
 sbc = SbConfig srcDir outDir baseUrl markdownReaderOptions html5WriterOptions 5
 
-extendPostsZipper :: Zipper [] Value -> ShakebookA (Zipper [] Value)
+extendPostsZipper :: MonadShakebookAction r m => Zipper [] Value -> m (Zipper [] Value)
 extendPostsZipper = return
 
-enrichPostIndexPage :: [FilePattern] -> Zipper [] Value -> ShakebookA (Zipper [] Value)
+enrichPostIndexPage :: MonadShakebookAction r m => [FilePattern] -> Zipper [] Value -> m (Zipper [] Value)
 enrichPostIndexPage patterns x = do
   sortedPosts <- loadSortEnrich patterns (Down . viewPostTime) defaultEnrichPost
   return $ fmap (withJSON (myBlogNavbar (snd <$> sortedPosts)))
@@ -50,12 +51,12 @@ replace from to = intercalate to . splitOn from
 
 rules = do
   defaultSinglePagePattern "index.html" "templates/index.html"
-         (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost <=< flap defaultEnrichPost)
+         (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost)
 
   defaultPostsPatterns     "posts/*.html" "templates/post.html"
              (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . prettyMonthFormat) (T.pack . monthIndexUrlFormat) defaultEnrichPost
          <=< affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
-         <=< flap defaultEnrichPost . withHighlighting pygments)
+         . defaultEnrichPost . withHighlighting pygments)
               extendPostsZipper
 
   defaultDocsPatterns      toc "templates/docs.html"
@@ -80,17 +81,21 @@ rules = do
   defaultMonthIndexPhony    ["posts/*.md"]
 
   defaultDocsPhony          toc
+  defaultCleanPhony
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
   map ( \x ->  (goldenVsFile x x
      (replace "golden" "public" x)
-    (shake shakeOptions $ do
-      want [replace "golden" "public" x]
-      runShakebook sbc rules))) xs
+     (return ()))) xs
 
 main :: IO ()
 main = do
    xs <- findByExtension [".html"] "test/golden"
---   shake shakeOptions $ want ["docs" "month-index", "posts-index", "tag-index", "posts"]  >> runShakebook sbc rules
+   logOptions' <- logOptionsHandle stdout True
+   lf <- newLogFunc (setLogMinLevel LevelInfo logOptions')
+   let f = ShakebookEnv (fst lf) sbc
+   shake shakeOptions $ want ["clean"] >> runShakebook f rules
+   shake shakeOptions $ want ["docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakebook f rules
    defaultMain $ tests xs
+   snd lf

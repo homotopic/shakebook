@@ -36,17 +36,24 @@ main = do
   app $ SbConfig (srcDir x) (outDir x) (T.pack $ baseUrl x) markdownReaderOptions html5WriterOptions (ppp x)
 
 app :: SbConfig -> IO ()
-app sbc = shake (shakeOptions { shakeVerbosity = Chatty, shakeLintInside = ["\\"] }) $ do
+app sbc =  do
+    logOptions' <- logOptionsHandle stdout True
+    lf <- newLogFunc logOptions'
+    let f = ShakebookEnv (fst lf) sbc
 
-    want ["all"]
+    shake (shakeOptions { shakeVerbosity = Chatty, shakeLintInside = ["\\"] }) $ do
 
-    runShakebook sbc $ ask >>= \SbConfig {..} -> do
+      want ["all"]
 
-      defaultCleanPhony
+      runShakebook f $ view sbConfigL >>= \SbConfig {..} -> do
 
-      defaultSinglePagePattern "index.html" "templates/index.html"
-                               (affixRecentPosts ["posts/md"] 5 defaultEnrichPost)
+        defaultCleanPhony
 
-      Shakebook $ lift $ phony "index" $ need [sbOutDir </> "index.html"]
+        defaultSinglePagePattern "index.html" "templates/index.html"
+                                 (affixRecentPosts ["posts/md"] 5 defaultEnrichPost)
 
-    phony "all" $ need ["index"]
+        liftRules $ phony "index" $ need [sbOutDir </> "index.html"]
+
+      phony "all" $ need ["index"]
+
+    snd lf

@@ -13,7 +13,7 @@ import           Data.Text.Time
 import           Development.Shake          as S
 import           Development.Shake.Classes
 import           Development.Shake.FilePath
-import           RIO                        hiding (view)
+import           RIO                        
 import qualified RIO.ByteString.Lazy        as LBS
 import           RIO.List
 import           RIO.List.Partial
@@ -48,30 +48,10 @@ prettyTimeFormat = formatTime defaultTimeLocale "%A, %B %d, %Y"
 monthIndexUrlFormat :: UTCTime -> String
 monthIndexUrlFormat t = "/posts/months" </> monthURLFormat t
 
-(<~>) = liftA2 (.)
-
-defaultEnrichPost :: ShakebookA (Value -> Value)
-defaultEnrichPost = typicalUrlEnricher 
-                <~> pure (enrichTeaser "<!--more-->")
-                <~> pure (enrichTagLinks ("/posts/tags/" <>))
-                <~> pure (enrichPrettyDate prettyTimeFormat)
-
-typicalMarkdownPath = pure (-<.> "md") <~> typicalSourcePath
-
-typicalSourcePath :: MonadReader SbConfig m => m (String -> String)
-typicalSourcePath = ask >>= \SbConfig{..} -> pure $
-   ((sbSrcDir </>) . drop 1 . fromJust . stripPrefix sbOutDir)
-
-typicalHTMLPath :: MonadReader SbConfig m => m (String -> String)
-typicalHTMLPath = ask >>= \SbConfig{..} -> pure $
-  (-<.> "html") . (sbOutDir </>) . drop 1 . fromJust . stripPrefix sbSrcDir
-  
-typicalUrlTransformer :: MonadReader SbConfig m => m (Text -> Text)
-typicalUrlTransformer = ask >>= \SbConfig{..} -> pure $
-  T.pack . (-<.> "html") . fromJust . stripPrefix sbSrcDir . T.unpack
-
-typicalUrlEnricher :: MonadReader SbConfig m => m (Value -> Value)
-typicalUrlEnricher = typicalUrlTransformer >>= \e -> pure (withUrl =<< e . viewSrcPath)
+defaultEnrichPost :: Value -> Value
+defaultEnrichPost = enrichTeaser "<!--more-->"
+                  . enrichTagLinks ("/posts/tags/" <>)
+                  . enrichPrettyDate prettyTimeFormat
 
 --Data models-------------------------------------------------------------------
 
@@ -88,13 +68,23 @@ latexWriterOptions = def { writerTableOfContents = True
                                              , ("fontsize", SimpleVal "10")
                                              , ("linkcolor",SimpleVal "blue")]
                          }
-affixBlogNavbar :: [FilePattern] -> Text -> Text -> (UTCTime -> Text) -> (UTCTime -> Text) -> ShakebookA (Value -> Value)-> Value -> ShakebookA Value
+affixBlogNavbar :: MonadShakebookAction r m
+                => [FilePattern]
+                -> Text
+                -> Text
+                -> (UTCTime -> Text)
+                -> (UTCTime -> Text)
+                -> (Value -> Value)
+                -> Value -> m Value
 affixBlogNavbar patterns a b c d e x = do
   xs <- loadSortEnrich patterns (Down . viewPostTime) e
   return $ withJSON (genBlogNavbarData a b c d (snd <$> xs)) $ x
 
-
-affixRecentPosts :: [FilePattern] -> Int -> ShakebookA (Value -> Value) -> Value -> ShakebookA Value
+affixRecentPosts :: MonadShakebookAction r m
+                 => [FilePattern]
+                 -> Int
+                 -> (Value -> Value)
+                 -> Value -> m Value
 affixRecentPosts patterns n e x = do
   xs <- loadSortEnrich patterns (Down . viewPostTime) e
   return $ withRecentPosts (take n (snd <$> xs)) $ x
@@ -117,43 +107,50 @@ handleHeaders _ x                  = x
 pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
 pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
 
-defaultDocsPatterns :: Cofree [] FilePath -- Rosetree Table of Contents.
+defaultDocsPatterns :: MonadShakebookRules r m
+                    => Cofree [] FilePath -- Rosetree Table of Contents.
                     -> FilePath
                     -> (Value -> Value) -- Extra data modifiers.
-                    -> Shakebook ()
-defaultDocsPatterns toc tmpl withData = ask >>= \SbConfig {..} -> do
-  let r = readMarkdownFile' sbMdRead sbHTWrite
-  e <- typicalUrlEnricher
-  m <- typicalMarkdownPath
-  Shakebook $ lift $ cofreeRuleGen toc ((sbOutDir </>) . (-<.> ".html")) (
-         \xs -> \out -> do 
-             ys <- mapM r (fmap (sbSrcDir </>) toc)
-             zs <- mapM r (fmap (sbSrcDir </>) xs)
+                    -> m ()
+defaultDocsPatterns toc tmpl withData = ask >>= \r -> view sbConfigL >>= \sbc@SbConfig {..} -> do
+  let e = typicalUrlEnricher
+  m <- typicalFullOutHTMLToMdSrcPath
+  liftRules $ cofreeRuleGen toc ((sbOutDir </>) . (-<.> ".html")) (
+         \xs -> \out -> runShakebookA r $ do
+             ys <- mapM readMarkdownFile' toc
+             zs <- mapM readMarkdownFile' xs
              void $ genBuildPageAction (sbSrcDir </> tmpl)
-                      (r . m)
+                      (readMarkdownFile' . m)
                       (withData
                      . withJSON (genTocNavbarData (e <$> ys))
                      . withSubsections (lower (e <$> zs)))
                       out)
 
-defaultPostIndexData :: [FilePattern] -> (a -> Value -> Bool) -> (a -> Text) -> (a -> Text -> Text) -> a -> ShakebookA (Zipper [] Value)
-defaultPostIndexData pat f t l a = ask >>= \SbConfig {..} -> do
+defaultPostIndexData :: MonadShakebookAction r m
+                     => [FilePattern]
+                     -> (a -> Value -> Bool)
+                     -> (a -> Text)
+                     -> (a -> Text -> Text)
+                     -> a
+                     -> m (Zipper [] Value)
+defaultPostIndexData pat f t l a = view sbConfigL >>= \SbConfig {..} -> do
   xs <- loadSortFilterEnrich pat (Down . viewPostTime) (f a) defaultEnrichPost
   let ys = genIndexPageData (snd <$> xs) (t a) (l a) sbPPP
   return $ fromJust $ ys
 
-defaultPagerPattern :: FilePattern
+defaultPagerPattern :: MonadShakebookRules r m
+                    => FilePattern
                     -> FilePath
                     -> (FilePattern -> Int)
                     -> (FilePattern -> a)
-                    -> (a -> ShakebookA (Zipper [] Value))
-                    -> (Zipper [] Value -> ShakebookA (Zipper [] Value))
-                    -> Shakebook ()
-defaultPagerPattern fp tmpl f g h w = Shakebook $ ask >>= \x@SbConfig{..} -> lift $
-  comonadStoreRuleGen (sbOutDir </> fp) (f . drop 1 . fromJust . stripPrefix sbOutDir) (g . drop 1 . fromJust . stripPrefix sbOutDir) (runShakebookA x . (w <=< h))
-  (\a -> void <$> genBuildPageAction (sbSrcDir </> tmpl) (const $ return a) id)
+                    -> (a -> ShakebookA r (Zipper [] Value))
+                    -> (Zipper [] Value -> ShakebookA r (Zipper [] Value))
+                    -> m ()
+defaultPagerPattern fp tmpl f g h w = ask >>= \r -> view sbConfigL >>= \x@SbConfig{..} -> liftRules $
+  comonadStoreRuleGen (sbOutDir </> fp) (f . drop 1 . fromJust . stripPrefix sbOutDir) (g . drop 1 . fromJust . stripPrefix sbOutDir) (runShakebookA r . (w <=< h))
+  (\a -> void <$> runShakebookA r . genBuildPageAction (sbSrcDir </> tmpl) (const $ return a) id)
 
-defaultPostIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
+defaultPostIndexPatterns :: MonadShakebookRules r m => [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA r (Zipper [] Value)) -> m ()
 defaultPostIndexPatterns pat tmpl extData = do
    defaultPagerPattern "posts/index.html" tmpl
                        (const 0)
@@ -170,7 +167,7 @@ defaultPostIndexPatterns pat tmpl extData = do
                                                  (const ("/posts/pages/" <>)))
                        extData
 
-defaultTagIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
+defaultTagIndexPatterns :: MonadShakebookRules r m => [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA r (Zipper [] Value)) -> m ()
 defaultTagIndexPatterns pat tmpl extData = do
  defaultPagerPattern ("posts/tags/*/index.html") tmpl
                      (const 0)
@@ -187,7 +184,7 @@ defaultTagIndexPatterns pat tmpl extData = do
                                                (\x y -> ("/posts/tags/" <> x <> "/pages/" <> y)))
                      extData
 
-defaultMonthIndexPatterns :: [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA (Zipper [] Value)) -> Shakebook ()
+defaultMonthIndexPatterns :: MonadShakebookRules r m => [FilePattern] -> FilePath -> (Zipper [] Value -> ShakebookA r (Zipper [] Value)) -> m ()
 defaultMonthIndexPatterns pat tmpl extData = do
  defaultPagerPattern "posts/months/*/index.html" tmpl
                      (const 0)
@@ -206,28 +203,29 @@ defaultMonthIndexPatterns pat tmpl extData = do
                            (\x y -> ("/posts/months/" <> T.pack (monthURLFormat x) <> "/pages" <> y)))
                        extData
 
-defaultPostsPatterns :: FilePattern
+defaultPostsPatterns :: MonadShakebookRules r m
+                     => FilePattern
                      -> FilePath 
-                     -> (Value -> ShakebookA Value)
-                     -> (Zipper [] Value -> ShakebookA (Zipper [] Value))
-                     -> Shakebook ()
-defaultPostsPatterns pat tmpl e extData = ask >>= \sbc@(SbConfig {..}) -> do
-  m <- typicalMarkdownPath
-  Shakebook $ lift $ do
+                     -> (Value -> ShakebookA r Value)
+                     -> (Zipper [] Value -> ShakebookA r (Zipper [] Value))
+                     -> m ()
+defaultPostsPatterns pat tmpl e extData = ask >>= \r -> view sbConfigL >>= \sbc@(SbConfig {..}) -> do
+  m <- typicalFullOutHTMLToMdSrcPath
+  liftRules $ do
     sbOutDir </> pat %> \out -> do
-      sortedPosts <- runShakebookA sbc $ do
-        xs <-loadSortEnrich [pat] (Down . viewPostTime) (pure id)
+      sortedPosts <- runShakebookA r $ do
+        xs <- loadSortEnrich [pat] (Down . viewPostTime) defaultEnrichPost
         mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
       let i = (-<.> ".md") . drop 1 . fromJust . stripPrefix sbOutDir $ out
       let k = fromJust $ elemIndex i (fst <$> sortedPosts)
       let z = fromJust $ seek k <$> zipper (snd <$> sortedPosts)
-      void $ genBuildPageAction (sbSrcDir </> tmpl)
-                                (const $ runShakebookA sbc $ extract <$> extData z)
+      void $ runShakebookA r $ genBuildPageAction (sbSrcDir </> tmpl)
+                                (const $ extract <$> extData z)
                                 id out
 
 
-buildPDF :: Cofree [] String -> String -> FilePath -> ShakebookA ()
-buildPDF toc meta out = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
+buildPDF :: MonadShakebookAction r m => Cofree [] String -> String -> FilePath -> m ()
+buildPDF toc meta out = view sbConfigL >>= \SbConfig {..} -> liftAction $ do
   y <- mapM readFile' ((sbSrcDir </>) <$> toc)
   m <- readFile' $  sbSrcDir </> meta
   Right f <- liftIO . runIOorExplode $ do
@@ -240,55 +238,55 @@ buildPDF toc meta out = ShakebookA $ ask >>= \SbConfig {..} -> lift $ do
 flap :: Functor f => f (a -> b) -> a -> f b
 flap ff x = (\f -> f x) <$> ff
 
-defaultSinglePagePattern :: FilePath -- The output filename e.g "index.html".
+defaultSinglePagePattern :: MonadShakebookRules r m
+                         => FilePath -- The output filename e.g "index.html".
                          -> FilePath -- A tmpl file.
-                         -> (Value -> ShakebookA Value) -- Last minute enrichment.
-                         -> Shakebook ()
-defaultSinglePagePattern out tmpl withDataM = ask >>= \sbc@(SbConfig {..}) -> do
-  m <- typicalMarkdownPath
-  e <- typicalUrlEnricher
-  Shakebook $ lift $ sbOutDir </> out %> void . genBuildPageAction
-                 (sbSrcDir </> tmpl)
+                         -> (Value -> ShakebookA r Value) -- Last minute enrichment.
+                         -> m ()
+defaultSinglePagePattern out tmpl withDataM = ask >>= \r -> view sbConfigL >>= \sbc@(SbConfig {..}) -> do
+  m <- typicalFullOutHTMLToMdSrcPath
+  liftRules $ sbOutDir </> out %> void . runShakebookA r . genBuildPageAction
+                 tmpl
                  (\fp -> do
-                   x <- readMarkdownFile' sbMdRead sbHTWrite . m $ fp
-                   runShakebookA sbc $ withDataM . e $ x)
+                    x <- readMarkdownFile' . m $ fp
+                    withDataM $ x)
                  id
 
-defaultStaticsPatterns :: [FilePattern] -> Shakebook ()
-defaultStaticsPatterns xs = ask >>= \SbConfig {..} -> do
-  f <- typicalSourcePath
-  Shakebook $ lift $ mconcat $ map (\x -> sbOutDir </> x %> \y -> copyFileChanged (f y) y) xs
+defaultStaticsPatterns :: MonadShakebookRules r m => [FilePattern] -> m ()
+defaultStaticsPatterns xs = view sbConfigL >>= \SbConfig {..} -> do
+  f <- typicalFullOutToSrcPath
+  liftRules $ mconcat $ map (\x -> sbOutDir </> x %> \y -> copyFileChanged (f y) y) xs
 
-defaultCleanPhony :: Shakebook ()
-defaultCleanPhony = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultCleanPhony :: MonadShakebookRules r m => m ()
+defaultCleanPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $ 
   phony "clean" $ do
       putInfo $ "Cleaning files in " ++ sbOutDir
       removeFilesAfter sbOutDir ["//*"]
 
-defaultStaticsPhony :: Shakebook ()
-defaultStaticsPhony = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultStaticsPhony :: MonadShakebookRules r m => m ()
+defaultStaticsPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $ 
   phony "statics" $ do
     fp <- getDirectoryFiles sbSrcDir ["images//*", "css//*", "js//*", "webfonts//*"]
     need $ [sbOutDir </> x | x <- fp]
 
-defaultPostsPhony :: [FilePattern] -> Shakebook ()
-defaultPostsPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultPostsPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
+defaultPostsPhony pattern = view sbConfigL >>= \SbConfig {..} -> liftRules $ 
   phony "posts" $ do
     fp <- getDirectoryFiles sbSrcDir pattern
     need [sbOutDir </> x -<.> ".html" | x <- fp]
 
-defaultPostIndexPhony :: [FilePattern] -> Shakebook ()
-defaultPostIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultPostIndexPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
+defaultPostIndexPhony pattern = ask >>= \r -> view sbConfigL >>= \SbConfig {..} -> liftRules $
     phony "posts-index" $ do
-      fp <- getDirectoryMarkdown sbMdRead sbHTWrite sbSrcDir pattern
+      fp <- runShakebookA r $ getMarkdown pattern
       need [sbOutDir </> "posts/index.html"]
       need [sbOutDir </> "posts/pages/" ++ show x ++ "/index.html"
            | x <- [1..size (fromJust $ paginate sbPPP fp)]]
 
-defaultTagIndexPhony :: [FilePattern] -> Shakebook ()
-defaultTagIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultTagIndexPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
+defaultTagIndexPhony pattern = ask >>= \r -> view sbConfigL >>= \SbConfig {..} -> liftRules $
   phony "tag-index" $ do
-    fp <- getDirectoryMarkdown sbMdRead sbHTWrite sbSrcDir pattern
+    fp <- runShakebookA r $ getMarkdown pattern
     let tags = viewAllPostTags fp
     need [sbOutDir </> "posts/tags" </> T.unpack x </> "index.html" | x <- tags]
     need [sbOutDir </> "posts/tags" </> T.unpack x </> "pages" </> show p </> "index.html"
@@ -296,10 +294,10 @@ defaultTagIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
          ,  p <- [1..size (fromJust $ paginate sbPPP $ tagFilterPosts x fp)]
          ]
 
-defaultMonthIndexPhony :: [FilePattern] -> Shakebook ()
-defaultMonthIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultMonthIndexPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
+defaultMonthIndexPhony pattern = ask >>= \r -> view sbConfigL >>= \SbConfig {..} -> liftRules $
    phony "month-index" $ do
-      fp <- getDirectoryMarkdown sbMdRead sbHTWrite sbSrcDir pattern
+      fp <- runShakebookA r $ getMarkdown pattern
       let times = viewAllPostTimes fp
       need [sbOutDir </> "posts/months" </> monthURLFormat t </> "index.html" | t <- times]
       need [sbOutDir </> "posts/months" </> monthURLFormat t </> "pages" </> show p </> "index.html"
@@ -307,8 +305,8 @@ defaultMonthIndexPhony pattern = Shakebook $ ask >>= \SbConfig {..} -> lift $
            , p <- [1..length (fromJust $ paginate sbPPP $ monthFilterPosts t fp)]
            ]
 
-defaultDocsPhony :: Cofree [] String -> Shakebook ()
-defaultDocsPhony toc = Shakebook $ ask >>= \SbConfig {..} -> lift $
+defaultDocsPhony :: MonadShakebookRules r m => Cofree [] String -> m ()
+defaultDocsPhony toc = view sbConfigL >>= \SbConfig {..} -> liftRules $
     phony "docs" $ do
       let xs =  (foldr ((<>) . pure) [] toc)
       need $ [ (sbOutDir </>) . (-<.> ".html") $ x | x <- xs]
