@@ -111,6 +111,9 @@ typicalFullOutToSrcPath :: MonadShakebook r m => m (String -> String)
 typicalFullOutToSrcPath = view sbConfigL >>= \SbConfig{..} -> pure $
    drop 1 . fromJust . stripPrefix sbOutDir
 
+typicalFullOutToFullSrcPath :: MonadShakebook r m => m (String -> String)
+typicalFullOutToFullSrcPath = liftA2 (.) (sbSrcDir </>) typicalFullOutToSrcPath
+
 typicalFullOutHTMLToMdSrcPath :: MonadShakebook r m => m (String -> String)
 typicalFullOutHTMLToMdSrcPath = liftA2 (.) (pure (-<.> "md")) typicalFullOutToSrcPath
 

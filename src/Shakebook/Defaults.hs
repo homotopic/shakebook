@@ -278,7 +278,7 @@ defaultSinglePagePattern out tmpl withDataM = ask >>= \r -> view sbConfigL >>= \
 -}
 defaultStaticsPatterns :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultStaticsPatterns xs = view sbConfigL >>= \SbConfig {..} -> do
-  f <- typicalFullOutToSrcPath
+  f <- typicalFullOutToFullSrcPath
   liftRules $ mconcat $ map (\x -> sbOutDir </> x %> \y -> copyFileChanged (f y) y) xs
 
 -- | Default "shake clean" phony, cleans your output directory.
