@@ -1,16 +1,23 @@
 name:                shakebook
-version:             0.1.5.1
+version:             0.2.0.0
 license:             MIT
+category:            Web
 author:              "Daniel Firth"
-maintainer:          "dan.firt@homotopic.tech"
+maintainer:          "dan.firth@homotopic.tech"
 copyright:           "2020 Daniel Firth"
 
 extra-source-files:
 - README.md
 - ChangeLog.md
 
-synopsis:            Shake-based technical documentation generator.
-category:            Web
+synopsis:            Shake-based technical documentation generator; HTML & PDF
+description: >
+   Shakebook is a documentation generator aimed at covering all the bases for
+   mathematical, technical and scientific diagrams and typesetting. Shakebook
+   provides combinators for taking markdown files and combining them into
+   documents, but allowing the user to control how. Shakebook provides general
+   combinators for templating single pages, cofree comonads for representing
+   tables of contents, and zipper comonads for representing pagers.
 
 default-extensions:
 - BangPatterns
