@@ -32,7 +32,7 @@ toc = "docs/index.md" :< [
       ]
 
 myBlogNavbar :: [Value] -> Value
-myBlogNavbar = genBlogNavbarData "Blog" "/posts/" (T.pack . prettyMonthFormat) (T.pack . monthIndexUrlFormat)
+myBlogNavbar = genBlogNavbarData "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (T.pack . defaultMonthIndexUrlFormat)
 
 numRecentPosts :: Int
 numRecentPosts = 3
@@ -41,7 +41,7 @@ numPageNeighbours :: Int
 numPageNeighbours = 1
 
 sbc :: SbConfig
-sbc = SbConfig srcDir outDir baseUrl markdownReaderOptions html5WriterOptions 5
+sbc = SbConfig srcDir outDir baseUrl defaultMarkdownReaderOptions defaultHtml5WriterOptions 5
 
 extendPostsZipper :: MonadShakebookAction r m => Zipper [] Value -> m (Zipper [] Value)
 extendPostsZipper = return
@@ -58,7 +58,7 @@ rules = do
          (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost)
 
   defaultPostsPatterns     "posts/*.html" "templates/post.html"
-             (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . prettyMonthFormat) (T.pack . monthIndexUrlFormat) defaultEnrichPost
+             (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (T.pack . defaultMonthIndexUrlFormat) defaultEnrichPost
          <=< affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
          . defaultEnrichPost . withHighlighting pygments)
               extendPostsZipper

@@ -74,38 +74,39 @@ type MonadShakebookRules r m = (MonadShakebook r m, MonadRules m)
 
 
 
--- View the "srcPath" field of a JSON Value.
+-- | View the "srcPath" field of a JSON Value.
 viewSrcPath :: Value -> Text
 viewSrcPath = view (key "srcPath" . _String)
 
--- Add "srcPath" field based on input Text.
+-- | Add "srcPath" field based on input Text.
 withSrcPath :: Text -> Value -> Value
 withSrcPath = withStringField "srcPath"
 
--- Add "baseUrl" field from input Text.
+-- | Add "baseUrl" field from input Text.
 withBaseUrl :: Text -> Value -> Value
 withBaseUrl = withStringField "baseUrl"
 
--- Add "fullUrl" field  from input Text.
+-- | Add "fullUrl" field  from input Text.
 withFullUrl :: Text -> Value -> Value
 withFullUrl = withStringField "fullUrl"
 
--- View the "url" field of a JSON Value.
+-- | View the "url" field of a JSON Value.
 viewUrl :: Value -> Text
 viewUrl = view (key "url" . _String)
 
--- Add "url" field from input Text.
+-- | Add "url" field from input Text.
 withUrl :: Text -> Value -> Value
 withUrl = withStringField "url"
 
--- Assuming a "url" field, enrich via a baseURL
+-- | Assuming a "url" field, enrich via a baseURL
 enrichFullUrl :: Text -> Value -> Value
 enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
 
---- Assuming a 'srcPath' field, enrich using withUrl using a Text -> Text transformation.
+-- | Assuming a 'srcPath' field, enrich using withUrl using a Text -> Text transformation.
 enrichUrl :: (Text -> Text) -> Value -> Value
 enrichUrl f v = withUrl (f (viewSrcPath v)) v
 
+-- | Filepath/URL calculators - these work but don't try to do the wrong thing or it will explode.
 typicalFullOutToSrcPath :: MonadShakebook r m => m (String -> String)
 typicalFullOutToSrcPath = view sbConfigL >>= \SbConfig{..} -> pure $
    drop 1 . fromJust . stripPrefix sbOutDir
@@ -123,8 +124,10 @@ typicalSrcPathToUrl = ("/" <>) . T.pack . (-<.> "html") . T.unpack
 typicalUrlEnricher :: Value -> Value
 typicalUrlEnricher v = withUrl (typicalSrcPathToUrl . viewSrcPath $ v) v
 
--- Get a JSON Value of Markdown Data with markdown body as "contents" field
--- and the srcPath as "srcPath" field.
+{-|
+  Get a JSON Value of Markdown Data with markdown body as "contents" field
+  and the srcPath as "srcPath" field.
+-}
 readMarkdownFile' :: MonadShakebookAction r m => String -> m Value
 readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> do
   logInfo $ displayShow $ "Reading source: " <> srcPath
@@ -140,15 +143,14 @@ getMarkdown :: MonadShakebookAction r m => [FilePattern] -> m [Value]
 getMarkdown pat = view sbConfigL >>= \SbConfig{..} ->
   liftAction (getDirectoryFiles sbSrcDir pat) >>= mapM readMarkdownFile'
 
-{--
-getEnrichedMarkdown :: ReaderOptions -> WriterOptions -> (Value -> Value) -> FilePath -> [FilePattern] -> Action [Value]
-getEnrichedMarkdown readOpts writeOpts f dir pat = fmap f <$> getDirectoryMarkdown readOpts writeOpts dir pat
---}
+{-| 
+  Build a single page straight from a template, a loaded Value, and a pure enrichment.
+-}
 genBuildPageAction :: (MonadShakebookAction r m)
-                   => FilePath -- The HTML template
-                   -> (FilePath -> m Value) -- How to get an initial markdown JSON Object from the out filepath.
-                   -> (Value -> Value) -- Additional modifiers for the value
-                   -> FilePath -- The out filepath
+                   => FilePath -- ^ The HTML template
+                   -> (FilePath -> m Value) -- ^ How to get from FilePath to Value, can use Actions.
+                   -> (Value -> Value) -- ^ Additional modifiers for the value.
+                   -> FilePath -- ^ The out filepath
                    -> m Value
 genBuildPageAction template getData withData out = do
   logInfo $ displayShow $ "Generating page with fullpath " <> out
@@ -164,16 +166,26 @@ traverseToSnd f a = (a,) <$> f a
 lower :: Cofree [] Value -> [Value]
 lower (_ :< xs) = extract <$> xs
 
+{-|
+  Multi-markdown loader. Allows you to load a filepattern of markdown as a list of JSON
+  values ready to pass to an HTML template. You will probably want to add additional
+  data before you write. See the examples in Shakebook.Defaults
+-}
 loadSortFilterEnrich :: (MonadShakebookAction r m, Ord b)
-                              => [FilePattern] -- Filepattern
-                              -> (Value -> b) -- A value to sortOn e.g (Down . viewPostTime)
-                              -> (Value -> Bool) -- A filtering predicate e.g (elem tag . viewTags)
-                              -> (Value -> Value) -- An initial enrichment. This is pure so can only be data derived from the initial markdown.
-                              -> m [(String, Value)]
+                     => [FilePattern]    -- ^ A shake filepattern to load, relative to srcDir from SbConfig.
+                     -> (Value -> b)     -- ^ A value to sortOn e.g (Down . viewPostTime)
+                     -> (Value -> Bool)  -- ^ A filtering predicate e.g (elem tag . viewTags)
+                     -> (Value -> Value) -- ^ An initial enrichment. This is pure so can only be data derived from the initial markdown.
+                     -> m [(FilePath, Value)] -- ^ A list of Values indexed by their srcPath.
 loadSortFilterEnrich pat s f e = view sbConfigL >>= \SbConfig {..} -> do
     allPosts <- liftAction $ getDirectoryFiles sbSrcDir $ map (-<.> ".md") pat
     readPosts <- sequence $ traverseToSnd readMarkdownFile' <$> allPosts
     return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) readPosts
 
-loadSortEnrich :: (MonadShakebookAction r m, Ord b) => [FilePattern] -> (Value -> b) -> (Value -> Value) -> m [(String, Value)]
+-- | The same as `loadSortFilterEnrich` but without filtering.
+loadSortEnrich :: (MonadShakebookAction r m, Ord b)
+               => [FilePattern]    -- ^ A Shake filepattern to load.
+               -> (Value -> b)     -- ^ A value to sortOn e.g (Down . viewPostTime).
+               -> (Value -> Value) -- ^ An initial pure enrichment.
+               -> m [(String, Value)] -- ^ A list of Values index by their srcPath.
 loadSortEnrich pat s = loadSortFilterEnrich pat s (const True)

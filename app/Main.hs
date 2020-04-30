@@ -35,7 +35,7 @@ main :: IO ()
 main = do
   (x :: SimpleOpts) <- execParser opts
 
-  app $ SbConfig (srcDir x) (outDir x) (T.pack $ baseUrl x) markdownReaderOptions html5WriterOptions (ppp x)
+  app $ SbConfig (srcDir x) (outDir x) (T.pack $ baseUrl x) defaultMarkdownReaderOptions defaultHtml5WriterOptions (ppp x)
 
 app :: SbConfig -> IO ()
 app sbc =  do
