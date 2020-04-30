@@ -7,10 +7,10 @@ module Shakebook.Zipper (
 , zipperWithin
 ) where
 
-import Control.Comonad.Store
-import Control.Comonad.Store.Zipper
-import Data.List.Split
-import RIO
+import           Control.Comonad.Store
+import           Control.Comonad.Store.Zipper
+import           Data.List.Split
+import           RIO
 
 -- Turn a list into a zipper of chunks of length n
 paginate :: Int -> [a] -> Maybe (Zipper [] [a])

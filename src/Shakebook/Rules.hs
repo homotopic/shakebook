@@ -2,8 +2,8 @@ module Shakebook.Rules where
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
-import           RIO
 import           Development.Shake
+import           RIO
 
 comonadStoreRuleGen :: ComonadStore s w
                     => FilePattern -- The filepattern rule.
@@ -12,7 +12,7 @@ comonadStoreRuleGen :: ComonadStore s w
                     -> (a -> Action (w b)) -- How to turn the id into a searchable store.
                     -> (b -> FilePath -> Action ())
                     -> Rules ()
-comonadStoreRuleGen fp f g h k = 
+comonadStoreRuleGen fp f g h k =
   fp %> \x -> do
     xs <- h (g x)
     k (extract (seek (f x) xs)) x

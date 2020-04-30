@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE NoMonomorphismRestriction  #-}
 module Shakebook.Defaults where
 
 import           Control.Comonad
@@ -7,24 +7,24 @@ import           Control.Comonad.Cofree
 import           Control.Comonad.Store.Class
 import           Control.Comonad.Store.Zipper
 import           Control.Monad.Extra
-import           Data.Aeson                 as A
+import           Data.Aeson                   as A
 import           Data.List.Split
 import           Data.Text.Time
-import           Development.Shake          as S
+import           Development.Shake            as S
 import           Development.Shake.Classes
 import           Development.Shake.FilePath
-import           RIO                        
-import qualified RIO.ByteString.Lazy        as LBS
+import           RIO
+import qualified RIO.ByteString.Lazy          as LBS
 import           RIO.List
 import           RIO.List.Partial
-import qualified RIO.Map                    as M
+import qualified RIO.Map                      as M
 import           RIO.Partial
-import qualified RIO.Text                   as T
+import qualified RIO.Text                     as T
 import           RIO.Time
 import           Shakebook.Aeson
+import           Shakebook.Conventions
 import           Shakebook.Data
 import           Shakebook.Rules
-import           Shakebook.Conventions
 import           Shakebook.Zipper
 import           Text.DocTemplates
 import           Text.Pandoc.Class
@@ -102,7 +102,7 @@ handleImages _ x = x
 
 handleHeaders :: Int -> Block -> Block
 handleHeaders i (Header a as xs) = Header (max 1 (a + i)) as xs
-handleHeaders _ x                  = x
+handleHeaders _ x                = x
 
 pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
 pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
@@ -178,7 +178,7 @@ defaultTagIndexPatterns pat tmpl extData = do
                      extData
  defaultPagerPattern ("posts/tags/*/pages/*/index.html") tmpl
                      ((+ (-1)) . read . (!! 4) . splitOn "/")
-                     (T.pack . (!! 2) . splitOn "/") 
+                     (T.pack . (!! 2) . splitOn "/")
                      (defaultPostIndexData pat (\x y -> elem x (viewTags y))
                                                ("Posts tagged " <>)
                                                (\x y -> ("/posts/tags/" <> x <> "/pages/" <> y)))
@@ -205,7 +205,7 @@ defaultMonthIndexPatterns pat tmpl extData = do
 
 defaultPostsPatterns :: MonadShakebookRules r m
                      => FilePattern
-                     -> FilePath 
+                     -> FilePath
                      -> (Value -> ShakebookA r Value)
                      -> (Zipper [] Value -> ShakebookA r (Zipper [] Value))
                      -> m ()
@@ -256,7 +256,7 @@ defaultStaticsPatterns xs = view sbConfigL >>= \SbConfig {..} -> do
   liftRules $ mconcat $ map (\x -> sbOutDir </> x %> \y -> copyFileChanged (f y) y) xs
 
 defaultCleanPhony :: MonadShakebookRules r m => m ()
-defaultCleanPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $ 
+defaultCleanPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $
   phony "clean" $ do
       putInfo $ "Cleaning files in " ++ sbOutDir
       removeFilesAfter sbOutDir ["//*"]
@@ -268,7 +268,7 @@ defaultStaticsPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $
     need $ [sbOutDir </> x | x <- fp]
 
 defaultPostsPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
-defaultPostsPhony pattern = view sbConfigL >>= \SbConfig {..} -> liftRules $ 
+defaultPostsPhony pattern = view sbConfigL >>= \SbConfig {..} -> liftRules $
   phony "posts" $ do
     fp <- getDirectoryFiles sbSrcDir pattern
     need [sbOutDir </> x -<.> ".html" | x <- fp]

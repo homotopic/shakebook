@@ -2,11 +2,11 @@
 module Shakebook.Aeson where
 
 import           Control.Lens
-import           Data.Aeson                   as A
+import           Data.Aeson      as A
 import           Data.Aeson.Lens
-import           RIO                          hiding (view)
-import qualified RIO.HashMap                  as HML
-import qualified RIO.Vector                   as V
+import           RIO             hiding (view)
+import qualified RIO.HashMap     as HML
+import qualified RIO.Vector      as V
 
 -- | Union two JSON values together.
 withJSON :: (ToJSON a) => a -> Value -> Value

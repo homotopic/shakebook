@@ -2,31 +2,32 @@ module Shakebook.Data where
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
-import           Control.Lens hiding ((:<))
+import           Control.Lens               hiding ((:<))
 import           Control.Monad.Extra
-import           Data.Aeson                   as A
+import           Data.Aeson                 as A
 import           Data.Aeson.Lens
-import           Development.Shake as S
+import           Development.Shake          as S
 import           Development.Shake.FilePath
-import           RIO                          hiding (view, Lens', lens)
-import           RIO.Partial
+import           RIO                        hiding (Lens', lens, view)
 import           RIO.List
-import qualified RIO.Text                     as T
+import           RIO.Partial
+import qualified RIO.Text                   as T
+import           Shakebook.Aeson
 import           Slick
 import           Slick.Pandoc
-import           Shakebook.Aeson
 import           Text.Pandoc.Options
 
 type ToC = Cofree [] String
 
-data SbConfig = SbConfig {
-   sbSrcDir  :: FilePath
-,  sbOutDir  :: FilePath
-,  sbBaseUrl :: Text
-,  sbMdRead  :: ReaderOptions
-,  sbHTWrite :: WriterOptions
-,  sbPPP :: Int
-} deriving (Show)
+data SbConfig = SbConfig
+    { sbSrcDir  :: FilePath
+    , sbOutDir  :: FilePath
+    , sbBaseUrl :: Text
+    , sbMdRead  :: ReaderOptions
+    , sbHTWrite :: WriterOptions
+    , sbPPP     :: Int
+    }
+    deriving (Show)
 
 class HasSbConfig a where
   sbConfigL :: Lens' a SbConfig
@@ -55,10 +56,10 @@ instance MonadAction (ShakebookA r) where
 instance MonadRules (Shakebook r) where
   liftRules = Shakebook . lift
 
-data ShakebookEnv = ShakebookEnv {
-  logFunc :: LogFunc
-, sbConfig :: SbConfig
-}
+data ShakebookEnv = ShakebookEnv
+    { logFunc  :: LogFunc
+    , sbConfig :: SbConfig
+    }
 
 instance HasSbConfig ShakebookEnv where
   sbConfigL = lens sbConfig undefined
@@ -147,7 +148,7 @@ genBuildPageAction :: (MonadShakebookAction r m)
                    => FilePath -- The HTML template
                    -> (FilePath -> m Value) -- How to get an initial markdown JSON Object from the out filepath.
                    -> (Value -> Value) -- Additional modifiers for the value
-                   -> FilePath -- The out filepath 
+                   -> FilePath -- The out filepath
                    -> m Value
 genBuildPageAction template getData withData out = do
   logInfo $ displayShow $ "Generating page with fullpath " <> out

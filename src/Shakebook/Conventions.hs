@@ -31,7 +31,7 @@ module Shakebook.Conventions (
 , enrichTeaser
 
   -- * Affixes
- 
+
   -- * Extensions
 , extendNext
 , extendPrevious
@@ -124,9 +124,9 @@ withPrevious = withObjectFieldMaybe "previous"
 withPosts :: [Value] -> Value -> Value
 withPosts = withArrayField "posts"
 
--- Add "recentposts" field using input Value. 
+-- Add "recentposts" field using input Value.
 withRecentPosts :: [Value] -> Value -> Value
-withRecentPosts = withArrayField "recent-posts" 
+withRecentPosts = withArrayField "recent-posts"
 
 -- Add "subsections" field based on inpt [Value].
 withSubsections :: [Value] -> (Value -> Value)
@@ -226,7 +226,7 @@ genTocNavbarData (x :< xs) =
   object ["toc1" A..= [_Object . at "toc2" ?~ Array (V.fromList $ map toc2 xs) $ x]] where
       toc2 (y :< ys) = (_Object . at "toc3" ?~ Array (V.fromList $ map extract ys)) y
 
-genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value 
+genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value
 genPageData t f xs = withTitle t
                    . withJSON (genLinkData (T.pack . show $ pos xs + 1) f)
                    . withPosts (extract xs) $ Object mempty

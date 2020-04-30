@@ -1,19 +1,18 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
-import Control.Comonad.Cofree
-import Development.Shake
-import RIO
-import RIO.List
-import Data.List.Split
-import qualified RIO.Text as T
-import Shakebook
-import Shakebook.Defaults
-import Test.Tasty
-import Test.Tasty.Golden
-import Data.Aeson
-import Control.Comonad.Store.Zipper
-import Shakebook.Aeson
-import Shakebook.Conventions
-import Text.Pandoc.Highlighting
+import           Control.Comonad.Cofree
+import           Control.Comonad.Store.Zipper
+import           Data.Aeson
+import           Data.List.Split
+import           Development.Shake
+import           RIO
+import           RIO.List
+import qualified RIO.Text                     as T
+import           Shakebook
+import           Shakebook.Aeson
+import           Shakebook.Conventions
+import           Shakebook.Defaults
+import           Test.Tasty
+import           Test.Tasty.Golden
+import           Text.Pandoc.Highlighting
 
 srcDir :: String
 srcDir = "test/site"
@@ -105,5 +104,3 @@ main = do
    shake shakeOptions $ want ["docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakebook f rules
    defaultMain $ tests xs
    snd lf
-
-

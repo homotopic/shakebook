@@ -1,12 +1,12 @@
 module Main where
 
-import RIO
-import qualified RIO.Text as T
-import Development.Shake
-import Development.Shake.FilePath
-import Shakebook
-import Options.Applicative
-import Shakebook.Defaults
+import           Development.Shake
+import           Development.Shake.FilePath
+import           Options.Applicative
+import           RIO
+import qualified RIO.Text                   as T
+import           Shakebook
+import           Shakebook.Defaults
 
 sample :: Parser SimpleOpts
 sample = SimpleOpts
@@ -16,14 +16,14 @@ sample = SimpleOpts
                     <> showDefault <> value "public")
       <*> strOption ( long "baseUrl" <> metavar "BASEURL" <> help "The base url for your site.")
       <*> option auto ( long "ppp" <> metavar "POSTSPERPAGE" <> help "Num of posts per page.")
-       
 
-data SimpleOpts = SimpleOpts {
-  srcDir :: String
-, outDir :: String
-, baseUrl :: String
-, ppp :: Int
-}
+
+data SimpleOpts = SimpleOpts
+    { srcDir  :: String
+    , outDir  :: String
+    , baseUrl :: String
+    , ppp     :: Int
+    }
 
 opts :: ParserInfo SimpleOpts
 opts = info (sample <**> helper)
