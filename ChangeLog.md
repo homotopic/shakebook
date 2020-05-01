@@ -1,5 +1,11 @@
 # Changelog for Shakebook
 
+## (v0.2.0.3)
+
+* Add logging to Shakebook's monads via RIO's logging methods.
+* Add testing framework.
+* Add hackage documentation.
+
 ## (v0.1.5.0)
 
 * Factored out API into this library.
