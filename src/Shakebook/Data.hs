@@ -125,8 +125,8 @@ typicalMdSrcPathToHTMLFullOut = view sbConfigL >>= \SbConfig{..} -> pure $
 typicalSrcPathToUrl :: Text -> Text
 typicalSrcPathToUrl = ("/" <>) . T.pack . (-<.> "html") . T.unpack
 
-typicalUrlEnricher :: Value -> Value
-typicalUrlEnricher v = withUrl (typicalSrcPathToUrl . viewSrcPath $ v) v
+enrichTypicalUrl :: Value -> Value
+enrichTypicalUrl v = withUrl (typicalSrcPathToUrl . viewSrcPath $ v) v
 
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
@@ -159,7 +159,7 @@ genBuildPageAction :: (MonadShakebookAction r m)
 genBuildPageAction template getData withData out = view sbConfigL >>= \SbConfig{..} -> do
   logInfo $ displayShow $ "Generating page with fullpath " <> out
   pageT <- liftAction $ compileTemplate' (sbSrcDir </> template)
-  dataT <- withData . typicalUrlEnricher <$> getData out
+  dataT <- withData . enrichTypicalUrl <$> getData out
   logDebug $ displayShow dataT
   writeFile' out . T.unpack $ substitute pageT dataT
   return dataT

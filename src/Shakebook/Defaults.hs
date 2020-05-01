@@ -52,6 +52,7 @@ defaultEnrichPost :: Value -> Value
 defaultEnrichPost = enrichTeaser "<!--more-->"
                   . enrichTagLinks ("/posts/tags/" <>)
                   . enrichPrettyDate defaultPrettyTimeFormat
+                  . enrichTypicalUrl
 
 defaultMarkdownReaderOptions :: ReaderOptions
 defaultMarkdownReaderOptions = def { readerExtensions = pandocExtensions }
@@ -100,7 +101,7 @@ defaultDocsPatterns :: MonadShakebookRules r m
                     -> (Value -> Value) -- Extra data modifiers.
                     -> m ()
 defaultDocsPatterns toc tmpl withData = ask >>= \r -> view sbConfigL >>= \SbConfig {..} -> do
-  let e = typicalUrlEnricher
+  let e = enrichTypicalUrl
   m <- typicalFullOutHTMLToMdSrcPath
   liftRules $ cofreeRuleGen toc ((sbOutDir </>) . (-<.> ".html")) (
          \xs -> \out -> runShakebookA r $ do
