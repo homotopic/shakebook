@@ -77,6 +77,7 @@ rules = do
   defaultStaticsPatterns   ["css//*", "images//*", "js//*", "webfonts//*"]
   defaultStaticsPhony
 
+  defaultSinglePagePhony    "index" "index.html"
   defaultPostsPhony         ["posts/*.md"]
   defaultPostIndexPhony     ["posts/*.md"]
 
@@ -101,6 +102,6 @@ main = do
    lf <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    let f = ShakebookEnv (fst lf) sbc
    shake shakeOptions $ want ["clean"] >> runShakebook f rules
-   shake shakeOptions $ want ["docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakebook f rules
+   shake shakeOptions $ want ["index", "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakebook f rules
    defaultMain $ tests xs
    snd lf

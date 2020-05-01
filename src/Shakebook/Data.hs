@@ -156,9 +156,9 @@ genBuildPageAction :: (MonadShakebookAction r m)
                    -> (Value -> Value) -- ^ Additional modifiers for the value.
                    -> FilePath -- ^ The out filepath
                    -> m Value
-genBuildPageAction template getData withData out = do
+genBuildPageAction template getData withData out = view sbConfigL >>= \SbConfig{..} -> do
   logInfo $ displayShow $ "Generating page with fullpath " <> out
-  pageT <- liftAction $ compileTemplate' template
+  pageT <- liftAction $ compileTemplate' (sbSrcDir </> template)
   dataT <- withData . typicalUrlEnricher <$> getData out
   logDebug $ displayShow dataT
   writeFile' out . T.unpack $ substitute pageT dataT

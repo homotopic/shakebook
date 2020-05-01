@@ -106,7 +106,7 @@ defaultDocsPatterns toc tmpl withData = ask >>= \r -> view sbConfigL >>= \SbConf
          \xs -> \out -> runShakebookA r $ do
              ys <- mapM readMarkdownFile' toc
              zs <- mapM readMarkdownFile' xs
-             void $ genBuildPageAction (sbSrcDir </> tmpl)
+             void $ genBuildPageAction tmpl
                       (readMarkdownFile' . m)
                       (withData
                      . withJSON (genTocNavbarData (e <$> ys))
@@ -135,7 +135,7 @@ defaultPagerPattern :: MonadShakebookRules r m
                     -> m ()
 defaultPagerPattern fp tmpl f g h w = ask >>= \r -> view sbConfigL >>= \SbConfig{..} -> liftRules $
   comonadStoreRuleGen (sbOutDir </> fp) (f . drop 1 . fromJust . stripPrefix sbOutDir) (g . drop 1 . fromJust . stripPrefix sbOutDir) (runShakebookA r . (w <=< h))
-  (\a -> void <$> runShakebookA r . genBuildPageAction (sbSrcDir </> tmpl) (const $ return a) id)
+  (\a -> void <$> runShakebookA r . genBuildPageAction tmpl (const $ return a) id)
 
 defaultPostIndexPatterns :: MonadShakebookRules r m
                          => [FilePattern]
@@ -219,7 +219,7 @@ defaultPostsPatterns pat tmpl e extData = ask >>= \r -> view sbConfigL >>= \SbCo
       let i = (-<.> ".md") . drop 1 . fromJust . stripPrefix sbOutDir $ out
       let k = fromJust $ elemIndex i (fst <$> sortedPosts)
       let z = fromJust $ seek k <$> zipper (snd <$> sortedPosts)
-      void $ runShakebookA r $ genBuildPageAction (sbSrcDir </> tmpl)
+      void $ runShakebookA r $ genBuildPageAction tmpl
                                 (const $ extract <$> extData z)
                                 id out
 
@@ -287,6 +287,10 @@ defaultCleanPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $
   phony "clean" $ do
       putInfo $ "Cleaning files in " ++ sbOutDir
       removeFilesAfter sbOutDir ["//*"]
+
+defaultSinglePagePhony :: MonadShakebookRules r m => String -> FilePath -> m ()
+defaultSinglePagePhony x y = view sbConfigL >>= \SbConfig {..} -> liftRules $ 
+  phony x $ need [sbOutDir </> y]
 
 {-|
   Default "shake statics" phony rule. automatically runs need on "\<out\>\/thing\/\*" for every
