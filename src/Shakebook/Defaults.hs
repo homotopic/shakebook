@@ -11,9 +11,6 @@ import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.List.Split
 import           Data.Text.Time
-import           Development.Shake            as S
-import           Development.Shake.Classes
-import qualified Development.Shake.FilePath   as S
 import           RIO
 import qualified RIO.ByteString.Lazy          as LBS
 import           RIO.List
@@ -25,7 +22,9 @@ import           RIO.Time
 import           Path                         as P
 import           Shakebook.Aeson
 import           Shakebook.Conventions
+import           Shakebook.Shake
 import           Shakebook.Data
+import           Shakebook.Within
 import           Text.DocTemplates
 import           Text.Pandoc.Class
 import           Text.Pandoc.Definition
@@ -338,7 +337,7 @@ defaultStaticsPhony pattern = ask >>= \r -> liftRules $
 defaultPostsPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultPostsPhony pattern = ask >>= \r -> liftRules $
   phony "posts" $ runShakebookA r $ 
-    getDirectoryFiles' pattern >>= mapM withHtmlExtension >>= needRel'
+    getDirectoryFiles' pattern >>= mapM (mapWithin withHtmlExtension) >>= needRel'
 
 {-|
   Default "shake posts-index" phony rule. Takes a [FilePattern] of posts to
