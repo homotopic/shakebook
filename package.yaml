@@ -104,10 +104,12 @@ dependencies:
 - free
 - lens
 - lens-aeson
+- mustache
 - relude
 - rio
 - pandoc
 - pandoc-types
+- path
 - shake
 - slick
 - split

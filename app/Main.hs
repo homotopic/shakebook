@@ -1,8 +1,9 @@
 module Main where
 
 import           Development.Shake
-import           Development.Shake.FilePath
+import           Development.Shake.FilePath as S
 import           Options.Applicative
+import           Path
 import           RIO
 import qualified RIO.Text                   as T
 import           Shakebook
@@ -34,8 +35,9 @@ opts = info (sample <**> helper)
 main :: IO ()
 main = do
   (x :: SimpleOpts) <- execParser opts
-
-  app $ SbConfig (srcDir x) (outDir x) (T.pack $ baseUrl x) defaultMarkdownReaderOptions defaultHtml5WriterOptions (ppp x)
+  s' <- parseRelDir (srcDir x)
+  o' <- parseRelDir (outDir x)
+  app $ SbConfig s' o' (T.pack $ baseUrl x) defaultMarkdownReaderOptions defaultHtml5WriterOptions (ppp x)
 
 app :: SbConfig -> IO ()
 app sbc =  do
@@ -54,7 +56,7 @@ app sbc =  do
         defaultSinglePagePattern "index.html" "templates/index.html"
                                  (affixRecentPosts ["posts/md"] 5 defaultEnrichPost)
 
-        liftRules $ phony "index" $ need [sbOutDir </> "index.html"]
+        liftRules $ phony "index" $ need [toFilePath sbOutDir S.</> "index.html"]
 
       phony "all" $ need ["index"]
 

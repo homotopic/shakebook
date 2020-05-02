@@ -1,8 +1,10 @@
+{-# LANGUAGE TemplateHaskell #-}
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store.Zipper
 import           Data.Aeson
 import           Data.List.Split
 import           Development.Shake
+import           Path
 import           RIO
 import           RIO.List
 import qualified RIO.Text                     as T
@@ -14,11 +16,11 @@ import           Test.Tasty
 import           Test.Tasty.Golden
 import           Text.Pandoc.Highlighting
 
-srcDir :: String
-srcDir = "test/site"
+srcDir :: Path Rel Dir
+srcDir = $(mkRelDir "test/site")
 
-outDir :: String
-outDir = "test/public"
+outDir :: Path Rel Dir
+outDir = $(mkRelDir "test/public")
 
 baseUrl :: Text
 baseUrl = "http://blanky.test"
@@ -32,7 +34,7 @@ toc = "docs/index.md" :< [
       ]
 
 myBlogNavbar :: [Value] -> Value
-myBlogNavbar = genBlogNavbarData "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (T.pack . defaultMonthIndexUrlFormat)
+myBlogNavbar = genBlogNavbarData "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment)
 
 numRecentPosts :: Int
 numRecentPosts = 3
@@ -58,7 +60,7 @@ rules = do
          (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost)
 
   defaultPostsPatterns     "posts/*.html" "templates/post.html"
-             (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (T.pack . defaultMonthIndexUrlFormat) defaultEnrichPost
+             (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment) defaultEnrichPost
          <=< affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
          . defaultEnrichPost . withHighlighting pygments)
               extendPostsZipper
@@ -75,7 +77,7 @@ rules = do
   defaultMonthIndexPatterns ["posts/*.md"] "templates/post-list.html"
                                 (enrichPostIndexPage ["posts/*.md"])
   defaultStaticsPatterns   ["css//*", "images//*", "js//*", "webfonts//*"]
-  defaultStaticsPhony
+  defaultStaticsPhony   ["css//*", "images//*", "js//*", "webfonts//*"]
 
   defaultSinglePagePhony    "index" "index.html"
   defaultPostsPhony         ["posts/*.md"]

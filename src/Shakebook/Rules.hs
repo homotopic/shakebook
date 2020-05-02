@@ -25,7 +25,7 @@ comonadStoreRuleGen fp f g h k =
 -}
 cofreeRuleGen :: (Traversable w, ComonadCofree f w)
               => w FilePath -- ^ A cofree comonad of FilePaths
-              -> (FilePath -> FilePath) -- ^ How to find the source for each out FilePath.
+              -> (FilePath -> FilePath) -- ^ How to find the out path for each source FilePath.
               -> (w FilePath -> FilePath -> Action ()) -- ^ How to generate a write Action for the target of a comonad. This is extended over the whole comonad.
               -> Rules ()
 cofreeRuleGen xs h k = do
