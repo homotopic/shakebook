@@ -116,19 +116,6 @@ enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
 enrichUrl :: (Text -> Text) -> Value -> Value
 enrichUrl f v = withUrl (f (viewSrcPath v)) v
 
--- | Filepath/URL calculators - these work but don't try to do the wrong thing or it will explode.
-stripSbOutDir :: (MonadThrow m, MonadReader r m, HasSbConfig r) => Path Rel t -> m (Path Rel t)
-stripSbOutDir x = view sbConfigL >>= \SbConfig{..} -> stripProperPrefix sbOutDir x
-
-stripSbSrcDir :: (MonadThrow m, MonadReader r m, HasSbConfig r) => Path Rel t -> m (Path Rel t)
-stripSbSrcDir x = view sbConfigL >>= \SbConfig{..} -> stripProperPrefix sbSrcDir x
-
-inSbSrcDir :: MonadShakebook r m => Path Rel t -> m (Path Rel t)
-inSbSrcDir x = view sbConfigL >>= \SbConfig{..} -> return $ (sbSrcDir </>) x
-
-inSbOutDir :: MonadShakebook r m => Path Rel t -> m (Path Rel t)
-inSbOutDir x = view sbConfigL >>= \SbConfig{..} -> return $ (sbOutDir </>) x
-
 leadingSlash :: Path Abs Dir
 leadingSlash = $(mkAbsDir "/")
 
@@ -150,29 +137,25 @@ data PaginationException = EmptyContentsError
 instance Exception PaginationException where
   displayException (EmptyContentsError) = "Can not create a Zipper of length zero."
 
-paginate' :: MonadShakebookAction r m => [a] -> m (Zipper [] [a])
-paginate' xs = view sbConfigL >>= \SbConfig{..} -> do
-                 case paginate sbPPP xs of
+paginate' :: MonadThrow m => Int -> [a] -> m (Zipper [] [a])
+paginate' n xs =  case paginate n xs of
                     Just x -> return x
                     Nothing -> throwM EmptyContentsError
   
-getMarkdown :: MonadShakebookAction r m => [FilePattern] -> m [Value]
-getMarkdown pat = view sbConfigL >>= \SbConfig{..} ->
+quickGetMarkdown :: (MonadReader r m, HasSbConfig r, MonadAction m) => [FilePattern] -> m [Value]
+quickGetMarkdown pat = view sbConfigL >>= \SbConfig{..} ->
   liftAction (getDirectoryFilesWithin' sbSrcDir pat) >>= mapM readMarkdownFile'
 
 {-| 
   Build a single page straight from a template, a loaded Value, and a pure enrichment.
 -}
-genBuildPageAction :: Path Rel File -- ^ The HTML template
-                   -> (Path Rel File -> Action Value) -- ^ How to get from FilePath to Value.
-                   -> (Value -> Value) -- ^ Additional modifiers for the value.
-                   -> Path Rel File -- ^ The out filepath
-                   -> Action Value
-genBuildPageAction template getData withData out = do
+buildPageAction :: Path Rel File -- ^ The HTML templatate.
+                -> Value -- ^ A JSON value.
+                -> Path Rel File -- ^ The out filepath.
+                -> Action ()
+buildPageAction template getData out = do
   pageT <- compileTemplate' template
-  dataT <- withData <$> getData out
-  writeFile' out $ substitute pageT dataT
-  return dataT
+  writeFile' out $ substitute pageT getData
 
 traverseToSnd :: Functor f => (a -> f b) -> a -> f (a, b)
 traverseToSnd f a = (a,) <$> f a

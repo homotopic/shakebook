@@ -7,8 +7,10 @@ module Shakebook.Shake (
 , getDirectoryFilesWithin'
 , Development.Shake.need
 , needPath
+, needPathIn
 , needWithin
 , readFile'
+, readFileIn'
 , writeFile'
 ) where
 
@@ -33,11 +35,17 @@ getDirectoryFilesWithin' x pat = do
 needPath :: [Path Rel File] -> Action ()
 needPath = Development.Shake.need . map toFilePath
 
+needPathIn :: Path Rel Dir -> [Path Rel File] -> Action ()
+needPathIn x ys = needWithin $ map (\y -> Within (x, y)) ys
+
 needWithin :: [Within Rel File] -> Action ()
 needWithin = needPath . map fromWithin
 
 readFile' :: Path Rel File -> Action Text
 readFile' = fmap T.pack . Development.Shake.readFile' . toFilePath
+
+readFileIn' :: Path Rel Dir -> Path Rel File -> Action Text
+readFileIn' x y = readFile' $ x </> y
 
 writeFile' :: Path Rel File -> Text -> Action ()
 writeFile' x y = Development.Shake.writeFile' (toFilePath x) (T.unpack y)
