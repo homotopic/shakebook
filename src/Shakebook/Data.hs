@@ -119,6 +119,21 @@ enrichUrl f v = withUrl (f (viewSrcPath v)) v
 leadingSlash :: Path Abs Dir
 leadingSlash = $(mkAbsDir "/")
 
+withHtmlExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
+withHtmlExtension = replaceExtension ".html"
+
+withMarkdownExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
+withMarkdownExtension = replaceExtension ".md"
+
+generateSupposedUrl :: MonadThrow m => Path Rel File -> m (Path Abs File)
+generateSupposedUrl srcPath = pure . (leadingSlash </>) =<< withHtmlExtension srcPath
+
+enrichSupposedUrl :: (MonadReader r m, HasSbConfig r, MonadThrow m) => Value -> m Value
+enrichSupposedUrl v = view sbConfigL >>= \SbConfig{..} -> do
+  x <- parseRelFile $ T.unpack $ viewSrcPath v
+  y <- generateSupposedUrl x
+  return $ withUrl (T.pack . toFilePath $ y) v
+
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
   and the srcPath as "srcPath" field.
@@ -129,7 +144,9 @@ readMarkdownFile' :: (MonadReader r m, HasSbConfig r, MonadAction m)
 readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> liftAction $ do
   docContent <- readFile' (fromWithin srcPath)
   docData <- markdownToHTMLWithOpts sbMdRead sbHTWrite docContent
-  return $ withSrcPath (T.pack . toFilePath $ whatLiesWithin srcPath) docData
+  supposedUrl <- liftIO $ pure . (leadingSlash </>) =<< withHtmlExtension (whatLiesWithin srcPath)
+  return $ withSrcPath (T.pack . toFilePath $ whatLiesWithin srcPath)
+         . withUrl (T.pack . toFilePath $ supposedUrl) $ docData
 
 data PaginationException = EmptyContentsError
   deriving (Show, Eq, Typeable)
@@ -141,21 +158,6 @@ paginate' :: MonadThrow m => Int -> [a] -> m (Zipper [] [a])
 paginate' n xs =  case paginate n xs of
                     Just x -> return x
                     Nothing -> throwM EmptyContentsError
-  
-quickGetMarkdown :: (MonadReader r m, HasSbConfig r, MonadAction m) => [FilePattern] -> m [Value]
-quickGetMarkdown pat = view sbConfigL >>= \SbConfig{..} ->
-  liftAction (getDirectoryFilesWithin' sbSrcDir pat) >>= mapM readMarkdownFile'
-
-{-| 
-  Build a single page straight from a template, a loaded Value, and a pure enrichment.
--}
-buildPageAction :: Path Rel File -- ^ The HTML templatate.
-                -> Value -- ^ A JSON value.
-                -> Path Rel File -- ^ The out filepath.
-                -> Action ()
-buildPageAction template getData out = do
-  pageT <- compileTemplate' template
-  writeFile' out $ substitute pageT getData
 
 traverseToSnd :: Functor f => (a -> f b) -> a -> f (a, b)
 traverseToSnd f a = (a,) <$> f a
@@ -175,7 +177,9 @@ loadSortFilterEnrich :: (MonadShakebookAction r m, Ord b)
                      -> (Value -> Value) -- ^ An initial enrichment. This is pure so can only be data derived from the initial markdown.
                      -> m [(Within Rel File, Value)] -- ^ A list of Values indexed by their srcPath.
 loadSortFilterEnrich pat s f e = view sbConfigL >>= \SbConfig {..} -> do
+    logInfo $ displayShow $ pat
     allPosts <- liftAction $ getDirectoryFilesWithin' sbSrcDir pat
+    logInfo $ display $ allPosts
     readPosts <- sequence $ traverseToSnd readMarkdownFile' <$> allPosts
     return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) readPosts
 

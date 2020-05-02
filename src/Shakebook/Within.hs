@@ -18,7 +18,17 @@ import Path
 import RIO
 
 newtype Within a t = Within (Path a Dir, Path Rel t)
-  deriving (Typeable, Generic, Eq)
+  deriving (Typeable, Generic, Eq, Show)
+
+instance Display (Path a t) where
+  display = displayBytesUtf8 . fromString . toFilePath
+
+instance Display (Within a t) where
+  display (Within (x,y)) = display x <> "[" <> display y <> "]"
+
+instance Display [Within a t] where
+  display [] = ""
+  display (x : xs) = display x <> " : " <> display xs
 
 fromWithin :: Within a t -> Path a t
 fromWithin (Within (x,y)) = x </> y

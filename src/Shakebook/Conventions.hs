@@ -230,10 +230,11 @@ genPageData t f xs = withTitle t
                    . withPosts (extract xs) $ Object mempty
 
 
-genIndexPageData :: [Value]
+genIndexPageData :: MonadThrow m
+                 => [Value]
                  -> Text
                  -> (Text -> Text)
                  -> Int
-                 -> Maybe (Zipper [] Value)
-genIndexPageData xs g h n = extend (genPageData g h) <$> paginate n xs
+                 -> m (Zipper [] Value)
+genIndexPageData xs g h n = extend (genPageData g h) <$> paginate' n xs
 

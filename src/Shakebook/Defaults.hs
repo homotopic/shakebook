@@ -26,6 +26,7 @@ import           Shakebook.Aeson
 import           Shakebook.Conventions
 import           Shakebook.Shake
 import           Shakebook.Data
+import           Shakebook.Mustache
 import           Shakebook.Within
 import           Text.DocTemplates
 import           Text.Pandoc.Class
@@ -90,12 +91,6 @@ defaultSbConfig :: Text -- ^ BaseURL
                 -> SbConfig
 defaultSbConfig x = SbConfig defaultSbSrcDir defaultSbOutDir x defaultMarkdownReaderOptions defaultHtml5WriterOptions defaultPostsPerPage
 
-withHtmlExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
-withHtmlExtension = replaceExtension ".html"
-
-withMarkdownExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
-withMarkdownExtension = replaceExtension ".md"
-
 affixBlogNavbar :: MonadShakebookAction r m
                 => [FilePattern]
                 -> Text
@@ -125,17 +120,16 @@ defaultDocsPatterns :: MonadShakebookRules r m
                     -> (Value -> Value) -- Extra data modifiers.
                     -> m ()
 defaultDocsPatterns toc tmpl withData = ask >>= \r -> view sbConfigL >>= \SbConfig{..} -> do
---  let e = enrichTypicalUrl
   tmpl' <- parseRelFile tmpl
-  toc' <- mapM (parseRelFile >=> (`asWithin` sbOutDir)  >=> mapWithinT withHtmlExtension) toc
+  toc' <- mapM (parseRelFile >=> pure . (`within` sbOutDir) >=> mapWithinT withHtmlExtension) toc
   liftRules $ void . sequence . flip extend toc' $ \xs -> (toFilePath . fromWithin $ extract xs) %>
          \out -> runShakebookA r $ do
              out' <- ((`asWithin` sbOutDir) <=< parseRelFile) out
-             ys <- mapM (blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile') toc'
-             zs <- mapM (blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile') xs
+             ys <- mapM (blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile' >=> enrichSupposedUrl) toc'
+             zs <- mapM (blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile' >=> enrichSupposedUrl) xs
              v  <- (readMarkdownFile' <=< blinkAndMapT sbSrcDir withMarkdownExtension) out'
              let v' = withData . withJSON (genTocNavbarData ys) . withSubsections (lower (zs)) $ v
-             liftAction $ buildPageAction tmpl' v' (fromWithin out')
+             liftAction $ buildPageActionWithin (tmpl' `within` sbSrcDir) v' out'
 
 defaultPostIndexData :: MonadShakebookAction r m
                      => [FilePattern]
@@ -146,8 +140,8 @@ defaultPostIndexData :: MonadShakebookAction r m
                      -> m (Zipper [] Value) -- A pager of index pages.
 defaultPostIndexData pat f t l a = view sbConfigL >>= \SbConfig {..} -> do
   xs <- loadSortFilterEnrich pat (Down . viewPostTime) (f a) defaultEnrichPost
-  let ys = genIndexPageData (snd <$> xs) (t a) (l a) sbPPP
-  return $ fromJust $ ys
+  ys <- genIndexPageData (snd <$> xs) (t a) (l a) sbPPP
+  return ys
 
 defaultPagerPattern :: MonadShakebookRules r m
                     => FilePattern
@@ -164,7 +158,7 @@ defaultPagerPattern fp tmpl f g h w = ask >>= \r -> view sbConfigL >>= \SbConfig
                               let x'' = toFilePath $ whatLiesWithin x'
                               xs <- (w <=< h) $ g (x'')
                               let b = extract (seek (f x'') xs)
-                              liftAction $ buildPageAction tmpl' b (fromWithin x')
+                              liftAction $ buildPageActionWithin (tmpl' `within` sbSrcDir) b x'
 
 defaultPostIndexPatterns :: MonadShakebookRules r m
                          => [FilePattern]
@@ -242,15 +236,21 @@ defaultPostsPatterns :: MonadShakebookRules r m
                      -> m ()
 defaultPostsPatterns pat tmpl e extData = ask >>= \r -> view sbConfigL >>= \SbConfig {..} ->
   liftRules $ toFilePath sbOutDir S.</> pat %> \out -> runShakebookA r $ do
+    logInfo $ displayShow $ "Caught pattern: " <> out
     out'  <- ((`asWithin` sbOutDir) <=< parseRelFile) out
+    logInfo $ display $ "Identified as within " <> display sbOutDir
     tmpl' <- parseRelFile tmpl
-    xs    <- loadSortEnrich [pat] (Down . viewPostTime) defaultEnrichPost
-    sortedPosts <- mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
-    i <- mapWithinT withMarkdownExtension out'
-    let k = fromJust $ elemIndex i (fst <$> sortedPosts)
-    let z = fromJust $ seek k <$> zipper (snd <$> sortedPosts)
+    logInfo $ display $ "Using template " <> display tmpl'
+    let pat' = pat S.-<.> ".md"
+    xs    <- loadSortEnrich [pat'] (Down . viewPostTime) defaultEnrichPost
+    xs'   <- mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
+    i     <- blinkAndMapT sbSrcDir withMarkdownExtension out'
+    logInfo $ display $ i
+    logInfo $ display $ fst <$> xs'
+    let k = fromJust $ elemIndex i (fst <$> xs')
+    let z = fromJust $ seek k <$> zipper (snd <$> xs')
     z' <- extData z
-    liftAction $ buildPageAction tmpl' (extract z') (fromWithin out')
+    liftAction $ buildPageActionWithin (tmpl' `within` sbSrcDir) (extract z') out'
 
 makePDFLaTeX :: Pandoc -> PandocIO (Either LBS.ByteString LBS.ByteString)
 makePDFLaTeX p = do
@@ -294,11 +294,11 @@ defaultSinglePagePattern :: MonadShakebookRules r m
                          -> m ()
 defaultSinglePagePattern out tmpl withDataM = ask >>= \r -> view sbConfigL >>= \SbConfig {..} -> do
   liftRules $ toFilePath sbOutDir S.</> out %> \x -> void $ runShakebookA r $ do 
-                 tmpl' <-  parseRelFile tmpl
-                 x'    <- parseRelFile x
-                 x''   <- (blinkAndMapT sbSrcDir withMarkdownExtension <=< (`asWithin` sbOutDir)) $ x'
+                 tmpl' <- parseRelFile tmpl
+                 x'    <- (`asWithin` sbOutDir) =<< parseRelFile x
+                 x''   <- blinkAndMapT sbSrcDir withMarkdownExtension $ x'
                  v     <- withDataM =<< readMarkdownFile' x''
-                 liftAction $ buildPageAction tmpl' v x'
+                 liftAction $ buildPageActionWithin (tmpl' `within` sbSrcDir) v x'
 
 {-|
   Default statics patterns. Takes a list of filepatterns and adds a rule that copies everything
@@ -321,7 +321,7 @@ defaultCleanPhony = view sbConfigL >>= \SbConfig {..} -> liftRules $
 
 defaultSinglePagePhony :: MonadShakebookRules r m => String -> FilePath -> m ()
 defaultSinglePagePhony x y = view sbConfigL >>= \SbConfig{..} -> liftRules $
-  phony x $ liftIO (parseRelFile y) >>= needPathIn sbSrcDir . pure
+  phony x $ liftIO (parseRelFile y) >>= needPathIn sbOutDir . pure
 
 {-|
   Default "shake statics" phony rule. automatically runs need on "\<out\>\/thing\/\*" for every
@@ -339,7 +339,7 @@ defaultStaticsPhony pattern = view sbConfigL >>= \SbConfig{..} -> liftRules $
 defaultPostsPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultPostsPhony pattern = view sbConfigL >>= \SbConfig{..} -> liftRules $
   phony "posts" $ 
-    getDirectoryFilesWithin' sbSrcDir pattern >>= liftIO . mapM (mapWithinT withHtmlExtension) >>= needWithin
+    getDirectoryFilesWithin' sbSrcDir pattern >>= liftIO . mapM (blinkAndMapT sbOutDir withHtmlExtension) >>= needWithin
 
 
 {-|
