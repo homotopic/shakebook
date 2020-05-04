@@ -58,7 +58,7 @@ blinkWithin :: Path b Dir -> Within a t -> Within b t
 blinkWithin = moveWithin . const
 
 moveWithin :: (Path a Dir -> Path b Dir) -> Within a t -> Within b t
-moveWithin f (Within (x,y)) = Within ((f x), y)
+moveWithin f (Within (x,y)) = Within (f x, y)
 
 moveWithinT :: MonadThrow m => (Path a Dir -> m (Path b Dir)) -> Within a t -> m (Within b t)
 moveWithinT f (Within (x,y)) = f x >>= \z -> return (Within (z,y))

@@ -106,7 +106,7 @@ withMarkdownExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
 withMarkdownExtension = replaceExtension ".md"
 
 generateSupposedUrl :: MonadThrow m => Path Rel File -> m (Path Abs File)
-generateSupposedUrl srcPath = pure . (leadingSlash </>) =<< withHtmlExtension srcPath
+generateSupposedUrl srcPath = (leadingSlash </>) <$> withHtmlExtension srcPath
 
 enrichSupposedUrl :: (MonadReader r m, HasSbConfig r, MonadThrow m) => Value -> m Value
 enrichSupposedUrl v = view sbConfigL >>= \SbConfig{..} -> do
@@ -124,7 +124,7 @@ readMarkdownFile' :: (MonadReader r m, HasSbConfig r, MonadAction m)
 readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> liftAction $ do
   docContent <- readFile' (fromWithin srcPath)
   docData <- markdownToHTMLWithOpts sbMdRead sbHTWrite docContent
-  supposedUrl <- liftIO $ pure . (leadingSlash </>) =<< withHtmlExtension (whatLiesWithin srcPath)
+  supposedUrl <- liftIO $ (leadingSlash </>) <$> withHtmlExtension (whatLiesWithin srcPath)
   return $ withSrcPath (T.pack . toFilePath $ whatLiesWithin srcPath)
          . withUrl (T.pack . toFilePath $ supposedUrl) $ docData
 
@@ -132,7 +132,7 @@ data PaginationException = EmptyContentsError
   deriving (Show, Eq, Typeable)
 
 instance Exception PaginationException where
-  displayException (EmptyContentsError) = "Can not create a Zipper of length zero."
+  displayException EmptyContentsError = "Can not create a Zipper of length zero."
 
 paginate' :: MonadThrow m => Int -> [a] -> m (Zipper [] [a])
 paginate' n xs =  case paginate n xs of
@@ -157,9 +157,7 @@ loadSortFilterEnrich :: (MonadShakebookAction r m, Ord b)
                      -> (Value -> Value) -- ^ An initial enrichment. This is pure so can only be data derived from the initial markdown.
                      -> m [(Within Rel File, Value)] -- ^ A list of Values indexed by their srcPath.
 loadSortFilterEnrich pat s f e = view sbConfigL >>= \SbConfig {..} -> do
-    logInfo $ displayShow $ pat
     allPosts <- liftAction $ getDirectoryFilesWithin' sbSrcDir pat
-    logInfo $ display $ allPosts
     readPosts <- sequence $ traverseToSnd readMarkdownFile' <$> allPosts
     return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) readPosts
 
