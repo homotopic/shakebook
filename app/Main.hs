@@ -7,6 +7,7 @@ import           Path
 import           RIO
 import qualified RIO.Text                   as T
 import           Shakebook
+import           Shakebook.Shake hiding (phony)
 import           Shakebook.Defaults
 
 sample :: Parser SimpleOpts

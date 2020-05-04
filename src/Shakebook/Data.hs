@@ -42,26 +42,8 @@ newtype Shakebook r a = Shakebook ( ReaderT r Rules a )
 instance MonadThrow (Shakebook r) where
   throwM = throwIO
 
-instance MonadThrow (ShakebookA r) where
-  throwM = throwIO
-
-newtype ShakebookA r a = ShakebookA ( ReaderT r Action a )
-  deriving (Functor, Applicative, Monad, MonadReader r, MonadIO)
-
 runShakebook :: r -> Shakebook r a -> Rules a
 runShakebook c (Shakebook f) = runReaderT f c
-
-runShakebookA :: r -> ShakebookA r a -> Action a
-runShakebookA c (ShakebookA f) = runReaderT f c
-
-class MonadAction m where
-  liftAction :: Action a -> m a
-
-class MonadRules m where
-  liftRules :: Rules a -> m a
-
-instance MonadAction (ShakebookA r) where
-  liftAction = ShakebookA . lift
 
 instance MonadRules (Shakebook r) where
   liftRules = Shakebook . lift

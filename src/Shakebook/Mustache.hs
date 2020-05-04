@@ -21,22 +21,24 @@ import Shakebook.Shake
 import Shakebook.Within
 import Text.Mustache
 
-compileTemplate' :: Path Rel File -> Action Template
-compileTemplate' = Slick.Mustache.compileTemplate' . toFilePath
+compileTemplate' :: MonadAction m => Path Rel File -> m Template
+compileTemplate' = liftAction . Slick.Mustache.compileTemplate' . toFilePath
 
 {-| 
   Build a single page straight from a template.
 -}
-buildPageAction :: Path Rel File -- ^ The HTML templatate.
+buildPageAction :: MonadAction m
+                => Path Rel File -- ^ The HTML templatate.
                 -> Value -- ^ A JSON value.
                 -> Path Rel File -- ^ The out filepath.
-                -> Action ()
+                -> m ()
 buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
-buildPageActionWithin :: Within Rel File
+buildPageActionWithin :: MonadAction m
+                      => Within Rel File
                       -> Value
                       -> Within Rel File
-                      -> Action ()
+                      -> m ()
 buildPageActionWithin template value out = buildPageAction (fromWithin template) value (fromWithin out)
