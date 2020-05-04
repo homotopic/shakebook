@@ -23,7 +23,6 @@ import           Path                         as P
 import           Shakebook.Aeson
 import           Shakebook.Conventions
 import           Shakebook.Shake
-import qualified Shakebook.Shake
 import           Shakebook.Data
 import           Shakebook.Mustache
 import           Shakebook.Within
@@ -304,7 +303,7 @@ defaultSinglePagePattern out tmpl withDataM = view sbConfigL >>= \SbConfig {..} 
   verbatim
 -}
 defaultStaticsPatterns :: MonadShakebookRules r m => [FilePattern] -> m ()
-defaultStaticsPatterns xs = view sbConfigL >>= \SbConfig {..} -> do
+defaultStaticsPatterns xs =  view sbConfigL >>= \SbConfig {..} -> do
   foldr (>>) (return ()) $ flip map xs $ \x ->
       (toFilePath sbOutDir S.</> x) %> \y -> do
        y' <- ((`asWithin` sbOutDir) <=< parseRelFile) y
