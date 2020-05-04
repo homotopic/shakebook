@@ -12,6 +12,7 @@ module Shakebook.Within (
 , blinkWithin
 , moveAndMapT
 , blinkAndMapT
+, PathDisplay(..)
 ) where
 
 import Path
@@ -20,11 +21,13 @@ import RIO
 newtype Within a t = Within (Path a Dir, Path Rel t)
   deriving (Typeable, Generic, Eq, Show)
 
-instance Display (Path a t) where
-  display = displayBytesUtf8 . fromString . toFilePath
+newtype PathDisplay a t = PathDisplay (Path a t)
+
+instance Display (PathDisplay a t) where
+  display (PathDisplay f) = displayBytesUtf8 . fromString . toFilePath $ f
 
 instance Display (Within a t) where
-  display (Within (x,y)) = display x <> "[" <> display y <> "]"
+  display (Within (x,y)) = display (PathDisplay x) <> "[" <> display (PathDisplay y) <> "]"
 
 instance Display [Within a t] where
   display [] = ""
@@ -43,7 +46,7 @@ asWithin :: MonadThrow m => Path a t -> Path a Dir -> m (Within a t)
 asWithin x y = stripProperPrefix y x >>= \z -> return (Within (y, z))
 
 whatLiesWithin :: Within a t -> Path Rel t
-whatLiesWithin (Within (x,y)) = y
+whatLiesWithin (Within (_,y)) = y
 
 mapWithin :: (Path Rel s -> Path Rel t) -> Within a s -> Within a t
 mapWithin f (Within (x,y)) = Within (x, f y)
@@ -61,7 +64,7 @@ moveWithinT :: MonadThrow m => (Path a Dir -> m (Path b Dir)) -> Within a t -> m
 moveWithinT f (Within (x,y)) = f x >>= \z -> return (Within (z,y))
 
 blinkAndMapT :: MonadThrow m => Path b Dir -> (Path Rel s -> m (Path Rel t)) -> Within a s -> m (Within b t)
-blinkAndMapT k g (Within (x,y)) = do
+blinkAndMapT k g (Within (_,y)) = do
   y' <- g y
   return $ Within (k, y')
 

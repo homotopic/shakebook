@@ -13,7 +13,6 @@ module Shakebook.Mustache (
 ) where
 
 import Data.Aeson
-import Development.Shake (Action)
 import Path
 import RIO
 import qualified Slick.Mustache

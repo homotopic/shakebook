@@ -20,6 +20,11 @@ module Shakebook.Shake (
 , (%>)
 , putInfo
 , removeFilesAfter
+, withUnliftAction
+, MonadUnliftAction(..)
+, UnliftAction(..)
+, askUnliftAction
+, toAction
 ) where
 
 import Control.Exception

@@ -16,8 +16,6 @@ import           Shakebook.Aeson
 import           Shakebook.Zipper
 import           Shakebook.Shake
 import           Shakebook.Within
-import           Shakebook.Mustache
-import           Slick hiding (compileTemplate')
 import           Slick.Pandoc
 import           Text.Pandoc.Options
 

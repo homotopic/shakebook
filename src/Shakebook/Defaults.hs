@@ -236,9 +236,9 @@ defaultPostsPatterns pat tmpl e extData = view sbConfigL >>= \SbConfig {..} ->
   (toFilePath sbOutDir S.</> pat) Shakebook.Shake.%> \out -> do
     logInfo $ displayShow $ "Caught pattern: " <> out
     out'  <- ((`asWithin` sbOutDir) <=< parseRelFile) out
-    logInfo $ display $ "Identified as within " <> display sbOutDir
+    logInfo $ display $ "Identified as within " <> display (PathDisplay sbOutDir)
     tmpl' <- parseRelFile tmpl
-    logInfo $ display $ "Using template " <> display tmpl'
+    logInfo $ display $ "Using template " <> display (PathDisplay tmpl')
     let pat' = pat S.-<.> ".md"
     xs    <- loadSortEnrich [pat'] (Down . viewPostTime) defaultEnrichPost
     xs'   <- mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
