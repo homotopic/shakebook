@@ -255,11 +255,11 @@ makePDFLaTeX p = do
   t <- compileDefaultTemplate "latex"
   makePDF "pdflatex" [] writeLaTeX defaultLatexWriterOptions { writerTemplate = Just t } p
 
-handleImages :: (Text -> Text) -> Inline -> Inline
-handleImages f (Image attr ins (src,txt)) =
+handleImages :: Text -> (Text -> Text) -> Inline -> Inline
+handleImages prefix f (Image attr ins (src,txt)) =
   if T.takeEnd 4 src == ".mp4" then Str (f src)
-  else Image attr ins ("public/" <> src, txt)
-handleImages _ x = x
+  else Image attr ins (prefix <> "/" <> src, txt)
+handleImages _ _ x = x
 
 handleHeaders :: Int -> Block -> Block
 handleHeaders i (Header a as xs) = Header (max 1 (a + i)) as xs
@@ -269,14 +269,14 @@ pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
 pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
 
 -- | Build a PDF from a Cofree table of contents.
-buildPDF :: (MonadShakebookAction r m, MonadFail m) => Cofree [] (Path Rel File) -> Path Rel File -> FilePath -> m ()
+buildPDF :: (MonadShakebookAction r m, MonadFail m) => Cofree [] String -> Path Rel File -> FilePath -> m ()
 buildPDF toc meta out = view sbConfigL >>= \SbConfig {..} -> do
-  y <- mapM (readFileIn' sbSrcDir) toc
+  y <- mapM (readFileIn' sbSrcDir <=< parseRelFile) toc
   m <- readFileIn' sbSrcDir meta
   Right f <- liftIO . runIOorExplode $ do
     k <- mapM (readMarkdown sbMdRead ) y
     a <- readMarkdown sbMdRead $ m
-    let z = walk (handleImages (\x -> "[Video available at " <> sbBaseUrl <> x <> "]")) $ foldr (<>) a $ pushHeaders (-1) k
+    let z = walk (handleImages (T.pack $ toFilePath sbOutDir) (\x -> "[Video available at " <> sbBaseUrl <> x <> "]")) $ foldr (<>) a $ pushHeaders (-1) k
     makePDFLaTeX z
   LBS.writeFile out f
 
