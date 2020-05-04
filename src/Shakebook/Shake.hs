@@ -111,8 +111,8 @@ removeFilesAfter x y = liftAction $ Development.Shake.removeFilesAfter (toFilePa
 phony :: (MonadReader r m, MonadRules m) => String -> RAction r () -> m ()
 phony x ract = ask >>= \r -> liftRules $ Development.Shake.phony x $ runRAction r ract
 
-(%>) :: (MonadReader r m, MonadRules m) => FilePattern -> (FilePath -> RAction r ()) -> m ()
-(%>) x ract = ask >>= \r -> liftRules $ x Development.Shake.%> (runRAction r . ract)
+(%>) :: (MonadReader r m, MonadRules m) => FilePattern -> (Path Rel File -> RAction r ()) -> m ()
+(%>) x ract = ask >>= \r -> liftRules $ x Development.Shake.%> (runRAction r . (ract <=< parseRelFile))
 
 withUnliftAction :: MonadUnliftAction m => (UnliftAction m -> Action a) -> m a
 withUnliftAction inner = askUnliftAction >>= liftAction . inner

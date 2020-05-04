@@ -122,7 +122,7 @@ defaultDocsPatterns toc tmpl withData = view sbConfigL >>= \SbConfig{..} -> do
   toc' <- mapM (parseRelFile >=> pure . (`within` sbOutDir) >=> mapWithinT withHtmlExtension) toc
   void . sequence . flip extend toc' $ \xs -> (toFilePath . fromWithin $ extract xs) %>
          \out -> do
-             out' <- ((`asWithin` sbOutDir) <=< parseRelFile) out
+             out' <- out `asWithin` sbOutDir
              ys <- mapM (blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile' >=> enrichSupposedUrl) toc'
              zs <- mapM (blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile' >=> enrichSupposedUrl) xs
              v  <- (readMarkdownFile' <=< blinkAndMapT sbSrcDir withMarkdownExtension) out'
@@ -152,7 +152,7 @@ defaultPagerPattern :: MonadShakebookRules r m
 defaultPagerPattern fp tmpl f g h w = view sbConfigL >>= \SbConfig{..} -> do
   tmpl' <- parseRelFile tmpl
   (toFilePath sbOutDir S.</> fp) %> \x -> do
-                              x' <- ((`asWithin` sbOutDir) <=< parseRelFile) x
+                              x' <- x `asWithin` sbOutDir
                               let x'' = toFilePath $ whatLiesWithin x'
                               xs <- (w <=< h) $ g (x'')
                               let b = extract (seek (f x'') xs)
@@ -233,9 +233,9 @@ defaultPostsPatterns :: MonadShakebookRules r m
                      -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ A transformation on the entire post zipper.
                      -> m ()
 defaultPostsPatterns pat tmpl e extData = view sbConfigL >>= \SbConfig {..} ->
-  (toFilePath sbOutDir S.</> pat) Shakebook.Shake.%> \out -> do
-    logInfo $ displayShow $ "Caught pattern: " <> out
-    out'  <- ((`asWithin` sbOutDir) <=< parseRelFile) out
+  (toFilePath sbOutDir S.</> pat) %> \out -> do
+    logInfo $ display $ "Caught pattern: " <> display (PathDisplay out)
+    out'  <- out `asWithin` sbOutDir
     logInfo $ display $ "Identified as within " <> display (PathDisplay sbOutDir)
     tmpl' <- parseRelFile tmpl
     logInfo $ display $ "Using template " <> display (PathDisplay tmpl')
@@ -293,7 +293,7 @@ defaultSinglePagePattern :: (MonadRules m, MonadReader r m, HasSbConfig r)
 defaultSinglePagePattern out tmpl withDataM = view sbConfigL >>= \SbConfig {..} -> do
   (toFilePath sbOutDir S.</> out) %> \x -> void $ do
                  tmpl' <- parseRelFile tmpl
-                 x'    <- (`asWithin` sbOutDir) =<< parseRelFile x
+                 x'    <- x `asWithin` sbOutDir
                  x''   <- blinkAndMapT sbSrcDir withMarkdownExtension $ x'
                  v     <- withDataM =<< readMarkdownFile' x''
                  buildPageActionWithin (tmpl' `within` sbSrcDir) v x'
@@ -306,7 +306,7 @@ defaultStaticsPatterns :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultStaticsPatterns xs =  view sbConfigL >>= \SbConfig {..} -> do
   foldr (>>) (return ()) $ flip map xs $ \x ->
       (toFilePath sbOutDir S.</> x) %> \y -> do
-       y' <- ((`asWithin` sbOutDir) <=< parseRelFile) y
+       y' <- y `asWithin` sbOutDir
        let y'' = blinkWithin sbSrcDir y'
        copyFileChanged' (fromWithin y'') (fromWithin y')
 
