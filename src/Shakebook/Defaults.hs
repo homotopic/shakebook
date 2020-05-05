@@ -10,6 +10,8 @@ import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.List.Split
 import           Data.Text.Time
+import           Development.Shake.Plus
+import           Development.Shake (FilePattern)
 import qualified Development.Shake.FilePath   as S
 import           RIO
 import qualified RIO.ByteString.Lazy          as LBS
@@ -22,8 +24,8 @@ import           RIO.Time
 import           Path                         as P
 import           Shakebook.Aeson
 import           Shakebook.Conventions
-import           Shakebook.Shake
 import           Shakebook.Data
+import           Shakebook.Shake
 import           Shakebook.Mustache
 import           Shakebook.Within
 import           Text.DocTemplates
@@ -302,7 +304,7 @@ defaultStaticsPatterns :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultStaticsPatterns xs =  view sbConfigL >>= \SbConfig {..} -> do
   foldr (>>) (return ()) $ flip map xs $ flip (%>~) $ \y -> do
        let y' = blinkWithin sbSrcDir y
-       copyFileChanged' (fromWithin y') (fromWithin y)
+       copyFileChanged (fromWithin y') (fromWithin y)
 
 -- | Default "shake clean" phony, cleans your output directory.
 defaultCleanPhony :: MonadShakebookRules r m => m ()

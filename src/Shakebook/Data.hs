@@ -8,6 +8,8 @@ import           Control.Lens               hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                 as A
 import           Data.Aeson.Lens
+import           Development.Shake.Plus
+import           Development.Shake (FilePattern)
 import           Path                       as P
 import           RIO                        hiding (Lens', lens, view)
 import           RIO.List
@@ -34,18 +36,6 @@ data SbConfig = SbConfig
 
 class HasSbConfig a where
   sbConfigL :: Lens' a SbConfig
-
-newtype Shakebook r a = Shakebook ( ReaderT r Rules a )
-  deriving (Functor, Applicative, Monad, MonadReader r, MonadIO)
-
-instance MonadThrow (Shakebook r) where
-  throwM = throwIO
-
-runShakebook :: r -> Shakebook r a -> Rules a
-runShakebook c (Shakebook f) = runReaderT f c
-
-instance MonadRules (Shakebook r) where
-  liftRules = Shakebook . lift
 
 data ShakebookEnv = ShakebookEnv
     { logFunc  :: LogFunc
@@ -135,9 +125,6 @@ paginate' :: MonadThrow m => Int -> [a] -> m (Zipper [] [a])
 paginate' n xs =  case paginate n xs of
                     Just x -> return x
                     Nothing -> throwM EmptyContentsError
-
-traverseToSnd :: Functor f => (a -> f b) -> a -> f (a, b)
-traverseToSnd f a = (a,) <$> f a
 
 lower :: Cofree [] Value -> [Value]
 lower (_ :< xs) = extract <$> xs

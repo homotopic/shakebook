@@ -1,7 +1,10 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Main where
 
-import           Development.Shake
-import           Development.Shake.FilePath as S
+import           Development.Shake (shake, want, shakeLintInside, shakeOptions)
+import qualified Development.Shake as S
+import           Development.Shake.Plus
+import qualified Development.Shake.FilePath as S
 import           Options.Applicative
 import           Path
 import           RIO
@@ -33,6 +36,8 @@ opts = info (sample <**> helper)
    <> progDesc "Creates a simple blog from source with default settings."
    <> header "shakebook-simple-blog - A simple blog using standard shakebook conventions." )
 
+indexHTML = $(mkRelFile "index.html")
+
 main :: IO ()
 main = do
   (x :: SimpleOpts) <- execParser opts
@@ -46,7 +51,7 @@ app sbc =  do
     lf <- newLogFunc logOptions'
     let f = ShakebookEnv (fst lf) sbc
 
-    shake (shakeOptions { shakeVerbosity = Chatty, shakeLintInside = ["\\"] }) $ do
+    shake (shakeOptions { shakeLintInside = ["\\"] }) $ do
 
       want ["all"]
 
@@ -57,8 +62,8 @@ app sbc =  do
         defaultSinglePagePattern "index.html" "templates/index.html"
                                  (affixRecentPosts ["posts/md"] 5 defaultEnrichPost)
 
-        liftRules $ phony "index" $ need [toFilePath sbOutDir S.</> "index.html"]
+        phony "index" $ need [sbOutDir </> indexHTML]
 
-      phony "all" $ need ["index"]
+      S.phony "all" $ S.need ["index"]
 
     snd lf

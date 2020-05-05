@@ -111,6 +111,7 @@ dependencies:
 - pandoc-types
 - path
 - shake
+- shake-plus
 - slick
 - split
 - text-time
