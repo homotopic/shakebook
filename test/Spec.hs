@@ -11,7 +11,6 @@ import           RIO
 import           RIO.List
 import qualified RIO.Text                     as T
 import           Shakebook
-import           Shakebook.Shake
 import           Shakebook.Aeson
 import           Shakebook.Conventions
 import           Shakebook.Defaults
