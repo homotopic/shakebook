@@ -11,16 +11,13 @@ module Shakebook.Shake (
 , traverseToSnd
 ) where
 
-import Control.Exception
-import Control.Exception.Extra
 import qualified Development.Shake
 import qualified Development.Shake.FilePath
-import Development.Shake (Action, Rules, FilePattern, RuleResult, ShakeValue)
+import Development.Shake (FilePattern)
 import Path
 import RIO
 import RIO.List
-import qualified RIO.Text as T
-import Shakebook.Within
+import Within
 import Development.Shake.Plus
 
 traverseToSnd :: Functor f => (a -> f b) -> a -> f (a, b)

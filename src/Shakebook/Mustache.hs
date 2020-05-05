@@ -16,10 +16,9 @@ import Data.Aeson
 import Path
 import RIO
 import qualified Slick.Mustache
-import Shakebook.Shake
-import Shakebook.Within
 import Development.Shake.Plus
 import Text.Mustache
+import Within
 
 compileTemplate' :: MonadAction m => Path Rel File -> m Template
 compileTemplate' = liftAction . Slick.Mustache.compileTemplate' . toFilePath

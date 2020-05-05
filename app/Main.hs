@@ -4,13 +4,11 @@ module Main where
 import           Development.Shake (shake, want, shakeLintInside, shakeOptions)
 import qualified Development.Shake as S
 import           Development.Shake.Plus
-import qualified Development.Shake.FilePath as S
 import           Options.Applicative
 import           Path
 import           RIO
 import qualified RIO.Text                   as T
 import           Shakebook
-import           Shakebook.Shake hiding (phony)
 import           Shakebook.Defaults
 
 sample :: Parser SimpleOpts
@@ -36,6 +34,7 @@ opts = info (sample <**> helper)
    <> progDesc "Creates a simple blog from source with default settings."
    <> header "shakebook-simple-blog - A simple blog using standard shakebook conventions." )
 
+indexHTML :: Path Rel File
 indexHTML = $(mkRelFile "index.html")
 
 main :: IO ()

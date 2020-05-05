@@ -27,7 +27,6 @@ import           Shakebook.Conventions
 import           Shakebook.Data
 import           Shakebook.Shake
 import           Shakebook.Mustache
-import           Shakebook.Within
 import           Text.DocTemplates
 import           Text.Pandoc.Class
 import           Text.Pandoc.Definition
@@ -37,6 +36,7 @@ import           Text.Pandoc.Readers
 import           Text.Pandoc.Templates
 import           Text.Pandoc.Walk
 import           Text.Pandoc.Writers
+import           Within
 
 defaultMonthUrlFormat :: UTCTime -> String
 defaultMonthUrlFormat = formatTime defaultTimeLocale "%Y-%m"
@@ -235,15 +235,15 @@ defaultPostsPatterns :: MonadShakebookRules r m
                      -> m ()
 defaultPostsPatterns pat tmpl e extData = view sbConfigL >>= \SbConfig {..} ->
    pat %>~ \out -> do
-    logInfo $ display $ "Caught pattern: " <> display out
+    logInfo $ display $ "Caught pattern: " <> display (WithinDisplay out)
     tmpl' <- parseRelFile tmpl
     logInfo $ display $ "Using template " <> display (PathDisplay tmpl')
     let pat' = pat S.-<.> ".md"
     xs    <- loadSortEnrich [pat'] (Down . viewPostTime) defaultEnrichPost
     xs'   <- mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
     i     <- blinkAndMapT sbSrcDir withMarkdownExtension out
-    logInfo $ display $ i
-    logInfo $ display $ fst <$> xs'
+    logInfo $ display $ WithinDisplay i
+    logInfo $ display $ WithinDisplay . fst <$> xs'
     let k = fromJust $ elemIndex i (fst <$> xs')
     let z = fromJust $ seek k <$> zipper (snd <$> xs')
     z' <- extData z

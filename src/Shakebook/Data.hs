@@ -17,10 +17,23 @@ import qualified RIO.Text                   as T
 import           Shakebook.Aeson
 import           Shakebook.Zipper
 import           Shakebook.Shake
-import           Shakebook.Within
-import           Shakebook.Shake
 import           Slick.Pandoc
 import           Text.Pandoc.Options
+import           Within
+
+newtype PathDisplay a t = PathDisplay (Path a t)
+
+instance Display (PathDisplay a t) where
+  display (PathDisplay f) = displayBytesUtf8 . fromString . toFilePath $ f
+
+newtype WithinDisplay a t = WithinDisplay (Within a t)
+
+instance Display (WithinDisplay a t) where
+  display (WithinDisplay (Within (x,y))) = display (PathDisplay x) <> "[" <> display (PathDisplay y) <> "]"
+
+instance Display [WithinDisplay a t] where
+  display [] = ""
+  display (x : xs) = display x <> " : " <> display xs
 
 type ToC = Cofree [] String
 
