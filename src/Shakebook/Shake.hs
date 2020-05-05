@@ -25,15 +25,25 @@ module Shakebook.Shake (
 , UnliftAction(..)
 , askUnliftAction
 , toAction
+, HasLocalOut(..)
+, (%>~)
+, needLocalOut
+, runShakePlus
 ) where
 
 import Control.Exception
+import Control.Exception.Extra
 import qualified Development.Shake
-import Development.Shake (Action, Rules, FilePattern)
+import qualified Development.Shake.FilePath
+import Development.Shake (Action, Rules, FilePattern, RuleResult, ShakeValue)
 import Path
 import RIO
+import RIO.List
 import qualified RIO.Text as T
 import Shakebook.Within
+
+traverseToSnd :: Functor f => (a -> f b) -> a -> f (a, b)
+traverseToSnd f a = (a,) <$> f a
 
 copyFileChanged' :: MonadAction m => Path Rel File -> Path Rel File -> m ()
 copyFileChanged' x y = liftAction $ Development.Shake.copyFileChanged (toFilePath x) (toFilePath y)
@@ -48,6 +58,9 @@ getDirectoryFilesWithin' x pat = do
 
 needPath :: MonadAction m => [Path Rel File] -> m ()
 needPath = liftAction . Development.Shake.need . map toFilePath
+
+needLocalOut :: (MonadAction m, MonadReader r m, HasLocalOut r) => [Path Rel File] -> m ()
+needLocalOut ys = view localOutL >>= \r -> needPathIn r ys
 
 needPathIn :: MonadAction m => Path Rel Dir -> [Path Rel File] -> m ()
 needPathIn x ys = liftAction $ needWithin $ map (\y -> Within (x, y)) ys
@@ -96,11 +109,27 @@ instance MonadUnliftAction m => MonadUnliftAction (ReaderT r m) where
 newtype RAction r a = RAction (ReaderT r Action a)
   deriving (Functor, Applicative, Monad, MonadReader r, MonadIO, MonadAction, MonadUnliftAction)
 
+instance MonadRules Rules where
+  liftRules = id
+
+instance MonadRules m => MonadRules (ReaderT r m) where
+  liftRules = lift . liftRules
+
+newtype ShakePlus r a = ShakePlus (ReaderT r Rules a)
+  deriving (Functor, Applicative, Monad, MonadReader r, MonadIO, MonadRules)
+
 instance MonadThrow (RAction r) where
+  throwM = liftIO . Control.Exception.throwIO
+
+instance MonadThrow (ShakePlus r) where
   throwM = liftIO . Control.Exception.throwIO
 
 runRAction :: MonadAction m => env -> RAction env a -> m a
 runRAction env (RAction (ReaderT f)) = liftAction (f env)
+
+runShakePlus :: MonadRules m => env -> ShakePlus env a -> m a
+runShakePlus env (ShakePlus (ReaderT f)) = liftRules (f env)
+
 
 putInfo :: MonadAction m => String -> m ()
 putInfo = liftAction . Development.Shake.putInfo
@@ -122,3 +151,21 @@ askUnliftAction = withRunInAction (\run -> return (UnliftAction run))
 
 toAction :: MonadUnliftAction m => m a -> m (Action a)
 toAction m = withRunInAction $ \run -> return $ run m
+
+(%>~) :: (MonadReader r m, MonadRules m, HasLocalOut r) => FilePattern -> (Within Rel File -> RAction r ()) -> m ()
+(%>~) pat f = view localOutL >>= \o -> (toFilePath o Development.Shake.FilePath.</> pat) %> \x -> (x `asWithin` o) >>= f
+
+loadSortFilterApply :: (MonadAction m, Ord b)
+                    => Path Rel Dir
+                    -> [FilePattern]
+                    -> (Path Rel File -> m a)
+                    -> (a -> b)
+                    -> (a -> Bool)
+                    -> (a -> a)
+                    -> m[(Path Rel File, a)]
+loadSortFilterApply dir pat l s f e = do
+  xs <- getDirectoryFiles' dir pat >>= mapM (traverseToSnd l)
+  return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) $ xs
+
+class HasLocalOut r where
+  localOutL :: Lens' r (Path Rel Dir)

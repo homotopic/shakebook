@@ -50,7 +50,7 @@ app sbc =  do
 
       want ["all"]
 
-      runShakebook f $ view sbConfigL >>= \SbConfig {..} -> do
+      runShakePlus f $ view sbConfigL >>= \SbConfig {..} -> do
 
         defaultCleanPhony
 

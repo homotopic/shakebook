@@ -9,6 +9,7 @@ import           RIO
 import           RIO.List
 import qualified RIO.Text                     as T
 import           Shakebook
+import           Shakebook.Shake
 import           Shakebook.Aeson
 import           Shakebook.Conventions
 import           Shakebook.Defaults
@@ -104,6 +105,6 @@ main = do
    lf <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    let f = ShakebookEnv (fst lf) sbc
    shake shakeOptions $ want ["clean"] >> runShakebook f rules
-   shake shakeOptions $ want ["index", "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakebook f rules
+   shake shakeOptions $ want ["index", "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
    defaultMain $ tests xs
    snd lf

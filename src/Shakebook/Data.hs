@@ -16,6 +16,7 @@ import           Shakebook.Aeson
 import           Shakebook.Zipper
 import           Shakebook.Shake
 import           Shakebook.Within
+import           Shakebook.Shake
 import           Slick.Pandoc
 import           Text.Pandoc.Options
 
@@ -51,18 +52,14 @@ data ShakebookEnv = ShakebookEnv
     , sbConfig :: SbConfig
     }
 
+instance HasLocalOut ShakebookEnv where
+  localOutL = lens (sbOutDir . sbConfig) undefined
+
 instance HasSbConfig ShakebookEnv where
   sbConfigL = lens sbConfig undefined
 
 instance HasLogFunc ShakebookEnv where
   logFuncL = lens logFunc undefined
-
-type MonadShakebook r m = (MonadReader r m, HasSbConfig r, HasLogFunc r, MonadIO m, MonadThrow m)
-type MonadShakebookAction r m = (MonadShakebook r m, MonadAction m)
-type MonadShakebookRules r m = (MonadShakebook r m, MonadRules m)
-
-
-
 
 -- | View the "srcPath" field of a JSON Value.
 viewSrcPath :: Value -> Text
@@ -144,6 +141,11 @@ traverseToSnd f a = (a,) <$> f a
 
 lower :: Cofree [] Value -> [Value]
 lower (_ :< xs) = extract <$> xs
+
+type MonadShakebook r m = (MonadReader r m, HasSbConfig r, HasLogFunc r, MonadIO m, MonadThrow m, HasLocalOut r)
+type MonadShakebookAction r m = (MonadShakebook r m, MonadAction m)
+type MonadShakebookRules r m = (MonadShakebook r m, MonadRules m)
+
 
 {-|
   Multi-markdown loader. Allows you to load a filepattern of markdown as a list of JSON
