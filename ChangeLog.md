@@ -10,6 +10,8 @@ and the [within](https://hackage.haskell.org/package/within) library which
 introduces the `Within` type for representing a `Path` within a `Path`.
 * Zipper functionality moved to external library
   [zipper-extra](https://hackage.haskell.org/package/zipper-extra).
+* `Shakebook` and `ShakebookA` dropped in favour of `ShakePlus` and `RAction`
+   from `shake-plus`.
 
 ## (v0.2.0.3)
 
