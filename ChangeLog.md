@@ -1,5 +1,16 @@
 # Changelog for Shakebook
 
+## (v0.2.2.0)
+
+* Depend on new experimental library
+  [shake-plus](https://hackage.haskell.org/package/shake-plus), that includes
+re-exports of the Shake API based on the
+[path](https://hackage.haskell.org/package/path) library for well-typed paths
+and the [within](https://hackage.haskell.org/package/within) library which
+introduces the `Within` type for representing a `Path` within a `Path`.
+* Zipper functionality moved to external library
+  [zipper-extra](https://hackage.haskell.org/package/zipper-extra).
+
 ## (v0.2.0.3)
 
 * Add logging to Shakebook's monads via RIO's logging methods.
