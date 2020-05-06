@@ -5,7 +5,7 @@ module Shakebook.Defaults where
 import           Control.Comonad
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store.Class
-import           Control.Comonad.Store.Zipper
+import           Control.Comonad.Zipper.Extra
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.List.Split

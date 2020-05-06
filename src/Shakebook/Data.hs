@@ -3,7 +3,7 @@ module Shakebook.Data where
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
-import           Control.Comonad.Store.Zipper
+import           Control.Comonad.Zipper.Extra
 import           Control.Lens               hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                 as A
@@ -15,7 +15,6 @@ import           RIO                        hiding (Lens', lens, view)
 import           RIO.List
 import qualified RIO.Text                   as T
 import           Shakebook.Aeson
-import           Shakebook.Zipper
 import           Shakebook.Shake
 import           Slick.Pandoc
 import           Text.Pandoc.Options

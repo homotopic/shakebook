@@ -51,7 +51,7 @@ module Shakebook.Conventions (
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
-import           Control.Comonad.Store.Zipper
+import           Control.Comonad.Zipper.Extra
 import           Control.Lens                 hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
@@ -66,7 +66,6 @@ import           RIO.Time
 import qualified RIO.Vector                   as V
 import           Shakebook.Aeson
 import           Shakebook.Data
-import           Shakebook.Zipper
 import           Text.Pandoc.Highlighting
 
 

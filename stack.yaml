@@ -7,6 +7,7 @@ extra-deps:
 - text-time-0.2.0@sha256:ae94071e29a5265f60de19c054a5308cee54a849678fbb8ea8d9657510c87b4c,1757
 - shake-plus-0.0.1.2
 - within-0.0.1.0
+- zipper-extra-0.1.0.0
 nix:
   enable: false
   packages: [zlib]
