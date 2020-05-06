@@ -11,7 +11,6 @@ import           Data.Aeson                   as A
 import           Data.List.Split
 import           Data.Text.Time
 import           Development.Shake.Plus
-import           Development.Shake (FilePattern)
 import qualified Development.Shake.FilePath   as S
 import           RIO
 import qualified RIO.ByteString.Lazy          as LBS
@@ -25,7 +24,6 @@ import           Path                         as P
 import           Shakebook.Aeson
 import           Shakebook.Conventions
 import           Shakebook.Data
-import           Shakebook.Shake
 import           Shakebook.Mustache
 import           Text.DocTemplates
 import           Text.Pandoc.Class
@@ -124,7 +122,7 @@ defaultDocsPatterns toc tmpl withData = view sbConfigL >>= \SbConfig{..} -> do
   o <- view localOutL
   toc'  <- mapM (parseRelFile >=> pure . (`within` o) >=> mapWithinT withHtmlExtension) toc
   let e = blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile' >=> enrichSupposedUrl
-  void . sequence . flip extend toc' $ \xs -> (toFilePath . whatLiesWithin $ extract xs) %>~  \out -> do
+  void . sequence . flip extend toc' $ \xs -> (toFilePath . whatLiesWithin $ extract xs) %->  \out -> do
              ys <- mapM e toc'
              zs <- mapM e xs
              v  <- e out
@@ -153,7 +151,7 @@ defaultPagerPattern :: (MonadShakebookRules r m)
                     -> m ()
 defaultPagerPattern fp tmpl f g h w = view sbConfigL >>= \SbConfig{..} -> do
   tmpl' <- parseRelFile tmpl
-  fp %>~ \x -> do
+  fp %-> \x -> do
     let x' = toFilePath $ whatLiesWithin x
     xs <- (w <=< h) $ g (x')
     let b = extract (seek (f x') xs)
@@ -234,7 +232,7 @@ defaultPostsPatterns :: MonadShakebookRules r m
                      -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ A transformation on the entire post zipper.
                      -> m ()
 defaultPostsPatterns pat tmpl e extData = view sbConfigL >>= \SbConfig {..} ->
-   pat %>~ \out -> do
+   pat %-> \out -> do
     logInfo $ display $ "Caught pattern: " <> display (WithinDisplay out)
     tmpl' <- parseRelFile tmpl
     logInfo $ display $ "Using template " <> display (PathDisplay tmpl')
@@ -290,7 +288,7 @@ defaultSinglePagePattern :: (MonadRules m, MonadReader r m, HasSbConfig r, HasLo
                          -> (Value -> RAction r Value) -- ^ Last minute enrichment.
                          -> m ()
 defaultSinglePagePattern out tmpl withDataM = view sbConfigL >>= \SbConfig {..} -> do
-  out %>~ \x -> do
+  out %-> \x -> do
     tmpl' <- parseRelFile tmpl
     x'    <- blinkAndMapT sbSrcDir withMarkdownExtension $ x
     v     <- withDataM =<< readMarkdownFile' x'
@@ -302,7 +300,7 @@ defaultSinglePagePattern out tmpl withDataM = view sbConfigL >>= \SbConfig {..} 
 -}
 defaultStaticsPatterns :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultStaticsPatterns xs =  view sbConfigL >>= \SbConfig {..} -> do
-  foldr (>>) (return ()) $ flip map xs $ flip (%>~) $ \y -> do
+  foldr (>>) (return ()) $ flip map xs $ flip (%->) $ \y -> do
        let y' = blinkWithin sbSrcDir y
        copyFileChanged (fromWithin y') (fromWithin y)
 
@@ -310,7 +308,7 @@ defaultStaticsPatterns xs =  view sbConfigL >>= \SbConfig {..} -> do
 defaultCleanPhony :: MonadShakebookRules r m => m ()
 defaultCleanPhony = view sbConfigL >>= \SbConfig {..} -> 
   phony "clean" $ do
-      putInfo $ "Cleaning files in " ++ toFilePath sbOutDir
+      logInfo $ "Cleaning files in " <> display (PathDisplay sbOutDir)
       removeFilesAfter sbOutDir ["//*"]
 
 defaultSinglePagePhony :: MonadShakebookRules r m => String -> FilePath -> m ()
@@ -323,7 +321,7 @@ defaultSinglePagePhony x y = phony x $ parseRelFile y >>= needLocalOut . pure
 defaultStaticsPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultStaticsPhony pattern = view sbConfigL >>= \SbConfig{..} -> 
   phony "statics" $ 
-    getDirectoryFilesWithin' sbSrcDir pattern >>= needWithin
+    getDirectoryFilesWithin sbSrcDir pattern >>= needWithin
 
 {-|
   Default "shake posts" phony rule. takes a [FilePattern] pointing to the posts and
@@ -332,7 +330,7 @@ defaultStaticsPhony pattern = view sbConfigL >>= \SbConfig{..} ->
 defaultPostsPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultPostsPhony pattern = view sbConfigL >>= \SbConfig{..} -> 
   phony "posts" $ 
-    getDirectoryFilesWithin' sbSrcDir pattern >>= mapM (blinkAndMapT sbOutDir withHtmlExtension) >>= needWithin
+    getDirectoryFilesWithin sbSrcDir pattern >>= mapM (blinkAndMapT sbOutDir withHtmlExtension) >>= needWithin
 
 
 {-|
@@ -343,9 +341,9 @@ defaultPostsPhony pattern = view sbConfigL >>= \SbConfig{..} ->
 defaultPostIndexPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultPostIndexPhony pattern = view sbConfigL >>= \SbConfig{..} ->
     phony "posts-index" $ do
-      fp  <- getDirectoryFilesWithin' sbSrcDir pattern >>= mapM readMarkdownFile'
-      needPathIn sbOutDir [dirPosts </> fileIndexHTML]
-      paginate' sbPPP fp >>= defaultPagePaths dirPosts >>= needPathIn sbOutDir
+      fp  <- getDirectoryFilesWithin sbSrcDir pattern >>= mapM readMarkdownFile'
+      needIn sbOutDir [dirPosts </> fileIndexHTML]
+      paginate' sbPPP fp >>= defaultPagePaths dirPosts >>= needIn sbOutDir
 
 {-|
   Default "shake tag-index" phony rule. Takes a [FilePattern] of posts to
@@ -356,13 +354,13 @@ defaultPostIndexPhony pattern = view sbConfigL >>= \SbConfig{..} ->
 defaultTagIndexPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultTagIndexPhony pattern = view sbConfigL >>= \SbConfig{..} ->
    phony "tag-index" $ do
-      fp  <- getDirectoryFilesWithin' sbSrcDir pattern >>= mapM readMarkdownFile'
+      fp  <- getDirectoryFilesWithin sbSrcDir pattern >>= mapM readMarkdownFile'
       forM_ (viewAllPostTags fp) $ \t -> do
         u <- parseRelDir $ T.unpack t
-        needPathIn sbOutDir [dirPosts </> dirTags </> u </> fileIndexHTML]
+        needIn sbOutDir [dirPosts </> dirTags </> u </> fileIndexHTML]
         paginate' sbPPP (tagFilterPosts t fp)
          >>= defaultPagePaths (dirPosts </> dirTags </> u)
-           >>= needPathIn sbOutDir
+           >>= needIn sbOutDir
 
 defaultPagePaths :: MonadThrow m => Path Rel Dir -> Zipper [] [a] -> m [Path Rel File]
 defaultPagePaths a xs = forM [1..size xs] $ parseRelDir . show >=> \p -> return $ a </> dirPages </> p </> fileIndexHTML
@@ -391,7 +389,7 @@ dirTags = $(mkRelDir "tags")
 defaultMonthIndexPhony :: (MonadRules m, MonadReader r m, HasSbConfig r, HasLocalOut r) => [FilePattern] -> m ()
 defaultMonthIndexPhony pattern = phony "month-index" $ do
   SbConfig{..} <- view sbConfigL
-  fp  <- getDirectoryFilesWithin' sbSrcDir pattern >>= mapM readMarkdownFile'
+  fp  <- getDirectoryFilesWithin sbSrcDir pattern >>= mapM readMarkdownFile'
   forM_ (viewAllPostTimes fp) $ \t -> do
     u <- parseRelDir $ defaultMonthUrlFormat t
     needLocalOut [dirPosts </> dirMonths </> u </> fileIndexHTML]
@@ -406,4 +404,4 @@ defaultDocsPhony :: MonadShakebookRules r m
 defaultDocsPhony toc = view sbConfigL >>= \SbConfig{..} ->
     phony "docs" $ do
       let xs = foldr ((<>) . pure) [] $ toc
-      pure xs >>= mapM (parseRelFile >=> withHtmlExtension) >>= needPathIn sbOutDir
+      pure xs >>= mapM (parseRelFile >=> withHtmlExtension) >>= needIn sbOutDir

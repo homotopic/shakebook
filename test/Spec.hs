@@ -1,10 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 import           Control.Comonad.Cofree
-import           Control.Comonad.Store.Zipper
+import           Control.Comonad.Zipper.Extra
 import           Data.Aeson
 import           Data.List.Split
-import qualified Development.Shake as S
-import           Development.Shake (FilePattern)
 import           Development.Shake.Plus
 import           Path
 import           RIO
@@ -105,7 +103,7 @@ main = do
    logOptions' <- logOptionsHandle stdout True
    lf <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    let f = ShakebookEnv (fst lf) sbc
-   S.shake S.shakeOptions $ S.want ["clean"] >> runShakePlus f rules
-   S.shake S.shakeOptions $ S.want ["index", "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
+   shake shakeOptions $ want ["clean"] >> runShakePlus f rules
+   shake shakeOptions $ want ["index", "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
    defaultMain $ tests xs
    snd lf

@@ -1,8 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
 
-import           Development.Shake (shake, want, shakeLintInside, shakeOptions)
-import qualified Development.Shake as S
 import           Development.Shake.Plus
 import           Options.Applicative
 import           Path
@@ -50,7 +48,7 @@ app sbc =  do
     lf <- newLogFunc logOptions'
     let f = ShakebookEnv (fst lf) sbc
 
-    shake (shakeOptions { shakeLintInside = ["\\"] }) $ do
+    shake shakeOptions $ do
 
       want ["all"]
 
@@ -61,8 +59,8 @@ app sbc =  do
         defaultSinglePagePattern "index.html" "templates/index.html"
                                  (affixRecentPosts ["posts/md"] 5 defaultEnrichPost)
 
-        phony "index" $ need [sbOutDir </> indexHTML]
+        phony "index" $ needP [sbOutDir </> indexHTML]
 
-      S.phony "all" $ S.need ["index"]
+        phony "all" $ need ["index"]
 
     snd lf

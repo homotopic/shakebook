@@ -26,12 +26,12 @@ packages:
   original:
     hackage: text-time-0.2.0@sha256:ae94071e29a5265f60de19c054a5308cee54a849678fbb8ea8d9657510c87b4c,1757
 - completed:
-    hackage: shake-plus-0.0.1.2@sha256:ded7272172dbb2a46e7dcc9a5d3cb6267aab8fe79d0e483f5fa8240c331fa5df,1995
+    hackage: shake-plus-0.0.2.0@sha256:d62686395e4aa784978c48556c0df1afbd2407f2a6eca9cde3ca57d3e53c950f,2045
     pantry-tree:
-      size: 1090
-      sha256: dd5625f45568a2d90b66fd44814ea27ac3c6c17ada6635af45d35a347081fe15
+      size: 1168
+      sha256: c75845df0c3482050bf3d71d047f5f575145b8bdbc4366790ef92efe1d693379
   original:
-    hackage: shake-plus-0.0.1.2
+    hackage: shake-plus-0.0.2.0
 - completed:
     hackage: within-0.0.1.0@sha256:6e79af2d365fa98bc892ec844d2adf45446040882d6ecfe5d94533baa159681c,955
     pantry-tree:

@@ -9,16 +9,26 @@ import           Control.Monad.Extra
 import           Data.Aeson                 as A
 import           Data.Aeson.Lens
 import           Development.Shake.Plus
-import           Development.Shake (FilePattern)
+import qualified Development.Shake.FilePath
 import           Path                       as P
 import           RIO                        hiding (Lens', lens, view)
-import           RIO.List
 import qualified RIO.Text                   as T
 import           Shakebook.Aeson
-import           Shakebook.Shake
 import           Slick.Pandoc
 import           Text.Pandoc.Options
 import           Within
+
+needLocalOut :: (MonadAction m, MonadReader r m, HasLocalOut r) => [Path Rel File] -> m ()
+needLocalOut ys = view localOutL >>= \r -> needIn r ys
+
+(%->) :: (MonadReader r m, MonadRules m, HasLocalOut r) => FilePattern -> (Within Rel File -> RAction r ()) -> m ()
+(%->) pat f = view localOutL >>= \o -> (toFilePath o Development.Shake.FilePath.</> pat) %> \x -> (x `asWithin` o) >>= f
+
+class HasLocalOut r where
+  localOutL :: Lens' r (Path Rel Dir)
+
+class HasLocalSrc r where
+  localSrcL :: Lens' r (Path Rel Dir)
 
 newtype PathDisplay a t = PathDisplay (Path a t)
 
@@ -157,10 +167,8 @@ loadSortFilterEnrich :: (MonadShakebookAction r m, Ord b)
                      -> (Value -> Bool)  -- ^ A filtering predicate e.g (elem tag . viewTags)
                      -> (Value -> Value) -- ^ An initial enrichment. This is pure so can only be data derived from the initial markdown.
                      -> m [(Within Rel File, Value)] -- ^ A list of Values indexed by their srcPath.
-loadSortFilterEnrich pat s f e = view sbConfigL >>= \SbConfig {..} -> do
-    allPosts <- liftAction $ getDirectoryFilesWithin' sbSrcDir pat
-    readPosts <- sequence $ traverseToSnd readMarkdownFile' <$> allPosts
-    return $ fmap (second e) $ sortOn (s . snd) $ filter (f . snd) readPosts
+loadSortFilterEnrich pat s f e = view sbConfigL >>= \SbConfig {..} ->
+    loadSortFilterApplyW readMarkdownFile' sbSrcDir pat s f e
 
 -- | The same as `loadSortFilterEnrich` but without filtering.
 loadSortEnrich :: (MonadShakebookAction r m, Ord b)
