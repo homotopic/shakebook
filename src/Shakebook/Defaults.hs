@@ -321,7 +321,7 @@ defaultSinglePagePhony x y = phony x $ parseRelFile y >>= needLocalOut . pure
 defaultStaticsPhony :: MonadShakebookRules r m => [FilePattern] -> m ()
 defaultStaticsPhony pattern = view sbConfigL >>= \SbConfig{..} -> 
   phony "statics" $ 
-    getDirectoryFilesWithin sbSrcDir pattern >>= needWithin
+    getDirectoryFiles sbSrcDir pattern >>= needIn sbOutDir
 
 {-|
   Default "shake posts" phony rule. takes a [FilePattern] pointing to the posts and
