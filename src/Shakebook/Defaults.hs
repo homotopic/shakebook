@@ -117,7 +117,13 @@ affixRecentPosts patterns n e x = do
   xs <- loadSortEnrich patterns (Down . viewPostTime) e
   return $ withRecentPosts (take n (snd <$> xs)) $ x
 
-
+affixTagIndex :: MonadShakebookAction r m
+              => [FilePattern]
+              -> Value -> m Value
+affixTagIndex patterns x = do
+  xs <- loadSortEnrich patterns (Down . viewPostTime) id
+  let ts = sort $ viewAllPostTags (snd <$> xs)
+  return $ withTagIndex ((genLinkData <*> ("/posts/tags/" <>)) <$> ts) $ x
 
 defaultDocsPatterns :: (MonadShakebookRules r m)
                     => Cofree [] FilePath -- Rosetree Table of Contents.
