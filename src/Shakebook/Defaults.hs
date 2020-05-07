@@ -254,19 +254,21 @@ defaultPostsPatterns :: MonadShakebookRules r m
                      -> (Value -> RAction r Value) -- ^ A post loader function.
                      -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ A transformation on the entire post zipper.
                      -> m ()
-defaultPostsPatterns pat tmpl e extData = view sbConfigL >>= \SbConfig {..} ->
+defaultPostsPatterns pat tmpl e extData = view sbConfigL >>= \SbConfig {..} -> do
+   postsC <- newCache $ \pat -> do
+     let pat' = pat S.-<.> ".md"
+     xs  <- loadSortEnrich [pat'] (Down . viewPostTime) defaultEnrichPost
+     mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
    pat %-> \out -> do
+    posts <- postsC pat
     logInfo $ display $ "Caught pattern: " <> display (WithinDisplay out)
     tmpl' <- parseRelFile tmpl
     logInfo $ display $ "Using template " <> display (PathDisplay tmpl')
-    let pat' = pat S.-<.> ".md"
-    xs    <- loadSortEnrich [pat'] (Down . viewPostTime) defaultEnrichPost
-    xs'   <- mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
     i     <- blinkAndMapT sbSrcDir withMarkdownExtension out
     logInfo $ display $ WithinDisplay i
-    logInfo $ display $ WithinDisplay . fst <$> xs'
-    let k = fromJust $ elemIndex i (fst <$> xs')
-    let z = fromJust $ seek k <$> zipper (snd <$> xs')
+    logInfo $ display $ WithinDisplay . fst <$> posts
+    let k = fromJust $ elemIndex i (fst <$> posts)
+    let z = fromJust $ seek k <$> zipper (snd <$> posts)
     z' <- extData z
     buildPageActionWithin (tmpl' `within` sbSrcDir) (extract z') out
 
