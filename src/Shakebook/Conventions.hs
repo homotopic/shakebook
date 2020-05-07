@@ -18,6 +18,7 @@ module Shakebook.Conventions (
 , withPrevious
 , withPosts
 , withRecentPosts
+, withSocialLinks
 , withSiteTitle
 , withSubsections
 , withTagIndex
@@ -121,7 +122,7 @@ withPrevious = withObjectFieldMaybe "previous"
 withPosts :: [Value] -> Value -> Value
 withPosts = withArrayField "posts"
 
--- | Add "recentposts" field using input Value.
+-- | Add "recent-posts" field using input Value.
 withRecentPosts :: [Value] -> Value -> Value
 withRecentPosts = withArrayField "recent-posts"
 
@@ -129,15 +130,19 @@ withRecentPosts = withArrayField "recent-posts"
 withSiteTitle :: Text -> Value -> Value
 withSiteTitle = withStringField "site-title"
 
--- | Add "subsections" field based on inpt [Value].
+-- | Add "social-links" field based on input [Value].
+withSocialLinks :: [Value] -> Value -> Value
+withSocialLinks = withArrayField "social-links"
+
+-- | Add "subsections" field based on input [Value].
 withSubsections :: [Value] -> (Value -> Value)
 withSubsections = withArrayField "subsections"
 
--- | Add "tagindex" field based on input [Value].
+-- | Add "tag-index" field based on input [Value].
 withTagIndex :: [Value] -> Value -> Value
 withTagIndex = withArrayField "tag-index"
 
--- | Add "taglinks" field based on input [Value].
+-- | Add "tag-links" field based on input [Value].
 withTagLinks :: [Value] -> Value -> Value
 withTagLinks  = withArrayField "tag-links"
 
@@ -155,7 +160,7 @@ enrichPrettyDate f v = withPrettyDate (T.pack . f . viewPostTime $ v) v
 
 -- | Assuming a "tags" field, enrich using withTagLinks.
 enrichTagLinks :: (Text -> Text) -> Value -> Value
-enrichTagLinks f v = withTagLinks ((`genLinkData` f) <$> viewTags v) v
+enrichTagLinks f v = withTagLinks ((genLinkData <*> f) <$> viewTags v) v
 
 -- | Assuming a "content" field with a spitter section, enrich using withTeaser
 enrichTeaser :: Text -> Value -> Value
@@ -178,8 +183,8 @@ extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 
 -- | Create link data object with fields "id" and "url" using an id and a function
 -- | transforming an id into a url.
-genLinkData :: Text -> (Text -> Text) -> Value
-genLinkData x f = object ["id" A..= String x, "url" A..= String (f x)]
+genLinkData :: Text -> Text -> Value
+genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
 -- | Filter a lists of posts by tag.
 tagFilterPosts :: Text -> [Value] -> [Value]
@@ -228,9 +233,10 @@ genTocNavbarData (x :< xs) =
       toc2 (y :< ys) = (_Object . at "toc3" ?~ Array (V.fromList $ map extract ys)) y
 
 genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value
-genPageData t f xs = withTitle t
-                   . withJSON (genLinkData (T.pack . show $ pos xs + 1) f)
-                   . withPosts (extract xs) $ Object mempty
+genPageData t f xs = let x = T.pack . show $ pos xs + 1
+                     in withTitle t
+                      . withJSON (genLinkData x (f x))
+                      . withPosts (extract xs) $ Object mempty
 
 
 genIndexPageData :: MonadThrow m

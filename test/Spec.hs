@@ -44,6 +44,10 @@ numPageNeighbours = 1
 postsPerPage :: Int
 postsPerPage = 5
 
+mySocial :: [Value]
+mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-nowhere")
+                                   ,("youtube", "http://youtube.com/blanky-site-nowhere")
+                                   ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
 sbc :: SbConfig
 sbc = SbConfig {
   sbSrcDir      = sourceFolder
@@ -52,7 +56,7 @@ sbc = SbConfig {
 , sbMdRead      = defaultMarkdownReaderOptions
 , sbHTWrite     = defaultHtml5WriterOptions
 , sbPPP         = postsPerPage
-, sbGlobalApply = withSiteTitle siteTitle . withHighlighting pygments
+, sbGlobalApply = withSiteTitle siteTitle . withHighlighting pygments . withSocialLinks mySocial
 }
 
 myRecentPosts :: MonadShakebookAction r m => Value -> m Value
