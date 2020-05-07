@@ -1,24 +1,111 @@
 <html>
-  <head>
-    <title>Posts tagged bar</title>
+  <head profile="http://www.w3.org/2005/10/profile">
+      <meta charset="UTF-8">
+      <meta name="description" content="">
+      <meta name="author" content="">
+      <meta name=viewport content="width=device-width, initial-scale=1">
+      <title>Posts tagged bar</title>
+      <link rel="icon" type="image/png" href="/images/logo.png">
+      <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+        crossorigin="anonymous">
+      <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+        integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN"
+        crossorigin="anonymous">
+      <link rel="stylesheet" href="/css/style.css">
+      <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script
+        src="https://code.jquery.com/jquery-3.4.1.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+        crossorigin="anonymous"></script>
+      <script
+        src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+      <script
+        src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+         crossorigin="anonymous"></script>
+      <style>
+        
+      </style>
   </head>
+  
   <body>
-    <h1>This post page is called Posts tagged bar</h1>
-    <h2>The Bar in the mountains</h2>
-    <p>
-      <small>Posted on Monday, June 01, 2020 with tags:
-         <a href="/posts/tags/bar">bar</a>
-         <a href="/posts/tags/spatula">spatula</a>
-      </small> 
-      <p><p>Lorem ipsum</p></p>
-      <p><a href=/posts/bar.html>Read More</a></p>
-    </p>
-    <p>It was generated from the source </p>
-    <p>For the url /posts/tags/bar/pages/1</p>
-    <p></p>
-    <p>Here are the recent posts again:
+    <header>
+      <nav class="navbar navbar-expand flex-column flex-md-row">
+        <a href="/" class="navbar-brand">Blanky Site</a>
+        <div class="td-navbar-nav-scroll ml-md-auto">
+          <ul class="navbar-nav mt-2 mt-lg-0">
+            <li class="nav-item mr-4 mb-2 mb-lg-0">
+              <a href="/docs">Docs</a>
+            </li>
+            <li>
+              <a href="/posts">Posts</a>
+            </li>
+          </ul>
+      </nav>
+    </header>
+    <div class="container-fluid td-outer">
+      <div class="td-main">
+        <div class="row flex-xl-nowrap">
+          <div class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
+                      <nav class="td-sidebar-nav pt-2 pl-4">
+              <ul>
+                <li>
+      <a href="/posts/">Blog</a>
+    </li>
+    <ul>
+      <li>
+        <a href="/posts/months/2020-07">July, 2020</a>
+      </li>
       <ul>
+        <li>
+          <a href="/posts/quuz.html">The Quux In The Maw</a>
+        </li>
       </ul>
-    </p>
+      <li>
+        <a href="/posts/months/2020-06">June, 2020</a>
+      </li>
+      <ul>
+        <li>
+          <a href="/posts/baz.html">The Baz In the Hills</a>
+        </li>
+        <li>
+          <a href="/posts/bar.html">The Bar in the mountains</a>
+        </li>
+      </ul>
+      <li>
+        <a href="/posts/months/2020-04">April, 2020</a>
+      </li>
+      <ul>
+        <li>
+          <a href="/posts/foo.html">The Foo In The Valley</a>
+        </li>
+      </ul>
+    </ul>
+  </ul>
+            </nav>
+</div>
+          <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
+            <div class="td-content">
+              <h1>This post page is called Posts tagged bar</h1>
+              <h2>The Bar in the mountains</h2>
+              <p>
+              <small>Posted on Monday, June 01, 2020 with tags:
+                <a href="/posts/tags/bar">bar</a>
+                <a href="/posts/tags/spatula">spatula</a>
+              </small> 
+              <p><p>Lorem ipsum</p></p>
+              <p><a href=/posts/bar.html>Read More</a></p>
+              </p>
+
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

@@ -1,15 +1,156 @@
 <html>
-  <head>
-    <title>The First Subsection</title>
+  <head profile="http://www.w3.org/2005/10/profile">
+      <meta charset="UTF-8">
+      <meta name="description" content="The First Subsection">
+      <meta name="author" content="">
+      <meta name=viewport content="width=device-width, initial-scale=1">
+      <title>The First Subsection</title>
+      <link rel="icon" type="image/png" href="/images/logo.png">
+      <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+        crossorigin="anonymous">
+      <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+        integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN"
+        crossorigin="anonymous">
+      <link rel="stylesheet" href="/css/style.css">
+      <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script
+        src="https://code.jquery.com/jquery-3.4.1.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+        crossorigin="anonymous"></script>
+      <script
+        src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+      <script
+        src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+         crossorigin="anonymous"></script>
+      <style>
+        pre &gt; code.sourceCode { white-space: pre; position: relative; }
+pre &gt; code.sourceCode &gt; span { display: inline-block; line-height: 1.25; }
+pre &gt; code.sourceCode &gt; span:empty { height: 1.2em; }
+code.sourceCode &gt; span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre &gt; code.sourceCode { white-space: pre-wrap; }
+pre &gt; code.sourceCode &gt; span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code &gt; span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code &gt; span &gt; a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre &gt; code.sourceCode &gt; span &gt; a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+      </style>
   </head>
+  
   <body>
-    <h1>This post page is called The First Subsection</h1>
-    <p>It was generated from the source docs/1/index.md</p>
-    <p>For the url /docs/1/index.html</p>
-    <p><p>Lorem ipsum</p></p>
-    <p>Here are the subsections:
+    <header>
+      <nav class="navbar navbar-expand flex-column flex-md-row">
+        <a href="/" class="navbar-brand">Blanky Site</a>
+        <div class="td-navbar-nav-scroll ml-md-auto">
+          <ul class="navbar-nav mt-2 mt-lg-0">
+            <li class="nav-item mr-4 mb-2 mb-lg-0">
+              <a href="/docs">Docs</a>
+            </li>
+            <li>
+              <a href="/posts">Posts</a>
+            </li>
+          </ul>
+      </nav>
+    </header>
+    <div class="container-fluid td-outer">
+      <div class="td-main">
+        <div class="row flex-xl-nowrap">
+          <div class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
+                      <nav class="td-sidebar-nav pt-2 pl-4">
+              <ul>
+                <li>
+      <a href="/docs/index.html">The First Doc</a>
+    </li>
+    <ul>
+      <li>
+        <a href="/docs/1/index.html">The First Subsection</a>
+      </li>
       <ul>
       </ul>
-    </p>
+      <li>
+        <a href="/docs/2/index.html">The Second Subsection</a>
+      </li>
+      <ul>
+        <li>
+          <a href="/docs/2/champ.html">Hi I’m champ</a>
+        </li>
+      </ul>
+    </ul>
+  </ul>
+            </nav>
+</div>
+          <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
+            <div class="td-content">
+              <h1>This docs page is called The First Subsection</h1>
+              <p>It was generated from the source </p>
+              <p>For the url /docs/1/index.html</p>
+              <p><p>Lorem ipsum</p></p>
+              <p>Here are the subsections:
+              <ul>
+              </ul>
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

@@ -1,24 +1,29 @@
 <html>
-  <head>
-    <title>{{{title}}}</title>
-  </head>
+  {{>test/site/templates/head.html}}
   <body>
-    <h1>This page is called {{{title}}}</h1>
-    <p>It was generated from the source {{{srcPath}}}</p>
-    <p>For the url {{{url}}}</p>
-    <p>Here are the three most recent posts:</p>
+    {{>test/site/templates/header.html}}
+    <main>
+      <div class="text-center">
+      <h1>This page is called {{{title}}}</h1>
+      <p>It was generated from the source {{{src-path}}}</p>
+      <p>For the url {{{url}}}</p>
+      </div>
+      <div class="container">
+      <p>Here are the three most recent posts:</p>
       <ul>
-      {{#recent-posts}}
+        {{#recent-posts}}
         <li>
           <a href="{{{url}}}">{{{title}}}</a>
-          <small>Posted on {{{prettydate}}} with tags:
-            {{#taglinks}}
-              <a href="{{{url}}}">{{{id}}}</a>
-            {{/taglinks}}
+          <small>Posted on {{{pretty-date}}} with tags:
+            {{#tag-links}}
+            <a href="{{{url}}}">{{{id}}}</a>
+            {{/tag-links}}
           </small>
         </li>
-      {{/recent-posts}}
+        {{/recent-posts}}
       </ul>
-    </p>
+      </p>
+      </div>
+    </main>
   </body>
 </html>

@@ -1,31 +1,41 @@
 <html>
-  <head>
-    <title>{{{title}}}</title>
-  </head>
+  {{>test/site/templates/head.html}}
   <body>
-    <h1>This post is called {{{title}}}</h1>
-    <p>
-      <small>Posted on {{{prettydate}}} with tags:
-        {{#taglinks}}
-         <a href="{{{url}}}">{{{id}}}</a>
-        {{/taglinks}}
-      </small> 
-    <p>It was generated from the source {{{srcPath}}}</p>
-    <p>For the url {{{url}}}</p>
-    <p>{{{content}}}</p>
-    <p>Here are the recent posts again:
-      <ul>
-      {{#recent-posts}}
-        <li>
-          <a href="{{{url}}}">{{{title}}}</a>
-          <small>Posted on {{{prettydate}}} with tags:
-            {{#taglinks}}
-              <a href="{{{url}}}">{{{id}}}</a>
-            {{/taglinks}}
-          </small>
-        </li>
-      {{/recent-posts}}
-      </ul>
-    </p>
+    {{>test/site/templates/header.html}}
+    <div class="container-fluid td-outer">
+      <div class="td-main">
+        <div class="row flex-xl-nowrap">
+          {{>test/site/templates/sidebar.html}}
+          <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
+            <div class="td-content">
+              <h1>This post is called {{{title}}}</h1>
+              <p>
+              <small>Posted on {{{pretty-date}}} with tags:
+                {{#tag-links}}
+                <a href="{{{url}}}">{{{id}}}</a>
+                {{/tag-links}}
+              </small> 
+              <p>It was generated from the source {{{src-path}}}</p>
+              <p>For the url {{{url}}}</p>
+              <p>{{{content}}}</p>
+              <p>Here are the recent posts again:
+              <ul>
+                {{#recent-posts}}
+                <li>
+                  <a href="{{{url}}}">{{{title}}}</a>
+                  <small>Posted on {{{pretty-date}}} with tags:
+                    {{#tag-links}}
+                    <a href="{{{url}}}">{{{id}}}</a>
+                    {{/tag-links}}
+                  </small>
+                </li>
+                {{/recent-posts}}
+              </ul>
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

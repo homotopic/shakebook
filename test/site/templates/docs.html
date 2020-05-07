@@ -1,33 +1,31 @@
 <html>
-  <head>
-    <title>{{{title}}}</title>
-  </head>
+  {{>test/site/templates/head.html}}
   <body>
-    <h1>This post page is called {{{title}}}</h1>
-    {{#posts}}
-    <h2>{{{title}}}</h2>
-    <p>
-      <small>Posted on {{{prettydate}}} with tags:
-        {{#taglinks}}
-         <a href="{{{url}}}">{{{id}}}</a>
-        {{/taglinks}}
-      </small> 
-      <p>{{{teaser}}}</p>
-      <p><a href={{{url}}}>Read More</a></p>
-    </p>
-    {{/posts}}
-    <p>It was generated from the source {{{srcPath}}}</p>
-    <p>For the url {{{url}}}</p>
-    <p>{{{content}}}</p>
-    <p>Here are the subsections:
-      <ul>
-      {{#subsections}}
-        <li>
-          <a href="{{{url}}}">{{{title}}}</a>
-          <p>{{{description}}}</p>
-        </li>
-      {{/subsections}}
-      </ul>
-    </p>
+    {{>test/site/templates/header.html}}
+    <div class="container-fluid td-outer">
+      <div class="td-main">
+        <div class="row flex-xl-nowrap">
+          {{>test/site/templates/sidebar.html}}
+          <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
+            <div class="td-content">
+              <h1>This docs page is called {{{title}}}</h1>
+              <p>It was generated from the source {{{srcPath}}}</p>
+              <p>For the url {{{url}}}</p>
+              <p>{{{content}}}</p>
+              <p>Here are the subsections:
+              <ul>
+                {{#subsections}}
+                <li>
+                  <a href="{{{url}}}">{{{title}}}</a>
+                  <p>{{{description}}}</p>
+                </li>
+                {{/subsections}}
+              </ul>
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

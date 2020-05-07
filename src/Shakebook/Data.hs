@@ -73,21 +73,29 @@ instance HasSbConfig ShakebookEnv where
 instance HasLogFunc ShakebookEnv where
   logFuncL = lens logFunc undefined
 
--- | View the "srcPath" field of a JSON Value.
+-- | View the "src-path" field of a JSON Value.
 viewSrcPath :: Value -> Text
-viewSrcPath = view (key "srcPath" . _String)
+viewSrcPath = view (key "src-path" . _String)
 
--- | Add "srcPath" field based on input Text.
+-- | Add "src-path" field based on input Text.
 withSrcPath :: Text -> Value -> Value
-withSrcPath = withStringField "srcPath"
+withSrcPath = withStringField "src-path"
 
--- | Add "baseUrl" field from input Text.
+-- | View the "base-url" of a JSON Value.
+viewBaseUrl :: Value -> Text
+viewBaseUrl = view (key "base-url" . _String)
+
+-- | Add "base-url" field from input Text.
 withBaseUrl :: Text -> Value -> Value
-withBaseUrl = withStringField "baseUrl"
+withBaseUrl = withStringField "base-url"
 
--- | Add "fullUrl" field  from input Text.
+-- | View the "full-url" of a JSON Value.
+viewFullUrl :: Value -> Text
+viewFullUrl = view (key "full-url" . _String)
+
+-- | Add "full-url" field  from input Text.
 withFullUrl :: Text -> Value -> Value
-withFullUrl = withStringField "fullUrl"
+withFullUrl = withStringField "full-url"
 
 -- | View the "url" field of a JSON Value.
 viewUrl :: Value -> Text
@@ -101,7 +109,7 @@ withUrl = withStringField "url"
 enrichFullUrl :: Text -> Value -> Value
 enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
 
--- | Assuming a 'srcPath' field, enrich using withUrl using a Text -> Text transformation.
+-- | Assuming a 'src-path' field, enrich using withUrl using a Text -> Text transformation.
 enrichUrl :: (Text -> Text) -> Value -> Value
 enrichUrl f v = withUrl (f (viewSrcPath v)) v
 

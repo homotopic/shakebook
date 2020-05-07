@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+
 import           Control.Comonad.Cofree
 import           Control.Comonad.Zipper.Extra
 import           Data.Aeson
@@ -16,22 +17,25 @@ import           Test.Tasty
 import           Test.Tasty.Golden
 import           Text.Pandoc.Highlighting
 
-srcDir :: Path Rel Dir
-srcDir = $(mkRelDir "test/site")
+sourceFolder :: Path Rel Dir
+sourceFolder = $(mkRelDir "test/site")
 
-outDir :: Path Rel Dir
-outDir = $(mkRelDir "test/public")
+outputFolder :: Path Rel Dir
+outputFolder = $(mkRelDir "test/public")
 
 baseUrl :: Text
 baseUrl = "http://blanky.test"
 
-toc :: ToC
-toc = "docs/index.md" :< [
-        "docs/1/index.md" :< []
-      , "docs/2/index.md" :< [
-          "docs/2/champ.md" :< []
-        ]
-      ]
+siteTitle :: Text
+siteTitle = "Blanky Site"
+
+tableOfContents :: ToC
+tableOfContents = "docs/index.md" :< [
+                    "docs/1/index.md" :< []
+                  , "docs/2/index.md" :< [
+                  "docs/2/champ.md" :< []
+                   ]
+                ]
 
 myBlogNavbar :: [Value] -> Value
 myBlogNavbar = genBlogNavbarData "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment)
@@ -42,8 +46,16 @@ numRecentPosts = 3
 numPageNeighbours :: Int
 numPageNeighbours = 1
 
+postsPerPage :: Int
+postsPerPage = 5
+
 sbc :: SbConfig
-sbc = SbConfig srcDir outDir baseUrl defaultMarkdownReaderOptions defaultHtml5WriterOptions 5
+sbc = SbConfig sourceFolder
+               outputFolder
+               baseUrl
+               defaultMarkdownReaderOptions
+               defaultHtml5WriterOptions
+               postsPerPage
 
 extendPostsZipper :: MonadShakebookAction r m => Zipper [] Value -> m (Zipper [] Value)
 extendPostsZipper = return
@@ -52,21 +64,22 @@ enrichPostIndexPage :: MonadShakebookAction r m => [FilePattern] -> Zipper [] Va
 enrichPostIndexPage patterns x = do
   sortedPosts <- loadSortEnrich patterns (Down . viewPostTime) defaultEnrichPost
   return $ fmap (withJSON (myBlogNavbar (snd <$> sortedPosts)))
+         . fmap (withSiteTitle siteTitle)
          . extendPageNeighbours numPageNeighbours $ x
 
 rules :: MonadShakebookRules r m => m ()
 rules = do
   defaultSinglePagePattern "index.html" "templates/index.html"
-         (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost)
+      (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost . withSiteTitle siteTitle)
 
   defaultPostsPatterns     "posts/*.html" "templates/post.html"
-             (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment) defaultEnrichPost
-         <=< affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
-         . defaultEnrichPost . withHighlighting pygments)
-              extendPostsZipper
+      (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment) defaultEnrichPost
+   <=< affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
+     . defaultEnrichPost . withHighlighting pygments . withSiteTitle siteTitle)
+       extendPostsZipper
 
-  defaultDocsPatterns      toc "templates/docs.html"
-                               (withHighlighting pygments)
+  defaultDocsPatterns tableOfContents "templates/docs.html"
+                               (withHighlighting pygments . withSiteTitle siteTitle)
 
   defaultPostIndexPatterns ["posts/*.md"] "templates/post-list.html"
                                (enrichPostIndexPage ["posts/*.md"])
@@ -77,7 +90,7 @@ rules = do
   defaultMonthIndexPatterns ["posts/*.md"] "templates/post-list.html"
                                 (enrichPostIndexPage ["posts/*.md"])
   defaultStaticsPatterns   ["css//*", "images//*", "js//*", "webfonts//*"]
-  defaultStaticsPhony   ["css//*", "images//*", "js//*", "webfonts//*"]
+  defaultStaticsPhony      ["css//*", "images//*", "js//*", "webfonts//*"]
 
   defaultSinglePagePhony    "index" "index.html"
   defaultPostsPhony         ["posts/*.md"]
@@ -87,7 +100,7 @@ rules = do
 
   defaultMonthIndexPhony    ["posts/*.md"]
 
-  defaultDocsPhony          toc
+  defaultDocsPhony          tableOfContents
   defaultCleanPhony
 
 tests :: [FilePath] -> TestTree

@@ -18,7 +18,7 @@ module Shakebook.Conventions (
 , withPrevious
 , withPosts
 , withRecentPosts
-, withSrcPath
+, withSiteTitle
 , withSubsections
 , withTagIndex
 , withTagLinks
@@ -111,7 +111,7 @@ withPages = withArrayField "pages"
 
 -- | Add "prettydate" field using input Text.
 withPrettyDate :: Text -> Value -> Value
-withPrettyDate = withStringField "prettydate"
+withPrettyDate = withStringField "pretty-date"
 
 -- | Add "previous" field using input Value.
 withPrevious :: Maybe Value -> (Value -> Value)
@@ -125,17 +125,21 @@ withPosts = withArrayField "posts"
 withRecentPosts :: [Value] -> Value -> Value
 withRecentPosts = withArrayField "recent-posts"
 
+-- | Add "site-title" field from input Text.
+withSiteTitle :: Text -> Value -> Value
+withSiteTitle = withStringField "site-title"
+
 -- | Add "subsections" field based on inpt [Value].
 withSubsections :: [Value] -> (Value -> Value)
 withSubsections = withArrayField "subsections"
 
 -- | Add "tagindex" field based on input [Value].
 withTagIndex :: [Value] -> Value -> Value
-withTagIndex = withArrayField "tagindex"
+withTagIndex = withArrayField "tag-index"
 
 -- | Add "taglinks" field based on input [Value].
 withTagLinks :: [Value] -> Value -> Value
-withTagLinks  = withArrayField "taglinks"
+withTagLinks  = withArrayField "tag-links"
 
 -- | Add "teaser" field based on input Text.
 withTeaser :: Text -> Value -> Value

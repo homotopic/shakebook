@@ -1,0 +1,23 @@
+<nav class="td-sidebar-nav pt-2 pl-4">
+  <ul>
+    {{#toc1}}
+    <li>
+      <a href="{{url}}">{{title}}</a>
+    </li>
+    <ul>
+      {{#toc2}}
+      <li>
+        <a href="{{url}}">{{title}}</a>
+      </li>
+      <ul>
+        {{#toc3}}
+        <li>
+          <a href="{{url}}">{{title}}</a>
+        </li>
+        {{/toc3}}
+      </ul>
+      {{/toc2}}
+    </ul>
+    {{/toc1}}
+  </ul>
+</nav>
