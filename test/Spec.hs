@@ -1,7 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Control.Comonad.Cofree
-import           Control.Comonad.Zipper.Extra
 import           Data.Aeson
 import           Data.List.Split
 import           Development.Shake.Plus
@@ -10,7 +9,6 @@ import           RIO
 import           RIO.List
 import qualified RIO.Text                     as T
 import           Shakebook
-import           Shakebook.Aeson
 import           Shakebook.Conventions
 import           Shakebook.Defaults
 import           Test.Tasty
@@ -37,9 +35,6 @@ tableOfContents = "docs/index.md" :< [
                   ]
                 ]
 
-myBlogNavbar :: [Value] -> Value
-myBlogNavbar = genBlogNavbarData "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment)
-
 numRecentPosts :: Int
 numRecentPosts = 3
 
@@ -60,36 +55,33 @@ sbc = SbConfig {
 , sbGlobalApply = withSiteTitle siteTitle . withHighlighting pygments
 }
 
-extendPostsZipper :: MonadShakebookAction r m => Zipper [] Value -> m (Zipper [] Value)
-extendPostsZipper = return
+myRecentPosts :: MonadShakebookAction r m => Value -> m Value
+myRecentPosts = affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
 
-enrichPostIndexPage :: MonadShakebookAction r m => [FilePattern] -> Zipper [] Value -> m (Zipper [] Value)
-enrichPostIndexPage patterns x = do
-  sortedPosts <- loadSortEnrich patterns (Down . viewPostTime) defaultEnrichPost
-  return $ fmap (withJSON (myBlogNavbar (snd <$> sortedPosts)))
-         . extendPageNeighbours numPageNeighbours $ x
+myBlogNavbar :: MonadShakebookAction r m => Value -> m Value
+myBlogNavbar = affixBlogNavbar ["posts/*.md"] "Blog" "/posts/"
+                  (T.pack . defaultPrettyMonthFormat)
+                  (defaultMonthUrlFragment)
+                  defaultEnrichPost
 
 rules :: MonadShakebookRules r m => m ()
 rules = do
-  defaultSinglePagePattern "index.html"  "templates/index.html"
-      (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost)
+  defaultSinglePagePattern "index.html"  "templates/index.html" myRecentPosts
 
   defaultPostsPatterns     "posts/*.html" "templates/post.html"
-      (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment) defaultEnrichPost
-   <=< affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
-     . defaultEnrichPost)
-       extendPostsZipper
+    (myBlogNavbar <=< myRecentPosts . defaultEnrichPost) pure
 
   defaultDocsPatterns tableOfContents "templates/docs.html" id
 
-  defaultPostIndexPatterns  ["posts/*.md"] "templates/post-list.html"
-                               (enrichPostIndexPage ["posts/*.md"])
+  defaultPostIndexPatterns  ["posts/*.md"] "templates/post-list.html" myBlogNavbar
+                               (pure . extendPageNeighbours numPageNeighbours)
 
-  defaultTagIndexPatterns   ["posts/*.md"] "templates/post-list.html"
-                               (enrichPostIndexPage ["posts/*.md"])
+  defaultTagIndexPatterns   ["posts/*.md"] "templates/post-list.html" myBlogNavbar
+                               (pure . extendPageNeighbours numPageNeighbours)
 
-  defaultMonthIndexPatterns ["posts/*.md"] "templates/post-list.html"
-                                (enrichPostIndexPage ["posts/*.md"])
+  defaultMonthIndexPatterns ["posts/*.md"] "templates/post-list.html" myBlogNavbar
+                               (pure . extendPageNeighbours numPageNeighbours)
+
   defaultStaticsPatterns    ["css//*", "images//*", "js//*", "webfonts//*"]
   defaultStaticsPhony       ["css//*", "images//*", "js//*", "webfonts//*"]
 

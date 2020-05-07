@@ -153,30 +153,33 @@ defaultPagerPattern :: (MonadShakebookRules r m)
                     => FilePattern
                     -> FilePath
                     -> (FilePattern -> Int) -- ^ How to extract a page number from the Filepattern.
-                    -> (FilePattern -> a) -- ^ How to extract an id from the FilePattern
-                    -> (a -> RAction r (Zipper [] Value))
-                    -> (Zipper [] Value -> RAction r (Zipper [] Value))
+                    -> (FilePattern -> a) -- ^ How to extract an id from the FilePattern.
+                    -> (a -> RAction r (Zipper [] Value)) -- ^ How to get from a value to a page.
+                    -> (Value -> RAction r Value) -- ^ A monadic affix to apply to each pae.
+                    -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ An extensin over the whole zipper.
                     -> m ()
-defaultPagerPattern fp tmpl f g h w = view sbConfigL >>= \SbConfig{..} -> do
+defaultPagerPattern fp tmpl f g h a w = view sbConfigL >>= \SbConfig{..} -> do
   tmpl' <- parseRelFile tmpl
   fp %-> \x -> do
     let x' = toFilePath $ whatLiesWithin x
-    xs <- (w <=< h) $ g (x')
+    xs <- (w <=< mapM a <=< h) $ g (x')
     let b = extract (seek (f x') xs)
     buildPageActionWithin (tmpl' `within` sbSrcDir) b x
 
 defaultPostIndexPatterns :: MonadShakebookRules r m
                          => [FilePattern]
                          -> FilePath
+                         -> (Value -> RAction r Value) -- ^ A monadic affix to apply to each pae.
                          -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ Pager extension.
                          -> m ()
-defaultPostIndexPatterns pat tmpl extData = do
+defaultPostIndexPatterns pat tmpl aff extData = do
    defaultPagerPattern "posts/index.html" tmpl
                        (const 0)
                        (const ())
                        (defaultPostIndexData pat (const $ (const True))
                                                  (const "Posts")
                                                  (const ("/posts/pages/" <>)))
+                       aff
                        extData
    defaultPagerPattern ("posts/pages/*/index.html") tmpl
                        ((+ (-1)) . read . (!! 2) . splitOn "/")
@@ -184,20 +187,23 @@ defaultPostIndexPatterns pat tmpl extData = do
                        (defaultPostIndexData pat (const $ (const True))
                                                  (const "Posts")
                                                  (const ("/posts/pages/" <>)))
+                       aff
                        extData
 
 defaultTagIndexPatterns :: MonadShakebookRules r m
                         => [FilePattern]
                         -> FilePath
+                        -> (Value -> RAction r Value) -- ^ A monadic affix to apply to each pae.
                         -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ Pager extension.
                         -> m ()
-defaultTagIndexPatterns pat tmpl extData = do
+defaultTagIndexPatterns pat tmpl aff extData = do
  defaultPagerPattern ("posts/tags/*/index.html") tmpl
                      (const 0)
                      (T.pack . (!! 2) . splitOn "/")
                      (defaultPostIndexData pat (\x y -> elem x (viewTags y) )
                                                ("Posts tagged " <>)
                                                (\x y -> ("/posts/tags/" <> x <> "/pages/" <> y)))
+                     aff
                      extData
  defaultPagerPattern ("posts/tags/*/pages/*/index.html") tmpl
                      ((+ (-1)) . read . (!! 4) . splitOn "/")
@@ -205,14 +211,16 @@ defaultTagIndexPatterns pat tmpl extData = do
                      (defaultPostIndexData pat (\x y -> elem x (viewTags y))
                                                ("Posts tagged " <>)
                                                (\x y -> ("/posts/tags/" <> x <> "/pages/" <> y)))
+                     aff
                      extData
 
 defaultMonthIndexPatterns :: MonadShakebookRules r m
                           => [FilePattern]
                           -> FilePath
+                          -> (Value -> RAction r Value) -- ^ A monadic affix to apply to each pae.
                           -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ Pager extension.
                           -> m ()
-defaultMonthIndexPatterns pat tmpl extData = do
+defaultMonthIndexPatterns pat tmpl aff extData = do
  defaultPagerPattern "posts/months/*/index.html" tmpl
                      (const 0)
                      (parseISODateTime . T.pack . (!! 2) . splitOn "/")
@@ -220,6 +228,7 @@ defaultMonthIndexPatterns pat tmpl extData = do
                         (\x y -> sameMonth x (viewPostTime y))
                         (("Posts from " <>) . T.pack . defaultPrettyMonthFormat)
                         (\x y -> ("/posts/months/" <> T.pack (defaultMonthUrlFormat x) <> "/pages" <> y)))
+                     aff
                      extData
  defaultPagerPattern "posts/months/*/pages/*/index.html" tmpl
                       ((+ (-1)) . read . (!! 4) . splitOn "/")
@@ -228,6 +237,7 @@ defaultMonthIndexPatterns pat tmpl extData = do
                            (\x y -> sameMonth x (viewPostTime y))
                            (("Posts from " <>) . T.pack . defaultPrettyMonthFormat)
                            (\x y -> ("/posts/months/" <> T.pack (defaultMonthUrlFormat x) <> "/pages" <> y)))
+                       aff
                        extData
 
 {-|
