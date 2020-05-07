@@ -122,7 +122,7 @@ affixTagIndex :: MonadShakebookAction r m
               -> Value -> m Value
 affixTagIndex patterns x = do
   xs <- loadSortEnrich patterns (Down . viewPostTime) id
-  let ts = sort $ viewAllPostTags (snd <$> xs)
+  let ts = sort $ nub $ viewAllPostTags (snd <$> xs)
   return $ withTagIndex ((genLinkData <*> ("/posts/tags/" <>)) <$> ts) $ x
 
 defaultDocsPatterns :: (MonadShakebookRules r m)
