@@ -33,12 +33,12 @@ packages:
   original:
     hackage: shake-plus-0.0.2.2
 - completed:
-    hackage: within-0.0.1.0@sha256:6e79af2d365fa98bc892ec844d2adf45446040882d6ecfe5d94533baa159681c,955
+    hackage: within-0.0.2.0@sha256:fa9695973408236eb7f27db2c12e3782068a33f4914fa87b18414d4ce04a46ef,970
     pantry-tree:
       size: 303
-      sha256: 81c6ad9797072303a5f770e16c0065d32bc828d5c4b9c550de626fc858ddf7c3
+      sha256: 11bc278cc4d71158d725f848a96f731a0ec3863207531fa0ccd1ef040499c50e
   original:
-    hackage: within-0.0.1.0
+    hackage: within-0.0.2.0
 - completed:
     hackage: zipper-extra-0.1.0.0@sha256:7dddd242ea050726d9601fab6169b9a8a135c98557e75bca4fbc07306944ad0c,931
     pantry-tree:

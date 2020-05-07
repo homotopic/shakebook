@@ -133,12 +133,13 @@ defaultDocsPatterns :: (MonadShakebookRules r m)
 defaultDocsPatterns toc tmpl withData = view sbConfigL >>= \SbConfig{..} -> do
   tmpl' <- parseRelFile tmpl
   o <- view localOutL
-  toc'  <- mapM (parseRelFile >=> pure . (`within` o) >=> mapWithinT withHtmlExtension) toc
-  let e = blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile' >=> enrichSupposedUrl
+  toc' <- mapM (parseRelFile >=> pure . (`within` o) >=> mapWithinT withHtmlExtension) toc
+  getDoc' <- newCache $
+    blinkAndMapT sbSrcDir withMarkdownExtension >=> readMarkdownFile' >=> enrichSupposedUrl
   void . sequence . flip extend toc' $ \xs -> (toFilePath . whatLiesWithin $ extract xs) %->  \out -> do
-             ys <- mapM e toc'
-             zs <- mapM e xs
-             v  <- e out
+             ys <- mapM getDoc' toc'
+             zs <- mapM getDoc' xs
+             v  <- getDoc' out
              let v' = withData . withJSON (genTocNavbarData ys) . withSubsections (lower (zs)) $ v
              buildPageActionWithin (tmpl' `within` sbSrcDir) v' out
 
@@ -255,8 +256,8 @@ defaultPostsPatterns :: MonadShakebookRules r m
                      -> (Zipper [] Value -> RAction r (Zipper [] Value)) -- ^ A transformation on the entire post zipper.
                      -> m ()
 defaultPostsPatterns pat tmpl e extData = view sbConfigL >>= \SbConfig {..} -> do
-   postsC <- newCache $ \pat -> do
-     let pat' = pat S.-<.> ".md"
+   postsC <- newCache $ \p -> do
+     let pat' = p S.-<.> ".md"
      xs  <- loadSortEnrich [pat'] (Down . viewPostTime) defaultEnrichPost
      mapM (\(s,x) -> e x >>= \e' -> return (s, e')) xs
    pat %-> \out -> do
