@@ -47,14 +47,14 @@ instance Display [WithinDisplay a t] where
 type ToC = Cofree [] String
 
 data SbConfig = SbConfig
-    { sbSrcDir  :: Path Rel Dir
-    , sbOutDir  :: Path Rel Dir
-    , sbBaseUrl :: Text
-    , sbMdRead  :: ReaderOptions
-    , sbHTWrite :: WriterOptions
-    , sbPPP     :: Int
+    { sbSrcDir      :: Path Rel Dir
+    , sbOutDir      :: Path Rel Dir
+    , sbBaseUrl     :: Text
+    , sbMdRead      :: ReaderOptions
+    , sbHTWrite     :: WriterOptions
+    , sbPPP         :: Int
+    , sbGlobalApply :: Value -> Value
     }
-    deriving (Show)
 
 class HasSbConfig a where
   sbConfigL :: Lens' a SbConfig
@@ -142,19 +142,24 @@ readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> liftAction $ do
   docContent <- readFile' (fromWithin srcPath)
   docData <- markdownToHTMLWithOpts sbMdRead sbHTWrite docContent
   supposedUrl <- liftIO $ (leadingSlash </>) <$> withHtmlExtension (whatLiesWithin srcPath)
-  return $ withSrcPath (T.pack . toFilePath $ whatLiesWithin srcPath)
+  return $ sbGlobalApply
+         . withSrcPath (T.pack . toFilePath $ whatLiesWithin srcPath)
          . withUrl (T.pack . toFilePath $ supposedUrl) $ docData
 
-data PaginationException = EmptyContentsError
+data PaginationException = EmptyContentsError | ZeroPageSize | UnknownPaginationException
   deriving (Show, Eq, Typeable)
 
 instance Exception PaginationException where
-  displayException EmptyContentsError = "Can not create a Zipper of length zero."
+  displayException EmptyContentsError         = "Can not create a Zipper of length zero."
+  displayException ZeroPageSize               = "Can not divide into pages of size zero."
+  displayException UnknownPaginationException = "Unknown pagination exception."
 
 paginate' :: MonadThrow m => Int -> [a] -> m (Zipper [] [a])
-paginate' n xs =  case paginate n xs of
+paginate' n xs = case paginate n xs of
                     Just x -> return x
-                    Nothing -> throwM EmptyContentsError
+                    Nothing -> if n == 0 then throwM ZeroPageSize
+                               else if length xs == 0 then throwM EmptyContentsError
+                               else throwM UnknownPaginationException
 
 lower :: Cofree [] Value -> [Value]
 lower (_ :< xs) = extract <$> xs

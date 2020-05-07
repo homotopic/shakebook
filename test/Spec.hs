@@ -34,7 +34,7 @@ tableOfContents = "docs/index.md" :< [
                     "docs/1/index.md" :< []
                   , "docs/2/index.md" :< [
                   "docs/2/champ.md" :< []
-                   ]
+                  ]
                 ]
 
 myBlogNavbar :: [Value] -> Value
@@ -50,12 +50,15 @@ postsPerPage :: Int
 postsPerPage = 5
 
 sbc :: SbConfig
-sbc = SbConfig sourceFolder
-               outputFolder
-               baseUrl
-               defaultMarkdownReaderOptions
-               defaultHtml5WriterOptions
-               postsPerPage
+sbc = SbConfig {
+  sbSrcDir      = sourceFolder
+, sbOutDir      = outputFolder
+, sbBaseUrl     = baseUrl
+, sbMdRead      = defaultMarkdownReaderOptions
+, sbHTWrite     = defaultHtml5WriterOptions
+, sbPPP         = postsPerPage
+, sbGlobalApply = withSiteTitle siteTitle . withHighlighting pygments
+}
 
 extendPostsZipper :: MonadShakebookAction r m => Zipper [] Value -> m (Zipper [] Value)
 extendPostsZipper = return
@@ -64,33 +67,31 @@ enrichPostIndexPage :: MonadShakebookAction r m => [FilePattern] -> Zipper [] Va
 enrichPostIndexPage patterns x = do
   sortedPosts <- loadSortEnrich patterns (Down . viewPostTime) defaultEnrichPost
   return $ fmap (withJSON (myBlogNavbar (snd <$> sortedPosts)))
-         . fmap (withSiteTitle siteTitle)
          . extendPageNeighbours numPageNeighbours $ x
 
 rules :: MonadShakebookRules r m => m ()
 rules = do
-  defaultSinglePagePattern "index.html" "templates/index.html"
-      (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost . withSiteTitle siteTitle)
+  defaultSinglePagePattern "index.html"  "templates/index.html"
+      (affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost)
 
   defaultPostsPatterns     "posts/*.html" "templates/post.html"
       (affixBlogNavbar ["posts/*.md"] "Blog" "/posts/" (T.pack . defaultPrettyMonthFormat) (defaultMonthUrlFragment) defaultEnrichPost
    <=< affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
-     . defaultEnrichPost . withHighlighting pygments . withSiteTitle siteTitle)
+     . defaultEnrichPost)
        extendPostsZipper
 
-  defaultDocsPatterns tableOfContents "templates/docs.html"
-                               (withHighlighting pygments . withSiteTitle siteTitle)
+  defaultDocsPatterns tableOfContents "templates/docs.html" id
 
-  defaultPostIndexPatterns ["posts/*.md"] "templates/post-list.html"
+  defaultPostIndexPatterns  ["posts/*.md"] "templates/post-list.html"
                                (enrichPostIndexPage ["posts/*.md"])
 
-  defaultTagIndexPatterns  ["posts/*.md"] "templates/post-list.html"
+  defaultTagIndexPatterns   ["posts/*.md"] "templates/post-list.html"
                                (enrichPostIndexPage ["posts/*.md"])
 
   defaultMonthIndexPatterns ["posts/*.md"] "templates/post-list.html"
                                 (enrichPostIndexPage ["posts/*.md"])
-  defaultStaticsPatterns   ["css//*", "images//*", "js//*", "webfonts//*"]
-  defaultStaticsPhony      ["css//*", "images//*", "js//*", "webfonts//*"]
+  defaultStaticsPatterns    ["css//*", "images//*", "js//*", "webfonts//*"]
+  defaultStaticsPhony       ["css//*", "images//*", "js//*", "webfonts//*"]
 
   defaultSinglePagePhony    "index" "index.html"
   defaultPostsPhony         ["posts/*.md"]

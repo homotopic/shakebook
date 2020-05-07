@@ -86,8 +86,16 @@ defaultPostsPerPage :: Int
 defaultPostsPerPage = 5
 
 defaultSbConfig :: Text -- ^ BaseURL
+                -> Text -- ^ SiteTitle
                 -> SbConfig
-defaultSbConfig x = SbConfig defaultSbSrcDir defaultSbOutDir x defaultMarkdownReaderOptions defaultHtml5WriterOptions defaultPostsPerPage
+defaultSbConfig x y = SbConfig
+  defaultSbSrcDir
+  defaultSbOutDir
+  x
+  defaultMarkdownReaderOptions
+  defaultHtml5WriterOptions
+  defaultPostsPerPage
+  (withSiteTitle y)
 
 affixBlogNavbar :: MonadShakebookAction r m
                 => [FilePattern]
@@ -139,7 +147,7 @@ defaultPostIndexData :: MonadShakebookAction r m
 defaultPostIndexData pat f t l a = view sbConfigL >>= \SbConfig {..} -> do
   xs <- loadSortFilterEnrich pat (Down . viewPostTime) (f a) defaultEnrichPost
   ys <- genIndexPageData (snd <$> xs) (t a) (l a) sbPPP
-  return ys
+  return (fmap sbGlobalApply ys)
 
 defaultPagerPattern :: (MonadShakebookRules r m)
                     => FilePattern
