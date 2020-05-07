@@ -369,7 +369,7 @@ defaultPostIndexPhony pattern = view sbConfigL >>= \SbConfig{..} ->
     phony "posts-index" $ do
       fp  <- getDirectoryFilesWithin sbSrcDir pattern >>= mapM readMarkdownFile'
       needIn sbOutDir [dirPosts </> fileIndexHTML]
-      paginate' sbPPP fp >>= defaultPagePaths dirPosts >>= needIn sbOutDir
+      paginate' sbPPP fp >>= defaultPagePaths (Just dirPosts) >>= needIn sbOutDir
 
 {-|
   Default "shake tag-index" phony rule. Takes a [FilePattern] of posts to
@@ -385,11 +385,11 @@ defaultTagIndexPhony pattern = view sbConfigL >>= \SbConfig{..} ->
         u <- parseRelDir $ T.unpack t
         needIn sbOutDir [dirPosts </> dirTags </> u </> fileIndexHTML]
         paginate' sbPPP (tagFilterPosts t fp)
-         >>= defaultPagePaths (dirPosts </> dirTags </> u)
+         >>= defaultPagePaths (Just $ dirPosts </> dirTags </> u)
            >>= needIn sbOutDir
 
-defaultPagePaths :: MonadThrow m => Path Rel Dir -> Zipper [] [a] -> m [Path Rel File]
-defaultPagePaths a xs = forM [1..size xs] $ parseRelDir . show >=> \p -> return $ a </> dirPages </> p </> fileIndexHTML
+defaultPagePaths :: MonadThrow m => Maybe (Path Rel Dir) -> Zipper [] [a] -> m [Path Rel File]
+defaultPagePaths a xs = forM [1..size xs] $ parseRelDir . show >=> \p -> return $ (maybe id (</>) a) (dirPages </> p </> fileIndexHTML)
 
 fileIndexHTML :: Path Rel File
 fileIndexHTML = $(mkRelFile "index.html")
@@ -420,7 +420,7 @@ defaultMonthIndexPhony pattern = phony "month-index" $ do
     u <- parseRelDir $ defaultMonthUrlFormat t
     needLocalOut [dirPosts </> dirMonths </> u </> fileIndexHTML]
     paginate' sbPPP (monthFilterPosts t fp)
-      >>= defaultPagePaths (dirPosts </> dirMonths </> u)
+      >>= defaultPagePaths (Just $ dirPosts </> dirMonths </> u)
         >>= needLocalOut
 
 -- | Default "shake docs" phony rule, takes a Cofree [] String as a table of contents.
