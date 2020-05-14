@@ -123,12 +123,8 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
     let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
     buildPageActionWithin ($(mkRelFile "templates/docs.html") `within` sbSrcDir) v' out
 
-  ("posts/index.html" `within` sbOutDir) %^> \out -> do
-    xs <- sortedPosts myPosts
-    p  <- seek 0 <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages" <>) sbPPP
-    k <- getBlogNavbar myPosts
-    let v = withJSON k $ extract p
-    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+  ("posts/index.html" `within` sbOutDir) %^>
+    copyFileChangedWithin ($(mkRelFile "posts/pages/1/index.html") `within` sbOutDir)
 
   ("posts/pages/*/index.html" `within` sbOutDir) %^> \out -> do
     xs <- sortedPosts (["posts/*.md"] `within` sbSrcDir)
@@ -139,12 +135,9 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
     buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
  
   ("posts/tags/*/index.html" `within` sbOutDir) %^> \out -> do
-    let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
-    xs <- filter (elem t . viewTags . snd) <$> sortedPosts myPosts
-    p  <- seek 0 <$> genIndexPageData (snd <$> xs) ("Posts tagged " <> t) (("/posts/tags/"  <> t <> "/posts") <>) sbPPP
-    k <- getBlogNavbar myPosts
-    let v = withJSON k $ extract p
-    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+    let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
+    i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"
+    copyFileChangedWithin (i `within` sbOutDir) out
 
   ("posts/tags/*/pages/*/index.html" `within` sbOutDir) %^> \out -> do
     let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -156,14 +149,9 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
     buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
 
   ("posts/months/*/index.html" `within` sbOutDir) %^> \out -> do
-    let t = parseISODateTime . T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
-    xs <- filter (sameMonth t . viewPostTime . snd) <$> sortedPosts myPosts
-    p  <- seek 0 <$> genIndexPageData (snd <$> xs)
-                       (("Posts from " <>) . T.pack . defaultPrettyMonthFormat $ t)
-                       (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t) <> "/posts") <>) sbPPP
-    k <- getBlogNavbar myPosts
-    let v = withJSON k $ extract p
-    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+    let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
+    i <- parseRelFile $ "posts/months/" <> t <> "/pages/1/index.html"
+    copyFileChangedWithin (i `within` sbOutDir) out
 
   ("posts/months/*/pages/*/index.html" `within` sbOutDir) %^> \out -> do
     let t = parseISODateTime . T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
