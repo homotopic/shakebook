@@ -6,13 +6,16 @@ import           Control.Comonad.Store.Zipper
 import           Control.Comonad.Zipper.Extra
 import           Data.Aeson
 import           Data.List.Split
+import           Data.Text.Time
 import           Development.Shake.Plus
 import           Path
 import           RIO
 import           RIO.Partial
 import qualified RIO.HashMap                  as HM
 import           RIO.List
+import           RIO.List.Partial
 import qualified RIO.Text                     as T
+import           RIO.Time
 import           Shakebook.Aeson
 import           Shakebook.Data
 import           Shakebook.Defaults
@@ -79,31 +82,36 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
     xs <- batchLoadWithin' w readMDC
     return $ defaultEnrichPost <$> xs
 
+  sortedPosts <- newCache $ \fp -> do
+    allPosts <- postsC fp
+    return $  sortOn (Down . viewPostTime . snd) $ HM.toList allPosts
+
   getRecentPosts <- newCache $ \fp -> do
-     allPosts <- postsC fp
-     return $ take numRecentPosts (sortOn (Down . viewPostTime) $ HM.elems allPosts)
+    xs <- sortedPosts fp
+    return $ take numRecentPosts (snd <$> xs)
 
   getBlogNavbar <- newCache $ \fp -> do
-     allPosts <- postsC fp
-     return $ genBlogNavbarData "Blog" "/posts/"
+    allPosts <- postsC fp
+    return $ genBlogNavbarData "Blog" "/posts/"
                   (T.pack . defaultPrettyMonthFormat)
                   (defaultMonthUrlFragment) (HM.elems allPosts)
+
+  let myPosts = ["posts/*.md"] `within` sbSrcDir
 
   ("index.html" `within` sbOutDir) %^> \out -> do
     src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
     v   <- readMDC src
-    r   <- getRecentPosts (["posts/*.md"] `within` sbSrcDir)
+    r   <- getRecentPosts myPosts
     let v' = withRecentPosts r v
     buildPageActionWithin ($(mkRelFile "templates/index.html") `within` sbSrcDir) v' out
 
   ("posts/*.html" `within` sbOutDir) %^> \out -> do
     src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
-    allPosts <- postsC    (["posts/*.md"] `within` sbSrcDir)
-    let sortedPosts = sortOn (Down . viewPostTime . snd) $ HM.toList allPosts
-    let k = elemIndex src (fst <$> sortedPosts)
-    let z = fromJust $ liftA2 seek k $ zipper (snd <$> sortedPosts)
-    r   <- getRecentPosts (["posts/*.md"] `within` sbSrcDir)
-    n   <- getBlogNavbar  (["posts/*.md"] `within` sbSrcDir)
+    xs <- sortedPosts myPosts
+    let k = elemIndex src (fst <$> xs)
+    let z = fromJust $ liftA2 seek k $ zipper (snd <$> xs)
+    r   <- getRecentPosts myPosts
+    n   <- getBlogNavbar myPosts
     let v' = withRecentPosts r . withJSON n $ (extract z) 
     buildPageActionWithin ($(mkRelFile "templates/post.html") `within` sbSrcDir) v' out
 
@@ -116,17 +124,86 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
     let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
     buildPageActionWithin ($(mkRelFile "templates/docs.html") `within` sbSrcDir) v' out
 
---  storeRuleGenWithin ("posts/index.html" `within` sbOutDir) (const 0) (const ()) 
+  ("posts/index.html" `within` sbOutDir) %^> \out -> do
+    xs <- sortedPosts myPosts
+    p  <- seek 0 <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages" <>) sbPPP
+    k <- getBlogNavbar myPosts
+    let v = withJSON k $ extract p
+    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+
+  ("posts/pages/*/index.html" `within` sbOutDir) %^> \out -> do
+    xs <- sortedPosts (["posts/*.md"] `within` sbSrcDir)
+    let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
+    p <- seek n <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages" <>) sbPPP
+    k <- getBlogNavbar myPosts
+    let v = withJSON k $ extract p
+    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+ 
+  ("posts/tags/*/index.html" `within` sbOutDir) %^> \out -> do
+    let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
+    xs <- filter (elem t . viewTags . snd) <$> sortedPosts myPosts
+    p  <- seek 0 <$> genIndexPageData (snd <$> xs) ("Posts tagged " <> t) (("/posts/tags/"  <> t <> "/posts") <>) sbPPP
+    k <- getBlogNavbar myPosts
+    let v = withJSON k $ extract p
+    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+
+  ("posts/tags/*/pages/*/index.html" `within` sbOutDir) %^> \out -> do
+    let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
+    xs <- filter (elem t . viewTags . snd) <$> sortedPosts myPosts
+    let n = (+ (-1)) . read . (!! 4) . splitOn "/" . toFilePath . extract $ out
+    p  <- seek n <$> genIndexPageData (snd <$> xs) ("Posts tagged " <> t) (("/posts/tags/"  <> t <> "/posts") <>) sbPPP
+    k <- getBlogNavbar myPosts
+    let v = withJSON k $ extract p
+    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+
+  ("posts/months/*/index.html" `within` sbOutDir) %^> \out -> do
+    let t = parseISODateTime . T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
+    xs <- filter (sameMonth t . viewPostTime . snd) <$> sortedPosts myPosts
+    p  <- seek 0 <$> genIndexPageData (snd <$> xs)
+                       (("Posts from " <>) . T.pack . defaultPrettyMonthFormat $ t)
+                       (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t) <> "/posts") <>) sbPPP
+    k <- getBlogNavbar myPosts
+    let v = withJSON k $ extract p
+    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+
+  ("posts/months/*/pages/*/index.html" `within` sbOutDir) %^> \out -> do
+    let t = parseISODateTime . T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
+    xs <- filter (sameMonth t . viewPostTime . snd) <$> sortedPosts myPosts
+    let n = (+ (-1)) . read  . (!! 4) . splitOn "/" . toFilePath . extract $ out
+    p  <- seek n <$> genIndexPageData (snd <$> xs)
+                       (("Posts from " <>) . T.pack . defaultPrettyMonthFormat $ t)
+                       (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t) <> "/posts") <>) sbPPP
+    k <- getBlogNavbar myPosts
+    let v = withJSON k $ extract p
+    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
 
   phony "index" $
     needIn sbOutDir [$(mkRelFile "index.html")]
 
   phony "post-index" $ do
-    xs <-getDirectoryFilesWithin' (["posts/*.md"] `within` sbSrcDir) >>= mapM readMDC
+    xs <- sortedPosts myPosts
     needIn sbOutDir [$(mkRelFile "posts/index.html")]
     paginate' sbPPP xs
-      >>= pagePaths (\p -> $(mkRelDir "posts") </> p </> $(mkRelFile "index.html"))
+      >>= pagePaths (\p -> $(mkRelDir "posts/pages") </> p </> $(mkRelFile "index.html"))
         >>= needIn sbOutDir
+
+  phony "by-tag-index" $ do
+    xs <- sortedPosts myPosts
+    forM_ (viewAllPostTags (snd <$> xs)) $ \t -> do
+      u <- parseRelDir $ T.unpack t
+      needIn sbOutDir [$(mkRelDir "posts/tags") </> u </> $(mkRelFile "index.html")]
+      paginate' sbPPP xs
+        >>= pagePaths (\p -> $(mkRelDir "posts/tags") </> u </> $(mkRelDir "pages") </> p </> $(mkRelFile "index.html"))
+          >>= needIn sbOutDir
+
+  phony "by-month-index" $ do
+    xs <- sortedPosts myPosts
+    forM_ (viewAllPostTimes (snd <$> xs)) $ \t -> do
+      u <- parseRelDir $ defaultMonthUrlFormat t
+      needIn sbOutDir [$(mkRelDir "posts/months") </> u </> $(mkRelFile "index.html")]
+      paginate' sbPPP xs
+        >>= pagePaths (\p -> $(mkRelDir "posts/months") </> u </> $(mkRelDir "pages") </> p </> $(mkRelFile "index.html"))
+          >>= needIn sbOutDir
 
   phony "docs" $
     mapM withHtmlExtension tableOfContents >>= needIn sbOutDir
@@ -154,6 +231,6 @@ main = do
    lf <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    let f = ShakebookEnv (fst lf) sbc
    shake shakeOptions $ want ["clean"] >> runShakePlus f rules
-   shake shakeOptions $ want ["index", "docs", "posts"] >> runShakePlus f rules--, "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
+   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "by-tag-index", "by-month-index"] >> runShakePlus f rules--, "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
    defaultMain $ tests xs
    snd lf
