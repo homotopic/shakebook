@@ -1,13 +1,22 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
 
+import           Control.Comonad.Env as E
+import           Development.Shake.Classes
 import           Development.Shake.Plus
+import           Development.Shake (RuleResult)
+import           Data.Aeson
 import           Options.Applicative
 import           Path
 import           RIO
+import qualified RIO.HashMap as HM
+import           RIO.List
 import qualified RIO.Text                   as T
 import           Shakebook
+import           Shakebook.Conventions
+import           Shakebook.Mustache
 import           Shakebook.Defaults
+import           Within
 
 sample :: Parser SimpleOpts
 sample = SimpleOpts
@@ -32,9 +41,6 @@ opts = info (sample <**> helper)
    <> progDesc "Creates a simple blog from source with default settings."
    <> header "shakebook-simple-blog - A simple blog using standard shakebook conventions." )
 
-indexHTML :: Path Rel File
-indexHTML = $(mkRelFile "index.html")
-
 main :: IO ()
 main = do
   (x :: SimpleOpts) <- execParser opts
@@ -54,12 +60,24 @@ app sbc =  do
 
       runShakePlus f $ view sbConfigL >>= \SbConfig {..} -> do
 
-        defaultCleanPhony
+        readMDC <- newCache readMarkdownFile'
 
-        defaultSinglePagePattern "index.html" "templates/index.html"
-                                 (affixRecentPosts ["posts/md"] 5 defaultEnrichPost)
+        postsC  <- newCache $ \w -> do
+          xs <- batchLoadWithin' w readMDC
+          return $ defaultEnrichPost <$> xs
 
-        phony "index" $ needP [sbOutDir </> indexHTML]
+        getRecentPosts <- newCache $ \fp -> do
+          allPosts <- postsC fp
+          return $ take 5 (sortOn (Down . viewPostTime) $ HM.elems allPosts)
+
+        ("index.html" `within` sbOutDir) %^> \out -> do
+          src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
+          v   <- readMDC src
+          r   <- getRecentPosts (["posts/*.md"] `within` sbSrcDir)
+          let v' = withRecentPosts r v
+          buildPageAction (sbSrcDir </> $(mkRelFile "template/index.html")) v' (fromWithin out)
+
+        phony "index" $ needP [sbOutDir </> $(mkRelFile "index.html")]
 
         phony "all" $ need ["index"]
 

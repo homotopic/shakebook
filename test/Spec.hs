@@ -1,19 +1,27 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Control.Comonad.Cofree
+import           Control.Comonad.Store
+import           Control.Comonad.Store.Zipper
+import           Control.Comonad.Zipper.Extra
 import           Data.Aeson
 import           Data.List.Split
 import           Development.Shake.Plus
 import           Path
 import           RIO
+import           RIO.Partial
+import qualified RIO.HashMap                  as HM
 import           RIO.List
 import qualified RIO.Text                     as T
-import           Shakebook
-import           Shakebook.Conventions
+import           Shakebook.Aeson
+import           Shakebook.Data
 import           Shakebook.Defaults
+import           Shakebook.Mustache
+import           Shakebook.Conventions
 import           Test.Tasty
 import           Test.Tasty.Golden
 import           Text.Pandoc.Highlighting
+import           Within
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -27,11 +35,11 @@ baseUrl = "http://blanky.test"
 siteTitle :: Text
 siteTitle = "Blanky Site"
 
-tableOfContents :: ToC
-tableOfContents = "docs/index.md" :< [
-                    "docs/1/index.md" :< []
-                  , "docs/2/index.md" :< [
-                  "docs/2/champ.md" :< []
+tableOfContents :: Cofree [] (Path Rel File)
+tableOfContents = $(mkRelFile "docs/index.md") :< [
+                    $(mkRelFile "docs/1/index.md") :< []
+                  , $(mkRelFile "docs/2/index.md") :< [
+                  $(mkRelFile "docs/2/champ.md") :< []
                   ]
                 ]
 
@@ -59,46 +67,78 @@ sbc = SbConfig {
 , sbGlobalApply = withSiteTitle siteTitle . withHighlighting pygments . withSocialLinks mySocial
 }
 
-myRecentPosts :: MonadShakebookAction r m => Value -> m Value
-myRecentPosts = affixRecentPosts ["posts/*.md"] numRecentPosts defaultEnrichPost
-
-myBlogNavbar :: MonadShakebookAction r m => Value -> m Value
-myBlogNavbar = affixBlogNavbar ["posts/*.md"] "Blog" "/posts/"
-                  (T.pack . defaultPrettyMonthFormat)
-                  (defaultMonthUrlFragment)
-                  defaultEnrichPost
+pagePaths :: MonadThrow m => (Path Rel Dir -> Path Rel File) -> Zipper [] [a] -> m [Path Rel File]
+pagePaths f xs = forM [1..size xs] $ parseRelDir . show >=> return . f
 
 rules :: MonadShakebookRules r m => m ()
-rules = do
-  defaultSinglePagePattern "index.html"  "templates/index.html" myRecentPosts
+rules = view sbConfigL >>= \SbConfig {..} -> do
 
-  defaultPostsPatterns     "posts/*.html" "templates/post.html"
-    (myBlogNavbar <=< myRecentPosts . defaultEnrichPost) pure
+  readMDC <- newCache readMarkdownFile'
 
-  defaultDocsPatterns tableOfContents "templates/docs.html" id
+  postsC  <- newCache $ \w -> do
+    xs <- batchLoadWithin' w readMDC
+    return $ defaultEnrichPost <$> xs
 
-  defaultPostIndexPatterns  ["posts/*.md"] "templates/post-list.html" myBlogNavbar
-                               (pure . extendPageNeighbours numPageNeighbours)
+  getRecentPosts <- newCache $ \fp -> do
+     allPosts <- postsC fp
+     return $ take numRecentPosts (sortOn (Down . viewPostTime) $ HM.elems allPosts)
 
-  defaultTagIndexPatterns   ["posts/*.md"] "templates/post-list.html" myBlogNavbar
-                               (pure . extendPageNeighbours numPageNeighbours)
+  getBlogNavbar <- newCache $ \fp -> do
+     allPosts <- postsC fp
+     return $ genBlogNavbarData "Blog" "/posts/"
+                  (T.pack . defaultPrettyMonthFormat)
+                  (defaultMonthUrlFragment) (HM.elems allPosts)
 
-  defaultMonthIndexPatterns ["posts/*.md"] "templates/post-list.html" myBlogNavbar
-                               (pure . extendPageNeighbours numPageNeighbours)
+  ("index.html" `within` sbOutDir) %^> \out -> do
+    src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
+    v   <- readMDC src
+    r   <- getRecentPosts (["posts/*.md"] `within` sbSrcDir)
+    let v' = withRecentPosts r v
+    buildPageActionWithin ($(mkRelFile "templates/index.html") `within` sbSrcDir) v' out
 
-  defaultStaticsPatterns    ["css//*", "images//*", "js//*", "webfonts//*"]
-  defaultStaticsPhony       ["css//*", "images//*", "js//*", "webfonts//*"]
+  ("posts/*.html" `within` sbOutDir) %^> \out -> do
+    src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
+    allPosts <- postsC    (["posts/*.md"] `within` sbSrcDir)
+    let sortedPosts = sortOn (Down . viewPostTime . snd) $ HM.toList allPosts
+    let k = elemIndex src (fst <$> sortedPosts)
+    let z = fromJust $ liftA2 seek k $ zipper (snd <$> sortedPosts)
+    r   <- getRecentPosts (["posts/*.md"] `within` sbSrcDir)
+    n   <- getBlogNavbar  (["posts/*.md"] `within` sbSrcDir)
+    let v' = withRecentPosts r . withJSON n $ (extract z) 
+    buildPageActionWithin ($(mkRelFile "templates/post.html") `within` sbSrcDir) v' out
 
-  defaultSinglePagePhony    "index" "index.html"
-  defaultPostsPhony         ["posts/*.md"]
-  defaultPostIndexPhony     ["posts/*.md"]
+  toc' <- mapM (mapM withHtmlExtension) $ fmap (`within` sbOutDir) tableOfContents
+  sequence . flip extend toc' $ \xs -> (fmap toFilePath $ extract xs) %^> \out -> do
+    let getDoc = readMDC <=< blinkAndMapM sbSrcDir withMarkdownExtension 
+    ys <- mapM getDoc toc'
+    zs <- mapM getDoc $ (Shakebook.Data.lower xs)
+    v  <- getDoc $ out
+    let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
+    buildPageActionWithin ($(mkRelFile "templates/docs.html") `within` sbSrcDir) v' out
 
-  defaultTagIndexPhony      ["posts/*.md"]
+--  storeRuleGenWithin ("posts/index.html" `within` sbOutDir) (const 0) (const ()) 
 
-  defaultMonthIndexPhony    ["posts/*.md"]
+  phony "index" $
+    needIn sbOutDir [$(mkRelFile "index.html")]
 
-  defaultDocsPhony          tableOfContents
-  defaultCleanPhony
+  phony "post-index" $ do
+    xs <-getDirectoryFilesWithin' (["posts/*.md"] `within` sbSrcDir) >>= mapM readMDC
+    needIn sbOutDir [$(mkRelFile "posts/index.html")]
+    paginate' sbPPP xs
+      >>= pagePaths (\p -> $(mkRelDir "posts") </> p </> $(mkRelFile "index.html"))
+        >>= needIn sbOutDir
+
+  phony "docs" $
+    mapM withHtmlExtension tableOfContents >>= needIn sbOutDir
+    
+  phony "posts" $
+    getDirectoryFilesWithin' (["posts/*.md"] `within` sbSrcDir) >>= 
+      mapM (blinkAndMapM sbOutDir withHtmlExtension) >>=
+        needWithin'
+
+  phony "clean" $ do
+    logInfo $ "Cleaning files in " <> display (PathDisplay sbOutDir)
+    removeFilesAfter sbOutDir ["//*"]
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
@@ -114,6 +154,6 @@ main = do
    lf <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    let f = ShakebookEnv (fst lf) sbc
    shake shakeOptions $ want ["clean"] >> runShakePlus f rules
-   shake shakeOptions $ want ["index", "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
+   shake shakeOptions $ want ["index", "docs", "posts"] >> runShakePlus f rules--, "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
    defaultMain $ tests xs
    snd lf

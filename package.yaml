@@ -97,6 +97,7 @@ dependencies:
 - aeson
 - base >= 4.7 && < 5
 - comonad
+- comonad-extras
 - doctemplates
 - extra
 - feed

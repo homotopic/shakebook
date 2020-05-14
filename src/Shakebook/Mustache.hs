@@ -36,8 +36,8 @@ buildPageAction template value out = do
   writeFile' out $ substitute pageT value
 
 buildPageActionWithin :: MonadAction m
-                      => Within Rel File
+                      => Within Rel (Path Rel File)
                       -> Value
-                      -> Within Rel File
+                      -> Within Rel (Path Rel File)
                       -> m ()
 buildPageActionWithin template value out = buildPageAction (fromWithin template) value (fromWithin out)

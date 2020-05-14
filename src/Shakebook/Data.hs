@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Data where
 
+import           Control.Comonad.Env as E
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Zipper.Extra
@@ -18,18 +19,6 @@ import           Slick.Pandoc
 import           Text.Pandoc.Options
 import           Within
 
-needLocalOut :: (MonadAction m, MonadReader r m, HasLocalOut r) => [Path Rel File] -> m ()
-needLocalOut ys = view localOutL >>= \r -> needIn r ys
-
-(%->) :: (MonadReader r m, MonadRules m, HasLocalOut r) => FilePattern -> (Within Rel File -> RAction r ()) -> m ()
-(%->) pat f = view localOutL >>= \o -> (toFilePath o Development.Shake.FilePath.</> pat) %> \x -> (x `asWithin` o) >>= f
-
-class HasLocalOut r where
-  localOutL :: Lens' r (Path Rel Dir)
-
-class HasLocalSrc r where
-  localSrcL :: Lens' r (Path Rel Dir)
-
 newtype PathDisplay a t = PathDisplay (Path a t)
 
 instance Display (PathDisplay a t) where
@@ -37,10 +26,10 @@ instance Display (PathDisplay a t) where
 
 newtype WithinDisplay a t = WithinDisplay (Within a t)
 
-instance Display (WithinDisplay a t) where
-  display (WithinDisplay (Within (x,y))) = display (PathDisplay x) <> "[" <> display (PathDisplay y) <> "]"
+instance Display t => Display (WithinDisplay a t) where
+  display (WithinDisplay (WithinT (EnvT e (Identity a)))) = display (PathDisplay e) <> "[" <> display a <> "]"
 
-instance Display [WithinDisplay a t] where
+instance Display t => Display [WithinDisplay a t] where
   display [] = ""
   display (x : xs) = display x <> " : " <> display xs
 
@@ -56,16 +45,13 @@ data SbConfig = SbConfig
     , sbGlobalApply :: Value -> Value
     }
 
-class HasSbConfig a where
-  sbConfigL :: Lens' a SbConfig
-
 data ShakebookEnv = ShakebookEnv
     { logFunc  :: LogFunc
     , sbConfig :: SbConfig
     }
 
-instance HasLocalOut ShakebookEnv where
-  localOutL = lens (sbOutDir . sbConfig) undefined
+class HasSbConfig a where
+  sbConfigL :: Lens' a SbConfig
 
 instance HasSbConfig ShakebookEnv where
   sbConfigL = lens sbConfig undefined
@@ -131,62 +117,28 @@ enrichSupposedUrl v = view sbConfigL >>= \SbConfig{..} -> do
   y <- generateSupposedUrl x
   return $ withUrl (T.pack . toFilePath $ y) v
 
+
+mapToEnv :: (a -> b) -> a -> Env a b
+mapToEnv f x = env x (f x)
+
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
   and the srcPath as "srcPath" field.
 -}
 readMarkdownFile' :: (MonadReader r m, HasSbConfig r, MonadAction m)
-                  => Within Rel File
+                  => Within Rel (Path Rel File)
                   -> m Value
 readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> liftAction $ do
-  docContent <- readFile' (fromWithin srcPath)
+  docContent <- readFile' $ liftA2 (</>) E.ask extract $ srcPath
   docData <- markdownToHTMLWithOpts sbMdRead sbHTWrite docContent
-  supposedUrl <- liftIO $ (leadingSlash </>) <$> withHtmlExtension (whatLiesWithin srcPath)
+  supposedUrl <- liftIO $ (leadingSlash </>) <$> withHtmlExtension (extract srcPath)
   return $ sbGlobalApply
-         . withSrcPath (T.pack . toFilePath $ whatLiesWithin srcPath)
+         . withSrcPath (T.pack . toFilePath $ extract srcPath)
          . withUrl (T.pack . toFilePath $ supposedUrl) $ docData
 
-data PaginationException = EmptyContentsError | ZeroPageSize | UnknownPaginationException
-  deriving (Show, Eq, Typeable)
-
-instance Exception PaginationException where
-  displayException EmptyContentsError         = "Can not create a Zipper of length zero."
-  displayException ZeroPageSize               = "Can not divide into pages of size zero."
-  displayException UnknownPaginationException = "Unknown pagination exception."
-
-paginate' :: MonadThrow m => Int -> [a] -> m (Zipper [] [a])
-paginate' n xs = case paginate n xs of
-                    Just x -> return x
-                    Nothing -> if n == 0 then throwM ZeroPageSize
-                               else if length xs == 0 then throwM EmptyContentsError
-                               else throwM UnknownPaginationException
-
-lower :: Cofree [] Value -> [Value]
+lower :: Cofree [] a -> [a]
 lower (_ :< xs) = extract <$> xs
 
-type MonadShakebook r m = (MonadReader r m, HasSbConfig r, HasLogFunc r, MonadIO m, MonadThrow m, HasLocalOut r)
+type MonadShakebook r m = (MonadReader r m, HasSbConfig r, HasLogFunc r, MonadIO m, MonadThrow m)
 type MonadShakebookAction r m = (MonadShakebook r m, MonadAction m)
 type MonadShakebookRules r m = (MonadShakebook r m, MonadRules m)
-
-
-{-|
-  Multi-markdown loader. Allows you to load a filepattern of markdown as a list of JSON
-  values ready to pass to an HTML template. You will probably want to add additional
-  data before you write. See the examples in Shakebook.Defaults
--}
-loadSortFilterEnrich :: (MonadShakebookAction r m, Ord b)
-                     => [FilePattern]    -- ^ A shake filepattern to load, relative to srcDir from SbConfig.
-                     -> (Value -> b)     -- ^ A value to sortOn e.g (Down . viewPostTime)
-                     -> (Value -> Bool)  -- ^ A filtering predicate e.g (elem tag . viewTags)
-                     -> (Value -> Value) -- ^ An initial enrichment. This is pure so can only be data derived from the initial markdown.
-                     -> m [(Within Rel File, Value)] -- ^ A list of Values indexed by their srcPath.
-loadSortFilterEnrich pat s f e = view sbConfigL >>= \SbConfig {..} ->
-    loadSortFilterApplyW readMarkdownFile' sbSrcDir pat s f e
-
--- | The same as `loadSortFilterEnrich` but without filtering.
-loadSortEnrich :: (MonadShakebookAction r m, Ord b)
-               => [FilePattern]    -- ^ A Shake filepattern to load.
-               -> (Value -> b)     -- ^ A value to sortOn e.g (Down . viewPostTime).
-               -> (Value -> Value) -- ^ An initial pure enrichment.
-               -> m [(Within Rel File, Value)] -- ^ A list of Values index by their srcPath.
-loadSortEnrich pat s = loadSortFilterEnrich pat s (const True)

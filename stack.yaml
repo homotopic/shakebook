@@ -5,9 +5,9 @@ extra-deps:
 - comonad-extras-4.0.1@sha256:60c93aa274239086d96d162c3c8bf7cde33a3e8470ecb56461b2f77d2625521e,1321
 - slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
 - text-time-0.2.0@sha256:ae94071e29a5265f60de19c054a5308cee54a849678fbb8ea8d9657510c87b4c,1757
-- shake-plus-0.0.2.2
-- within-0.0.2.0
-- zipper-extra-0.1.0.0
+- ../../shake-plus/shake-plus
+- ../../homotopic-tech/within
+- ../../homotopic-tech/zipper-extra
 nix:
   enable: false
   packages: [zlib]
