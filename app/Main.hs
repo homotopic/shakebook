@@ -2,10 +2,7 @@
 module Main where
 
 import           Control.Comonad.Env as E
-import           Development.Shake.Classes
 import           Development.Shake.Plus
-import           Development.Shake (RuleResult)
-import           Data.Aeson
 import           Options.Applicative
 import           Path
 import           RIO

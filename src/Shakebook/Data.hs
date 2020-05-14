@@ -3,14 +3,11 @@ module Shakebook.Data where
 
 import           Control.Comonad.Env as E
 import           Control.Comonad.Cofree
-import           Control.Comonad.Store
-import           Control.Comonad.Zipper.Extra
 import           Control.Lens               hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                 as A
 import           Data.Aeson.Lens
 import           Development.Shake.Plus
-import qualified Development.Shake.FilePath
 import           Path                       as P
 import           RIO                        hiding (Lens', lens, view)
 import qualified RIO.Text                   as T

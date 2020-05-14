@@ -1,29 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Defaults where
 
-import           Control.Comonad
 import           Control.Comonad.Cofree
-import           Control.Comonad.Store.Class
-import           Control.Comonad.Zipper.Extra
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
-import           Data.List.Split
-import           Data.Text.Time
 import           Development.Shake.Plus
-import qualified Development.Shake.FilePath   as S
 import           RIO
 import qualified RIO.ByteString.Lazy          as LBS
-import           RIO.List
-import           RIO.List.Partial
 import qualified RIO.Map                      as M
-import           RIO.Partial
 import qualified RIO.Text                     as T
 import           RIO.Time
 import           Path                         as P
-import           Shakebook.Aeson
 import           Shakebook.Conventions
 import           Shakebook.Data
-import           Shakebook.Mustache
 import           Text.DocTemplates
 import           Text.Pandoc.Class
 import           Text.Pandoc.Definition
@@ -33,7 +22,6 @@ import           Text.Pandoc.Readers
 import           Text.Pandoc.Templates
 import           Text.Pandoc.Walk
 import           Text.Pandoc.Writers
-import           Within
 
 defaultMonthUrlFormat :: UTCTime -> String
 defaultMonthUrlFormat = formatTime defaultTimeLocale "%Y-%m"
@@ -95,3 +83,36 @@ defaultSbConfig x y = SbConfig
   defaultHtml5WriterOptions
   defaultPostsPerPage
   (withSiteTitle y)
+
+
+makePDFLaTeX :: Pandoc -> PandocIO (Either LBS.ByteString LBS.ByteString)
+makePDFLaTeX p = do
+  t <- compileDefaultTemplate "latex"
+  makePDF "pdflatex" [] writeLaTeX defaultLatexWriterOptions { writerTemplate = Just t } p
+
+handleImages :: Text -> (Text -> Text) -> Inline -> Inline
+handleImages prefix f (Image attr ins (src,txt)) =
+  if T.takeEnd 4 src == ".mp4" then Str (f src)
+  else Image attr ins (prefix <> "/" <> src, txt)
+handleImages _ _ x = x
+
+handleHeaders :: Int -> Block -> Block
+handleHeaders i (Header a as xs) = Header (max 1 (a + i)) as xs
+handleHeaders _ x                = x
+
+pushHeaders :: Int -> Cofree [] Pandoc -> Cofree [] Pandoc
+pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
+
+--- | Build a PDF from a Cofree table of contents.
+buildPDF :: (MonadShakebookAction r m, MonadFail m) => Cofree [] (Path Rel File) -> Path Rel File -> FilePath -> m ()
+buildPDF toc meta out = view sbConfigL >>= \SbConfig {..} -> do
+  y <- mapM (readFileIn' sbSrcDir) toc
+  m <- readFileIn' sbSrcDir meta
+  Right f <- liftIO . runIOorExplode $ do
+    k <- mapM (readMarkdown sbMdRead ) y
+    a <- readMarkdown sbMdRead $ m
+    let z = walk (handleImages (T.pack $ toFilePath sbOutDir) (\x -> "[Video available at " <> sbBaseUrl <> x <> "]")) $ foldr (<>) a $ pushHeaders (-1) k
+    makePDFLaTeX z
+  LBS.writeFile out f
+
+

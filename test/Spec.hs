@@ -15,7 +15,6 @@ import qualified RIO.HashMap                  as HM
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text                     as T
-import           RIO.Time
 import           Shakebook.Aeson
 import           Shakebook.Data
 import           Shakebook.Defaults
@@ -49,8 +48,8 @@ tableOfContents = $(mkRelFile "docs/index.md") :< [
 numRecentPosts :: Int
 numRecentPosts = 3
 
-numPageNeighbours :: Int
-numPageNeighbours = 1
+--numPageNeighbours :: Int
+--numPageNeighbours = 1
 
 postsPerPage :: Int
 postsPerPage = 5
@@ -116,7 +115,7 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
     buildPageActionWithin ($(mkRelFile "templates/post.html") `within` sbSrcDir) v' out
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap (`within` sbOutDir) tableOfContents
-  sequence . flip extend toc' $ \xs -> (fmap toFilePath $ extract xs) %^> \out -> do
+  void . sequence . flip extend toc' $ \xs -> (fmap toFilePath $ extract xs) %^> \out -> do
     let getDoc = readMDC <=< blinkAndMapM sbSrcDir withMarkdownExtension 
     ys <- mapM getDoc toc'
     zs <- mapM getDoc $ (Shakebook.Data.lower xs)

@@ -25,6 +25,27 @@ packages:
       sha256: 086572dbcc5663ab43f658634dcb3b08cc595690fba0a92387eeb7aa72651d6f
   original:
     hackage: text-time-0.2.0@sha256:ae94071e29a5265f60de19c054a5308cee54a849678fbb8ea8d9657510c87b4c,1757
+- completed:
+    hackage: shake-plus-0.1.1.0@sha256:b348cc1eed408179fbe5955c26dbf0fd9560c10b25d9d573ca0ebfc645868cfc,2251
+    pantry-tree:
+      size: 1169
+      sha256: 8b5778ea753d44422003862e412c26eac5d3a47cbc16ff7a3bf2ff9d1417fcc2
+  original:
+    hackage: shake-plus-0.1.1.0
+- completed:
+    hackage: within-0.1.1.0@sha256:6b2dce370e6d56b4702dab42c0254882ef8273c30ea8faae87d0da38c285fb2f,1107
+    pantry-tree:
+      size: 305
+      sha256: 5e853f5b1a97f0a1dd95e0969196732569900e20173f18ea4ea41b8de9e8f931
+  original:
+    hackage: within-0.1.1.0
+- completed:
+    hackage: zipper-extra-0.1.1.0@sha256:41bf31d05f8f647fd2a6d7d9b13018829ce9145a6ec03a474d264023d9d372b4,948
+    pantry-tree:
+      size: 330
+      sha256: 4d562b3b1fef873434fb6bbe1db78cd0477f57390217e4c96492661080bb9788
+  original:
+    hackage: zipper-extra-0.1.1.0
 snapshots:
 - completed:
     size: 493124
