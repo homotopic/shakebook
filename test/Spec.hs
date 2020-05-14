@@ -127,7 +127,7 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
     copyFileChangedWithin ($(mkRelFile "posts/pages/1/index.html") `within` sbOutDir)
 
   ("posts/pages/*/index.html" `within` sbOutDir) %^> \out -> do
-    xs <- sortedPosts (["posts/*.md"] `within` sbSrcDir)
+    xs <- sortedPosts myPosts
     let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
     p <- seek n <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages" <>) sbPPP
     k <- getBlogNavbar myPosts
