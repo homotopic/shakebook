@@ -13,7 +13,8 @@ import           Path                       as P
 import           RIO                        hiding (Lens', lens, view)
 import qualified RIO.Text                   as T
 import           Slick.Pandoc
-import           Text.Pandoc.Options
+import           Text.Pandoc
+import           Text.Pandoc.Walk
 import           Within
 
 newtype PathDisplay a t = PathDisplay (Path a t)
@@ -78,6 +79,10 @@ viewFullUrl = view (key "full-url" . _String)
 withFullUrl :: Text -> Value -> Value
 withFullUrl = withStringField "full-url"
 
+-- | View the "image" field of a JSON vaule.
+viewImage :: Value -> Text
+viewImage = view (key "image" . _String)
+
 -- | View the "url" field of a JSON Value.
 viewUrl :: Value -> Text
 viewUrl = view (key "url" . _String)
@@ -103,6 +108,9 @@ withHtmlExtension = replaceExtension ".html"
 withMarkdownExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
 withMarkdownExtension = replaceExtension ".md"
 
+withHaskellExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
+withHaskellExtension = replaceExtension ".hs"
+
 generateSupposedUrl :: MonadThrow m => Path Rel File -> m (Path Abs File)
 generateSupposedUrl srcPath = (leadingSlash </>) <$> withHtmlExtension srcPath
 
@@ -112,23 +120,38 @@ enrichSupposedUrl v = view sbConfigL >>= \SbConfig{..} -> do
   y <- generateSupposedUrl x
   return $ withUrl (T.pack . toFilePath $ y) v
 
+unPandocM :: (MonadAction m, MonadFail m ) => PandocIO a -> m a
+unPandocM p = do
+  result <- liftIO $ runIO p
+  either (fail . show) return result
+
+getImages :: Pandoc -> [Text]
+getImages = query f where
+  f (Image _ _ (src, _)) = [src]
+  f _ = []
+
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
   and the srcPath as "srcPath" field.
 -}
-readMarkdownFile' :: (MonadReader r m, HasSbConfig r, MonadAction m)
+readMarkdownFile' :: (MonadReader r m, HasSbConfig r, MonadAction m, MonadFail m, MonadThrow m)
                   => Within Rel (Path Rel File)
                   -> m Value
-readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> liftAction $ do
+readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> do
   docContent <- readFile' $ liftA2 (</>) E.ask extract $ srcPath
-  docData <- markdownToHTMLWithOpts sbMdRead sbHTWrite docContent
+  pdoc@(Pandoc meta _) <- unPandocM $ readMarkdown sbMdRead docContent
+  meta' <- liftAction $ flattenMeta (writeHtml5String sbHTWrite) meta
+  let images = getImages pdoc
+  mapM parseRelFile (fmap (drop 1 . T.unpack) images) >>= needIn sbOutDir 
+  outText <- unPandocM $ writeHtml5String sbHTWrite pdoc
+  let docData = meta' & _Object . at "content" ?~ String outText
   supposedUrl <- liftIO $ (leadingSlash </>) <$> withHtmlExtension (extract srcPath)
   return $ sbGlobalApply
          . withSrcPath (T.pack . toFilePath $ extract srcPath)
          . withUrl (T.pack . toFilePath $ supposedUrl) $ docData
 
-lower :: Cofree [] a -> [a]
-lower (_ :< xs) = extract <$> xs
+immediateShoots :: Cofree [] a -> [a]
+immediateShoots(_ :< xs) = extract <$> xs
 
 type MonadShakebook r m = (MonadReader r m, HasSbConfig r, HasLogFunc r, MonadIO m, MonadThrow m)
 type MonadShakebookAction r m = (MonadShakebook r m, MonadAction m)

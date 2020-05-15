@@ -118,7 +118,7 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
   void . sequence . flip extend toc' $ \xs -> (fmap toFilePath $ extract xs) %^> \out -> do
     let getDoc = readMDC <=< blinkAndMapM sbSrcDir withMarkdownExtension 
     ys <- mapM getDoc toc'
-    zs <- mapM getDoc $ (Shakebook.Data.lower xs)
+    zs <- mapM getDoc $ (immediateShoots xs)
     v  <- getDoc $ out
     let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
     buildPageActionWithin ($(mkRelFile "templates/docs.html") `within` sbSrcDir) v' out
