@@ -30,8 +30,6 @@ instance Display t => Display [WithinDisplay a t] where
   display [] = ""
   display (x : xs) = display x <> " : " <> display xs
 
-type ToC = Cofree [] String
-
 data SbConfig = SbConfig
     { sbSrcDir      :: Path Rel Dir
     , sbOutDir      :: Path Rel Dir
@@ -113,10 +111,6 @@ enrichSupposedUrl v = view sbConfigL >>= \SbConfig{..} -> do
   x <- parseRelFile $ T.unpack $ viewSrcPath v
   y <- generateSupposedUrl x
   return $ withUrl (T.pack . toFilePath $ y) v
-
-
-mapToEnv :: (a -> b) -> a -> Env a b
-mapToEnv f x = env x (f x)
 
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
