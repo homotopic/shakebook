@@ -7,11 +7,11 @@ import           Control.Lens               hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                 as A
 import           Data.Aeson.Lens
+import           Data.Aeson.With
 import           Development.Shake.Plus
 import           Path                       as P
 import           RIO                        hiding (Lens', lens, view)
 import qualified RIO.Text                   as T
-import           Shakebook.Aeson
 import           Slick.Pandoc
 import           Text.Pandoc.Options
 import           Within

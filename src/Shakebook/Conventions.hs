@@ -57,6 +57,7 @@ import           Control.Lens                 hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
+import           Data.Aeson.With
 import           Data.Text.Time
 import           RIO                          hiding (view)
 import           RIO.List
@@ -65,7 +66,6 @@ import qualified RIO.Text                     as T
 import qualified RIO.Text.Partial             as T
 import           RIO.Time
 import qualified RIO.Vector                   as V
-import           Shakebook.Aeson
 import           Shakebook.Data
 import           Text.Pandoc.Highlighting
 
@@ -104,7 +104,7 @@ withHighlighting = withStringField "highlighting-css" . T.pack . styleToCss
 
 -- | Add "next" field from input Value.
 withNext :: Maybe Value -> (Value -> Value)
-withNext = withObjectFieldMaybe "next"
+withNext = withValueMaybe "next"
 
 -- | Add "pages" field from input [Value].
 withPages :: [Value] -> (Value -> Value)
@@ -116,7 +116,7 @@ withPrettyDate = withStringField "pretty-date"
 
 -- | Add "previous" field using input Value.
 withPrevious :: Maybe Value -> (Value -> Value)
-withPrevious = withObjectFieldMaybe "previous"
+withPrevious = withValueMaybe "previous"
 
 -- | Add "posts" field based on input [Value].
 withPosts :: [Value] -> Value -> Value

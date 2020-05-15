@@ -95,6 +95,7 @@ tests:
 
 dependencies:
 - aeson
+- aeson-with
 - base >= 4.7 && < 5
 - comonad
 - comonad-extras
