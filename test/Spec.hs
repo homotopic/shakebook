@@ -5,6 +5,7 @@ import           Control.Comonad.Store
 import           Control.Comonad.Store.Zipper
 import           Control.Comonad.Zipper.Extra
 import           Data.Aeson
+import           Data.Aeson.With
 import           Data.List.Split
 import           Data.Text.Time
 import           Development.Shake.Plus
@@ -15,7 +16,6 @@ import qualified RIO.HashMap                  as HM
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text                     as T
-import           Shakebook.Aeson
 import           Shakebook.Data
 import           Shakebook.Defaults
 import           Shakebook.Mustache
