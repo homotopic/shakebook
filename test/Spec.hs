@@ -72,10 +72,10 @@ sbc = SbConfig {
 pagePaths :: MonadThrow m => (Path Rel Dir -> Path Rel File) -> Zipper [] [a] -> m [Path Rel File]
 pagePaths f xs = forM [1..size xs] $ parseRelDir . show >=> return . f
 
-rules :: MonadShakebookRules r m => m ()
+rules :: ShakePlus ShakebookEnv ()
 rules = view sbConfigL >>= \SbConfig {..} -> do
 
-  readMDC <- newCache readMarkdownFile'
+  readMDC <- newCache loadMarkdownAsJSON 
 
   postsC  <- newCache $ \w -> do
     xs <- batchLoadWithin' w readMDC

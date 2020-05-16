@@ -57,7 +57,7 @@ app sbc =  do
 
       runShakePlus f $ view sbConfigL >>= \SbConfig {..} -> do
 
-        readMDC <- newCache readMarkdownFile'
+        readMDC <- newCache loadMarkdownAsJSON
 
         postsC  <- newCache $ \w -> do
           xs <- batchLoadWithin' w readMDC

@@ -12,9 +12,9 @@ import           Development.Shake.Plus
 import           Path                       as P
 import           RIO                        hiding (Lens', lens, view)
 import qualified RIO.Text                   as T
+import           Shakebook.Pandoc
 import           Slick.Pandoc
 import           Text.Pandoc
-import           Text.Pandoc.Walk
 import           Within
 
 newtype PathDisplay a t = PathDisplay (Path a t)
@@ -120,30 +120,18 @@ enrichSupposedUrl v = view sbConfigL >>= \SbConfig{..} -> do
   y <- generateSupposedUrl x
   return $ withUrl (T.pack . toFilePath $ y) v
 
-unPandocM :: (MonadAction m, MonadFail m ) => PandocIO a -> m a
-unPandocM p = do
-  result <- liftIO $ runIO p
-  either (fail . show) return result
-
-getImages :: Pandoc -> [Text]
-getImages = query f where
-  f (Image _ _ (src, _)) = [src]
-  f _ = []
-
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
   and the srcPath as "srcPath" field.
 -}
-readMarkdownFile' :: (MonadReader r m, HasSbConfig r, MonadAction m, MonadFail m, MonadThrow m)
+loadMarkdownAsJSON :: (MonadReader r m, HasSbConfig r, MonadAction m, MonadThrow m)
                   => Within Rel (Path Rel File)
                   -> m Value
-readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> do
-  docContent <- readFile' $ liftA2 (</>) E.ask extract $ srcPath
-  pdoc@(Pandoc meta _) <- unPandocM $ readMarkdown sbMdRead docContent
+loadMarkdownAsJSON srcPath = view sbConfigL >>= \SbConfig{..} -> do
+  pdoc@(Pandoc meta _) <- readMDFileWithin sbMdRead srcPath
   meta' <- liftAction $ flattenMeta (writeHtml5String sbHTWrite) meta
-  let images = getImages pdoc
-  mapM parseRelFile (fmap (drop 1 . T.unpack) images) >>= needIn sbOutDir 
-  outText <- unPandocM $ writeHtml5String sbHTWrite pdoc
+  needPandocImagesIn sbOutDir pdoc
+  outText <- runPandocA $ writeHtml5String sbHTWrite pdoc
   let docData = meta' & _Object . at "content" ?~ String outText
   supposedUrl <- liftIO $ (leadingSlash </>) <$> withHtmlExtension (extract srcPath)
   return $ sbGlobalApply
@@ -152,7 +140,3 @@ readMarkdownFile' srcPath = view sbConfigL >>= \SbConfig{..} -> do
 
 immediateShoots :: Cofree [] a -> [a]
 immediateShoots(_ :< xs) = extract <$> xs
-
-type MonadShakebook r m = (MonadReader r m, HasSbConfig r, HasLogFunc r, MonadIO m, MonadThrow m)
-type MonadShakebookAction r m = (MonadShakebook r m, MonadAction m)
-type MonadShakebookRules r m = (MonadShakebook r m, MonadRules m)

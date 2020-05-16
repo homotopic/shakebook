@@ -1,5 +1,18 @@
 # Changelog for Shakebook
 
+## (v0.3.0.0)
+
+* Upgrade to [shake-plus](https://hackage.haskell.org/package/shake-plus) v0.1.3.0
+  to take advantage of new interface consistency.
+* readMarkdownFile now extracts images from the pandoc and calls need on them.
+* Removed most default code, moved back to user level.
+* Tempate now uses caching for loading posts resulting in significant speedup.
+* Add withSocialLinks function.
+* Remove affix-style
+* Add `sbGlobalApply` to apply a function on every page that comes into
+  existence whether generated or loaded.
+* Removed `Shakebook.Aeson` and moved to new library [aeson-with](https://hackage.haskell.org/package/aeson-with)
+
 ## (v0.2.2.0)
 
 * Depend on new experimental library
