@@ -81,7 +81,7 @@ progressivelyDemoteHeaders = pushHeaders (0) where
 replaceUnusableImages :: MonadThrow m => [String] -> (Text -> Inline) -> Pandoc -> m (Pandoc)
 replaceUnusableImages exts f = walkM handleImages where
   handleImages i@(Image _ _ (src, _)) = do
-    x <- parseRelFile (T.unpack src) >>= fileExtension
+    x <- parseAbsFile (T.unpack src) >>= fileExtension
     return $ if elem x exts then f src else i
   handleImages x = return x
 
