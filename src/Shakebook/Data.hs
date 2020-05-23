@@ -54,6 +54,14 @@ instance HasSbConfig ShakebookEnv where
 instance HasLogFunc ShakebookEnv where
   logFuncL = lens logFunc undefined
 
+-- | View the "content" field of a JSON value.
+viewContent :: Value -> Text
+viewContent = view (key "content" . _String)
+
+-- | Add "content" field from input Text.
+withContent :: Text -> Value -> Value
+withContent = withStringField "content"
+
 -- | View the "src-path" field of a JSON Value.
 viewSrcPath :: Value -> Text
 viewSrcPath = view (key "src-path" . _String)
@@ -69,10 +77,6 @@ viewBaseUrl = view (key "base-url" . _String)
 -- | Add "base-url" field from input Text.
 withBaseUrl :: Text -> Value -> Value
 withBaseUrl = withStringField "base-url"
-
--- | Add "content" field from input Text.
-withContent :: Text -> Value -> Value
-withContent = withStringField "content"
 
 -- | View the "full-url" of a JSON Value.
 viewFullUrl :: Value -> Text

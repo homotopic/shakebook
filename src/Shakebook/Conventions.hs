@@ -3,8 +3,7 @@
 
 module Shakebook.Conventions (
   -- * Lenses
-  viewContent
-, viewPostTime
+  viewPostTime
 , viewPostTimeRaw
 , viewSrcPath
 , viewTags
@@ -69,10 +68,6 @@ import qualified RIO.Vector                   as V
 import           Shakebook.Data
 import           Text.Pandoc.Highlighting
 
-
--- | View the "content" field of a JSON Value.
-viewContent :: Value -> Text
-viewContent = view (key "content" . _String)
 
 -- | View the "date" field of a JSON Value as a UTCTime.
 viewPostTime :: Value -> UTCTime
