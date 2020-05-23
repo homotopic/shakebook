@@ -70,6 +70,10 @@ viewBaseUrl = view (key "base-url" . _String)
 withBaseUrl :: Text -> Value -> Value
 withBaseUrl = withStringField "base-url"
 
+-- | Add "content" field from input Text.
+withContent :: Text -> Value -> Value
+withContent = withStringField "content"
+
 -- | View the "full-url" of a JSON Value.
 viewFullUrl :: Value -> Text
 viewFullUrl = view (key "full-url" . _String)
@@ -131,11 +135,11 @@ loadMarkdownAsJSON srcPath = view sbConfigL >>= \SbConfig{..} -> do
   meta' <- flattenMeta (writeHtml5String sbHTWrite) meta
   needPandocImagesIn sbOutDir pdoc
   outText <- runPandocA $ writeHtml5String sbHTWrite pdoc
-  let docData = meta' & _Object . at "content" ?~ String outText
   supposedUrl <- (leadingSlash </>) <$> withHtmlExtension (extract srcPath)
   return $ sbGlobalApply
+         . withContent outText
          . withSrcPath (T.pack . toFilePath $ extract srcPath)
-         . withUrl (T.pack . toFilePath $ supposedUrl) $ docData
+         . withUrl (T.pack . toFilePath $ supposedUrl) $ meta'
 
 immediateShoots :: Cofree [] a -> [a]
 immediateShoots(_ :< xs) = extract <$> xs
