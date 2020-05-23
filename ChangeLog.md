@@ -1,5 +1,10 @@
 # Changelog for Shakebook
 
+## (v0.3.1.0)
+
+* Add `withContent` lens.
+* Add lifted version of `flattenMeta` from `Slick.Pandoc`.
+
 ## (v0.3.0.0)
 
 * Upgrade to [shake-plus](https://hackage.haskell.org/package/shake-plus) v0.1.3.0
