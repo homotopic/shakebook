@@ -13,7 +13,6 @@ import           Path                       as P
 import           RIO                        hiding (Lens', lens, view)
 import qualified RIO.Text                   as T
 import           Shakebook.Pandoc
-import           Slick.Pandoc
 import           Text.Pandoc
 import           Within
 
@@ -129,7 +128,7 @@ loadMarkdownAsJSON :: (MonadReader r m, HasSbConfig r, MonadAction m, MonadThrow
                   -> m Value
 loadMarkdownAsJSON srcPath = view sbConfigL >>= \SbConfig{..} -> do
   pdoc@(Pandoc meta _) <- readMDFileWithin sbMdRead srcPath
-  meta' <- liftAction $ flattenMeta (writeHtml5String sbHTWrite) meta
+  meta' <- flattenMeta (writeHtml5String sbHTWrite) meta
   needPandocImagesIn sbOutDir pdoc
   outText <- runPandocA $ writeHtml5String sbHTWrite pdoc
   let docData = meta' & _Object . at "content" ?~ String outText

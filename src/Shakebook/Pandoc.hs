@@ -9,14 +9,17 @@ module Shakebook.Pandoc (
 , progressivelyDemoteHeaders
 , replaceUnusableImages
 , prefixAllImages
+, flattenMeta
 ) where
 
 import Control.Comonad.Cofree
+import Data.Aeson
 import Development.Shake.Plus
 import RIO
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.Text as T
 import Path
+import qualified Slick.Pandoc
 import Text.Pandoc.Class
 import Text.Pandoc.Definition
 import Text.Pandoc.Readers
@@ -89,3 +92,6 @@ prefixAllImages :: Path Rel Dir -> Pandoc -> Pandoc
 prefixAllImages dir = walk handleImages where
   handleImages (Image attr ins (src, txt)) = Image attr ins ((T.pack $ toFilePath dir) <> "/" <> src, txt)
   handleImages x = x
+
+flattenMeta :: MonadAction m => (Pandoc -> PandocIO Text) -> Meta -> m Value
+flattenMeta opts meta = liftAction $ Slick.Pandoc.flattenMeta opts meta
