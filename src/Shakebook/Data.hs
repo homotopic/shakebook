@@ -135,7 +135,7 @@ loadMarkdownAsJSON srcPath = view sbConfigL >>= \SbConfig{..} -> do
   meta' <- flattenMeta (writeHtml5String sbHTWrite) meta
   needPandocImagesIn sbOutDir pdoc
   outText <- runPandocA $ writeHtml5String sbHTWrite pdoc
-  supposedUrl <- (leadingSlash </>) <$> withHtmlExtension (extract srcPath)
+  supposedUrl <- generateSupposedUrl (extract srcPath)
   return $ sbGlobalApply
          . withContent outText
          . withSrcPath (T.pack . toFilePath $ extract srcPath)
