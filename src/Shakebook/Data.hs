@@ -114,8 +114,8 @@ withHaskellExtension = replaceExtension ".hs"
 generateSupposedUrl :: MonadThrow m => Path Rel File -> m (Path Abs File)
 generateSupposedUrl srcPath = (leadingSlash </>) <$> withHtmlExtension srcPath
 
-enrichSupposedUrl :: (MonadReader r m, HasSbConfig r, MonadThrow m) => Value -> m Value
-enrichSupposedUrl v = view sbConfigL >>= \SbConfig{..} -> do
+enrichSupposedUrl :: MonadThrow m => Value -> m Value
+enrichSupposedUrl v = do
   x <- parseRelFile $ T.unpack $ viewSrcPath v
   y <- generateSupposedUrl x
   return $ withUrl (T.pack . toFilePath $ y) v
