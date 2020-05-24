@@ -82,9 +82,6 @@ enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
 enrichUrl :: (Text -> Text) -> Value -> Value
 enrichUrl f v = withUrl (f (viewSrcPath v)) v
 
-leadingSlash :: Path Abs Dir
-leadingSlash = $(mkAbsDir "/")
-
 withHtmlExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
 withHtmlExtension = replaceExtension ".html"
 
@@ -94,14 +91,17 @@ withMarkdownExtension = replaceExtension ".md"
 withHaskellExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
 withHaskellExtension = replaceExtension ".hs"
 
-generateSupposedUrl :: MonadThrow m => Path Rel File -> m (Path Abs File)
-generateSupposedUrl srcPath = (leadingSlash </>) <$> withHtmlExtension srcPath
+toGroundedUrl :: Path Rel File -> Text
+toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)
+
+generateSupposedUrl :: MonadThrow m => Path Rel File -> m Text
+generateSupposedUrl srcPath = toGroundedUrl <$> withHtmlExtension srcPath
 
 enrichSupposedUrl :: MonadThrow m => Value -> m Value
 enrichSupposedUrl v = do
   x <- parseRelFile $ T.unpack $ viewSrcPath v
   y <- generateSupposedUrl x
-  return $ withUrl (T.pack . toFilePath $ y) v
+  return $ withUrl y v
 
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
@@ -119,7 +119,7 @@ loadMarkdownAsJSON ropts wopts srcPath = do
   supposedUrl <- generateSupposedUrl (extract srcPath)
   return $ withContent outText
          . withSrcPath (T.pack . toFilePath $ extract srcPath)
-         . withUrl (T.pack . toFilePath $ supposedUrl) $ meta'
+         . withUrl supposedUrl $ meta'
 
 immediateShoots :: Cofree [] a -> [a]
 immediateShoots(_ :< xs) = extract <$> xs

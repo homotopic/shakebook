@@ -48,8 +48,8 @@ tableOfContents = $(mkRelFile "docs/index.md") :< [
 numRecentPosts :: Int
 numRecentPosts = 3
 
---numPageNeighbours :: Int
---numPageNeighbours = 1
+numPageNeighbours :: Int
+numPageNeighbours = 1
 
 postsPerPage :: Int
 postsPerPage = 5
@@ -122,9 +122,9 @@ rules = do
   ("posts/pages/*/index.html" `within` outputFolder) %^> \out -> do
     xs <- sortedPosts myPosts
     let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
-    p <- seek n <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages" <>) postsPerPage
+    p <- seek n <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages/" <>) postsPerPage
     k <- getBlogNavbar myPosts
-    let v = withJSON k $ extract p
+    let v = withJSON k $ extract $ extendPageNeighbours numPageNeighbours p
     myBuildPage $(mkRelFile "templates/post-list.html") v out
  
   ("posts/tags/*/index.html" `within` outputFolder) %^> \out -> do
@@ -136,9 +136,9 @@ rules = do
     let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
     xs <- filter (elem t . viewTags . snd) <$> sortedPosts myPosts
     let n = (+ (-1)) . read . (!! 4) . splitOn "/" . toFilePath . extract $ out
-    p  <- seek n <$> genIndexPageData (snd <$> xs) ("Posts tagged " <> t) (("/posts/tags/"  <> t <> "/posts") <>) postsPerPage
+    p  <- seek n <$> genIndexPageData (snd <$> xs) ("Posts tagged " <> t) (("/posts/tags/"  <> t <> "/pages/") <>) postsPerPage
     k <- getBlogNavbar myPosts
-    let v = withJSON k $ extract p
+    let v = withJSON k $ extract $ extendPageNeighbours numPageNeighbours p
     myBuildPage $(mkRelFile "templates/post-list.html") v out
 
   ("posts/months/*/index.html" `within` outputFolder) %^> \out -> do
@@ -152,9 +152,9 @@ rules = do
     let n = (+ (-1)) . read  . (!! 4) . splitOn "/" . toFilePath . extract $ out
     p  <- seek n <$> genIndexPageData (snd <$> xs)
                        (("Posts from " <>) . T.pack . defaultPrettyMonthFormat $ t)
-                       (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t) <> "/posts") <>) postsPerPage
+                       (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t) <> "/pages/") <>) postsPerPage
     k <- getBlogNavbar myPosts
-    let v = withJSON k $ extract p
+    let v = withJSON k $ extract $ extendPageNeighbours numPageNeighbours p
     myBuildPage $(mkRelFile "templates/post-list.html") v out
 
   phony "index" $
