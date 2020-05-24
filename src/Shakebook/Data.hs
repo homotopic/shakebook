@@ -30,30 +30,6 @@ instance Display t => Display [WithinDisplay a t] where
   display [] = ""
   display (x : xs) = display x <> " : " <> display xs
 
-data SbConfig = SbConfig
-    { sbSrcDir      :: Path Rel Dir
-    , sbOutDir      :: Path Rel Dir
-    , sbBaseUrl     :: Text
-    , sbMdRead      :: ReaderOptions
-    , sbHTWrite     :: WriterOptions
-    , sbPPP         :: Int
-    , sbGlobalApply :: Value -> Value
-    }
-
-data ShakebookEnv = ShakebookEnv
-    { logFunc  :: LogFunc
-    , sbConfig :: SbConfig
-    }
-
-class HasSbConfig a where
-  sbConfigL :: Lens' a SbConfig
-
-instance HasSbConfig ShakebookEnv where
-  sbConfigL = lens sbConfig undefined
-
-instance HasLogFunc ShakebookEnv where
-  logFuncL = lens logFunc undefined
-
 -- | View the "content" field of a JSON value.
 viewContent :: Value -> Text
 viewContent = view (key "content" . _String)
@@ -131,17 +107,17 @@ enrichSupposedUrl v = do
   Get a JSON Value of Markdown Data with markdown body as "contents" field
   and the srcPath as "srcPath" field.
 -}
-loadMarkdownAsJSON :: (MonadReader r m, HasSbConfig r, MonadAction m, MonadThrow m)
-                  => Within Rel (Path Rel File)
-                  -> m Value
-loadMarkdownAsJSON srcPath = view sbConfigL >>= \SbConfig{..} -> do
-  pdoc@(Pandoc meta _) <- readMDFileWithin sbMdRead srcPath
-  meta' <- flattenMeta (writeHtml5String sbHTWrite) meta
-  needPandocImagesIn sbOutDir pdoc
-  outText <- runPandocA $ writeHtml5String sbHTWrite pdoc
+loadMarkdownAsJSON :: (MonadAction m, MonadThrow m)
+                   => ReaderOptions
+                   -> WriterOptions
+                   -> Within Rel (Path Rel File)
+                   -> m Value
+loadMarkdownAsJSON ropts wopts srcPath = do
+  pdoc@(Pandoc meta _) <- readMDFileWithin ropts srcPath
+  meta' <- flattenMeta (writeHtml5String wopts) meta
+  outText <- runPandocA $ writeHtml5String wopts pdoc
   supposedUrl <- generateSupposedUrl (extract srcPath)
-  return $ sbGlobalApply
-         . withContent outText
+  return $ withContent outText
          . withSrcPath (T.pack . toFilePath $ extract srcPath)
          . withUrl (T.pack . toFilePath $ supposedUrl) $ meta'
 

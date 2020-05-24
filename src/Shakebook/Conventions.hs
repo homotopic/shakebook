@@ -233,13 +233,7 @@ genPageData t f xs = let x = T.pack . show $ pos xs + 1
                       . withJSON (genLinkData x (f x))
                       . withPosts (extract xs) $ Object mempty
 
-genPageDataM :: (MonadReader r m, HasSbConfig r) => Text -> (Text -> Text) -> Zipper [] [Value] -> m Value
-genPageDataM t f xs = view sbConfigL >>= \SbConfig{..} -> do
-  let z = genPageData t f xs
-  return $ sbGlobalApply z
-  
-
-genIndexPageData :: (MonadReader r m, HasSbConfig r, MonadThrow m)
+genIndexPageData :: MonadThrow m
                  => [Value]
                  -> Text
                  -> (Text -> Text)
@@ -247,4 +241,4 @@ genIndexPageData :: (MonadReader r m, HasSbConfig r, MonadThrow m)
                  -> m (Zipper [] Value)
 genIndexPageData xs g h n = do 
  zs <- paginate' n xs
- sequence $ extend (genPageDataM g h) zs
+ return $ extend (genPageData g h) zs

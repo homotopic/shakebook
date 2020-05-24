@@ -13,6 +13,7 @@ import           Shakebook
 import           Shakebook.Conventions
 import           Shakebook.Mustache
 import           Shakebook.Defaults
+import           Text.Pandoc.Options
 import           Within
 
 sample :: Parser SimpleOpts
@@ -32,6 +33,28 @@ data SimpleOpts = SimpleOpts
     , ppp     :: Int
     }
 
+data BuildOpts = BuildOpts
+    { sbSrcDir :: Path Rel Dir
+    , sbOutDir :: Path Rel Dir
+    , sbBaseUrl :: Text
+    , sbMdRead :: ReaderOptions
+    , sbHtWrite :: WriterOptions
+    , sbPPP :: Int
+    }
+data AppConfig = AppConfig
+    { _opts :: BuildOpts
+    , _lf   :: LogFunc
+    }
+
+class HasBuildOpts a where
+  buildOptsL :: Lens' a BuildOpts
+
+instance HasLogFunc AppConfig where
+  logFuncL = lens _lf undefined
+
+instance HasBuildOpts AppConfig where
+  buildOptsL = lens _opts undefined
+
 opts :: ParserInfo SimpleOpts
 opts = info (sample <**> helper)
     ( fullDesc
@@ -43,21 +66,22 @@ main = do
   (x :: SimpleOpts) <- execParser opts
   s' <- parseRelDir (srcDir x)
   o' <- parseRelDir (outDir x)
-  app $ SbConfig s' o' (T.pack $ baseUrl x) defaultMarkdownReaderOptions defaultHtml5WriterOptions (ppp x) id
+  app $ BuildOpts s' o' (T.pack $ baseUrl x) defaultMarkdownReaderOptions defaultHtml5WriterOptions (ppp x)
 
-app :: SbConfig -> IO ()
+app :: BuildOpts -> IO ()
 app sbc =  do
     logOptions' <- logOptionsHandle stdout True
     lf <- newLogFunc logOptions'
-    let f = ShakebookEnv (fst lf) sbc
+    let f = AppConfig sbc (fst lf)
 
     shake shakeOptions $ do
 
       want ["all"]
 
-      runShakePlus f $ view sbConfigL >>= \SbConfig {..} -> do
+      runShakePlus f $ do
+        BuildOpts{..} <- view buildOptsL
 
-        readMDC <- newCache loadMarkdownAsJSON
+        readMDC <- newCache $ loadMarkdownAsJSON sbMdRead sbHtWrite
 
         postsC  <- newCache $ \w -> do
           xs <- batchLoadWithin' w readMDC

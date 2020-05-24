@@ -31,8 +31,8 @@ sourceFolder = $(mkRelDir "test/site")
 outputFolder :: Path Rel Dir
 outputFolder = $(mkRelDir "test/public")
 
-baseUrl :: Text
-baseUrl = "http://blanky.test"
+--baseUrl :: Text
+--baseUrl = "http://blanky.test"
 
 siteTitle :: Text
 siteTitle = "Blanky Site"
@@ -58,24 +58,14 @@ mySocial :: [Value]
 mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-nowhere")
                                    ,("youtube", "http://youtube.com/blanky-site-nowhere")
                                    ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
-sbc :: SbConfig
-sbc = SbConfig {
-  sbSrcDir      = sourceFolder
-, sbOutDir      = outputFolder
-, sbBaseUrl     = baseUrl
-, sbMdRead      = defaultMarkdownReaderOptions
-, sbHTWrite     = defaultHtml5WriterOptions
-, sbPPP         = postsPerPage
-, sbGlobalApply = withSiteTitle siteTitle . withHighlighting pygments . withSocialLinks mySocial
-}
 
 pagePaths :: MonadThrow m => (Path Rel Dir -> Path Rel File) -> Zipper [] [a] -> m [Path Rel File]
 pagePaths f xs = forM [1..size xs] $ parseRelDir . show >=> return . f
 
-rules :: ShakePlus ShakebookEnv ()
-rules = view sbConfigL >>= \SbConfig {..} -> do
+rules :: HasLogFunc r => ShakePlus r ()
+rules = do
 
-  readMDC <- newCache loadMarkdownAsJSON 
+  readMDC <- newCache $ loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions
 
   postsC  <- newCache $ \w -> do
     xs <- batchLoadWithin' w readMDC
@@ -95,114 +85,119 @@ rules = view sbConfigL >>= \SbConfig {..} -> do
                   (T.pack . defaultPrettyMonthFormat)
                   (defaultMonthUrlFragment) (HM.elems allPosts)
 
-  let myPosts = ["posts/*.md"] `within` sbSrcDir
+  let myPosts = ["posts/*.md"] `within` sourceFolder
 
-  ("index.html" `within` sbOutDir) %^> \out -> do
-    src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
+      myBuildPage tmpl v out = do
+        rs <- getRecentPosts myPosts
+        let v' = withHighlighting pygments
+               . withSocialLinks mySocial
+               . withSiteTitle siteTitle
+               . withRecentPosts rs $ v
+        buildPageActionWithin (tmpl `within` sourceFolder) v' out
+
+  ("index.html" `within` outputFolder) %^> \out -> do
+    src <- blinkAndMapM sourceFolder withMarkdownExtension $ out
     v   <- readMDC src
-    r   <- getRecentPosts myPosts
-    let v' = withRecentPosts r v
-    buildPageActionWithin ($(mkRelFile "templates/index.html") `within` sbSrcDir) v' out
+    myBuildPage $(mkRelFile "templates/index.html") v out
 
-  ("posts/*.html" `within` sbOutDir) %^> \out -> do
-    src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
+  ("posts/*.html" `within` outputFolder) %^> \out -> do
+    src <- blinkAndMapM sourceFolder withMarkdownExtension $ out
     xs <- sortedPosts myPosts
     let k = elemIndex src (fst <$> xs)
     let z = fromJust $ liftA2 seek k $ zipper (snd <$> xs)
-    r   <- getRecentPosts myPosts
     n   <- getBlogNavbar myPosts
-    let v' = withRecentPosts r . withJSON n $ (extract z) 
-    buildPageActionWithin ($(mkRelFile "templates/post.html") `within` sbSrcDir) v' out
+    let v' = withJSON n $ (extract z) 
+    myBuildPage $(mkRelFile "templates/post.html") v' out
 
-  toc' <- mapM (mapM withHtmlExtension) $ fmap (`within` sbOutDir) tableOfContents
+  toc' <- mapM (mapM withHtmlExtension) $ fmap (`within` outputFolder) tableOfContents
   void . sequence . flip extend toc' $ \xs -> (fmap toFilePath $ extract xs) %^> \out -> do
-    let getDoc = readMDC <=< blinkAndMapM sbSrcDir withMarkdownExtension 
+    let getDoc = readMDC <=< blinkAndMapM sourceFolder withMarkdownExtension 
     ys <- mapM getDoc toc'
     zs <- mapM getDoc $ (immediateShoots xs)
     v  <- getDoc $ out
     let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
-    buildPageActionWithin ($(mkRelFile "templates/docs.html") `within` sbSrcDir) v' out
+    myBuildPage $(mkRelFile "templates/docs.html") v' out
 
-  ("posts/index.html" `within` sbOutDir) %^>
-    copyFileChangedWithin ($(mkRelFile "posts/pages/1/index.html") `within` sbOutDir)
+  ("posts/index.html" `within` outputFolder) %^>
+    copyFileChangedWithin ($(mkRelFile "posts/pages/1/index.html") `within` outputFolder)
 
-  ("posts/pages/*/index.html" `within` sbOutDir) %^> \out -> do
+  ("posts/pages/*/index.html" `within` outputFolder) %^> \out -> do
     xs <- sortedPosts myPosts
     let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
-    p <- seek n <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages" <>) sbPPP
+    p <- seek n <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages" <>) postsPerPage
     k <- getBlogNavbar myPosts
     let v = withJSON k $ extract p
-    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+    myBuildPage $(mkRelFile "templates/post-list.html") v out
  
-  ("posts/tags/*/index.html" `within` sbOutDir) %^> \out -> do
+  ("posts/tags/*/index.html" `within` outputFolder) %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"
-    copyFileChangedWithin (i `within` sbOutDir) out
+    copyFileChangedWithin (i `within` outputFolder) out
 
-  ("posts/tags/*/pages/*/index.html" `within` sbOutDir) %^> \out -> do
+  ("posts/tags/*/pages/*/index.html" `within` outputFolder) %^> \out -> do
     let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
     xs <- filter (elem t . viewTags . snd) <$> sortedPosts myPosts
     let n = (+ (-1)) . read . (!! 4) . splitOn "/" . toFilePath . extract $ out
-    p  <- seek n <$> genIndexPageData (snd <$> xs) ("Posts tagged " <> t) (("/posts/tags/"  <> t <> "/posts") <>) sbPPP
+    p  <- seek n <$> genIndexPageData (snd <$> xs) ("Posts tagged " <> t) (("/posts/tags/"  <> t <> "/posts") <>) postsPerPage
     k <- getBlogNavbar myPosts
     let v = withJSON k $ extract p
-    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+    myBuildPage $(mkRelFile "templates/post-list.html") v out
 
-  ("posts/months/*/index.html" `within` sbOutDir) %^> \out -> do
+  ("posts/months/*/index.html" `within` outputFolder) %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/months/" <> t <> "/pages/1/index.html"
-    copyFileChangedWithin (i `within` sbOutDir) out
+    copyFileChangedWithin (i `within` outputFolder) out
 
-  ("posts/months/*/pages/*/index.html" `within` sbOutDir) %^> \out -> do
+  ("posts/months/*/pages/*/index.html" `within` outputFolder) %^> \out -> do
     let t = parseISODateTime . T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
     xs <- filter (sameMonth t . viewPostTime . snd) <$> sortedPosts myPosts
     let n = (+ (-1)) . read  . (!! 4) . splitOn "/" . toFilePath . extract $ out
     p  <- seek n <$> genIndexPageData (snd <$> xs)
                        (("Posts from " <>) . T.pack . defaultPrettyMonthFormat $ t)
-                       (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t) <> "/posts") <>) sbPPP
+                       (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t) <> "/posts") <>) postsPerPage
     k <- getBlogNavbar myPosts
     let v = withJSON k $ extract p
-    buildPageActionWithin ($(mkRelFile "templates/post-list.html") `within` sbSrcDir) v out
+    myBuildPage $(mkRelFile "templates/post-list.html") v out
 
   phony "index" $
-    needIn sbOutDir [$(mkRelFile "index.html")]
+    needIn outputFolder [$(mkRelFile "index.html")]
 
   phony "post-index" $ do
     xs <- sortedPosts myPosts
-    needIn sbOutDir [$(mkRelFile "posts/index.html")]
-    paginate' sbPPP xs
+    needIn outputFolder [$(mkRelFile "posts/index.html")]
+    paginate' postsPerPage xs
       >>= pagePaths (\p -> $(mkRelDir "posts/pages") </> p </> $(mkRelFile "index.html"))
-        >>= needIn sbOutDir
+        >>= needIn outputFolder
 
   phony "by-tag-index" $ do
     xs <- sortedPosts myPosts
     forM_ (viewAllPostTags (snd <$> xs)) $ \t -> do
       u <- parseRelDir $ T.unpack t
-      needIn sbOutDir [$(mkRelDir "posts/tags") </> u </> $(mkRelFile "index.html")]
-      paginate' sbPPP xs
+      needIn outputFolder [$(mkRelDir "posts/tags") </> u </> $(mkRelFile "index.html")]
+      paginate' postsPerPage xs
         >>= pagePaths (\p -> $(mkRelDir "posts/tags") </> u </> $(mkRelDir "pages") </> p </> $(mkRelFile "index.html"))
-          >>= needIn sbOutDir
+          >>= needIn outputFolder
 
   phony "by-month-index" $ do
     xs <- sortedPosts myPosts
     forM_ (viewAllPostTimes (snd <$> xs)) $ \t -> do
       u <- parseRelDir $ defaultMonthUrlFormat t
-      needIn sbOutDir [$(mkRelDir "posts/months") </> u </> $(mkRelFile "index.html")]
-      paginate' sbPPP xs
+      needIn outputFolder [$(mkRelDir "posts/months") </> u </> $(mkRelFile "index.html")]
+      paginate' postsPerPage xs
         >>= pagePaths (\p -> $(mkRelDir "posts/months") </> u </> $(mkRelDir "pages") </> p </> $(mkRelFile "index.html"))
-          >>= needIn sbOutDir
+          >>= needIn outputFolder
 
   phony "docs" $
-    mapM withHtmlExtension tableOfContents >>= needIn sbOutDir
+    mapM withHtmlExtension tableOfContents >>= needIn outputFolder
     
   phony "posts" $
-    getDirectoryFilesWithin' (["posts/*.md"] `within` sbSrcDir) >>= 
-      mapM (blinkAndMapM sbOutDir withHtmlExtension) >>=
+    getDirectoryFilesWithin' (["posts/*.md"] `within` sourceFolder) >>= 
+      mapM (blinkAndMapM outputFolder withHtmlExtension) >>=
         needWithin'
 
   phony "clean" $ do
-    logInfo $ "Cleaning files in " <> display (PathDisplay sbOutDir)
-    removeFilesAfter sbOutDir ["//*"]
+    logInfo $ "Cleaning files in " <> display (PathDisplay outputFolder)
+    removeFilesAfter outputFolder ["//*"]
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
@@ -215,9 +210,8 @@ main :: IO ()
 main = do
    xs <- findByExtension [".html"] "test/golden"
    logOptions' <- logOptionsHandle stdout True
-   lf <- newLogFunc (setLogMinLevel LevelInfo logOptions')
-   let f = ShakebookEnv (fst lf) sbc
-   shake shakeOptions $ want ["clean"] >> runShakePlus f rules
-   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "by-tag-index", "by-month-index"] >> runShakePlus f rules--, "docs", "month-index", "posts-index", "tag-index", "posts"]  >> runShakePlus f rules
+   (lf, dlf) <- newLogFunc (setLogMinLevel LevelInfo logOptions')
+   shake shakeOptions $ want ["clean"] >> runShakePlus lf rules
+   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "by-tag-index", "by-month-index"] >> runShakePlus lf rules
    defaultMain $ tests xs
-   snd lf
+   dlf

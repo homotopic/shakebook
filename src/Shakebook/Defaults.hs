@@ -1,19 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Defaults where
 
-import           Control.Comonad.Cofree
-import           Control.Monad.Extra
 import           Data.Aeson                   as A
-import           Development.Shake.Plus
 import           RIO
-import qualified RIO.ByteString.Lazy          as LBS
 import qualified RIO.Map                      as M
 import qualified RIO.Text                     as T
 import           RIO.Time
-import           Path                         as P
 import           Shakebook.Conventions
-import           Shakebook.Data
-import           Shakebook.Pandoc
 import           Text.DocTemplates
 import           Text.Pandoc.Definition
 import           Text.Pandoc.Options
@@ -52,13 +45,3 @@ defaultLatexWriterOptions = def { writerTableOfContents = True
 
 defaultVideoReplacement :: Text -> Text -> Inline
 defaultVideoReplacement baseUrl = \x -> Str $ "[Video available at [" <> baseUrl <> "/" <> x <> "]"
-
---- | Build a PDF from a Cofree table of contents.
-buildPDF :: (MonadThrow m, MonadAction m, MonadReader r m, HasSbConfig r) => Cofree [] (Path Rel File) -> Path Rel File -> FilePath -> m ()
-buildPDF toc meta out = view sbConfigL >>= \SbConfig {..} -> do
-  k <- mapM (readMDFileIn sbMdRead sbSrcDir) toc
-  a <- readMDFileIn sbMdRead sbSrcDir meta
-  z <- replaceUnusableImages [".mp4"] (defaultVideoReplacement sbBaseUrl) $ foldr (<>) a $ progressivelyDemoteHeaders k
-  needPandocImagesIn sbOutDir z
-  let z' = prefixAllImages sbOutDir z
-  makePDFLaTeX defaultLatexWriterOptions z' >>= LBS.writeFile out
