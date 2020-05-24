@@ -63,10 +63,12 @@ needPandocImagesIn outDir pdoc =
     f _ = []
 
 -- | Make a pdflatex in an `Action`.
-makePDFLaTeX :: (MonadAction m, MonadThrow m) => WriterOptions -> Pandoc -> m (Either LBS.ByteString LBS.ByteString)
-makePDFLaTeX wopts p = runPandocA $ do
-  t <- compileDefaultTemplate "latex"
-  makePDF "pdflatex" [] writeLaTeX wopts { writerTemplate = Just t } p
+makePDFLaTeX :: (MonadAction m, MonadThrow m) => WriterOptions -> Pandoc -> m LBS.ByteString
+makePDFLaTeX wopts p = do
+  f <- runPandocA $ do
+    t <- compileDefaultTemplate "latex"
+    makePDF "pdflatex" [] writeLaTeX wopts { writerTemplate = Just t } p
+  either (throwM . PandocActionException . show) return f
 
 -- | Precarious function that demotes Header numbers within the Pandoc according to its depth
 -- in the Cofree. This is so that Headers that H1s that would correctly display for an HTML page

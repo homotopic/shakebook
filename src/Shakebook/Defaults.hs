@@ -61,5 +61,4 @@ buildPDF toc meta out = view sbConfigL >>= \SbConfig {..} -> do
   z <- replaceUnusableImages [".mp4"] (defaultVideoReplacement sbBaseUrl) $ foldr (<>) a $ progressivelyDemoteHeaders k
   needPandocImagesIn sbOutDir z
   let z' = prefixAllImages sbOutDir z
-  f <- makePDFLaTeX defaultLatexWriterOptions z'
-  either (throwM . PandocActionException . show) (LBS.writeFile out) f
+  makePDFLaTeX defaultLatexWriterOptions z' >>= LBS.writeFile out
