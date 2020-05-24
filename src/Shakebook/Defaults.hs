@@ -6,6 +6,7 @@ import           RIO
 import qualified RIO.Map                      as M
 import qualified RIO.Text                     as T
 import           RIO.Time
+import           Path
 import           Shakebook.Conventions
 import           Text.DocTemplates
 import           Text.Pandoc.Definition
@@ -45,3 +46,8 @@ defaultLatexWriterOptions = def { writerTableOfContents = True
 
 defaultVideoReplacement :: Text -> Text -> Inline
 defaultVideoReplacement baseUrl = \x -> Str $ "[Video available at [" <> baseUrl <> "/" <> x <> "]"
+
+defaultPagePaths :: MonadThrow m => [Int] -> m [Path Rel File]
+defaultPagePaths xs = do
+  xs' <- mapM (parseRelDir . show) xs
+  return $ fmap (\i -> $(mkRelDir "pages") </> i </> $(mkRelFile "index.html")) xs'

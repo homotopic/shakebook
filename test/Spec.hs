@@ -59,9 +59,6 @@ mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-
                                    ,("youtube", "http://youtube.com/blanky-site-nowhere")
                                    ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
 
-pagePaths :: MonadThrow m => (Path Rel Dir -> Path Rel File) -> Zipper [] [a] -> m [Path Rel File]
-pagePaths f xs = forM [1..size xs] $ parseRelDir . show >=> return . f
-
 rules :: HasLogFunc r => ShakePlus r ()
 rules = do
 
@@ -94,6 +91,7 @@ rules = do
                . withSiteTitle siteTitle
                . withRecentPosts rs $ v
         buildPageActionWithin (tmpl `within` sourceFolder) v' out
+
 
   ("index.html" `within` outputFolder) %^> \out -> do
     src <- blinkAndMapM sourceFolder withMarkdownExtension $ out
@@ -164,28 +162,29 @@ rules = do
 
   phony "post-index" $ do
     xs <- sortedPosts myPosts
-    needIn outputFolder [$(mkRelFile "posts/index.html")]
-    paginate' postsPerPage xs
-      >>= pagePaths (\p -> $(mkRelDir "posts/pages") </> p </> $(mkRelFile "index.html"))
-        >>= needIn outputFolder
+    ps <- paginate' postsPerPage xs
+    fs <- defaultPagePaths [1..size ps]
+    needIn (outputFolder </> $(mkRelDir "posts")) ($(mkRelFile "index.html") : fs)
 
   phony "by-tag-index" $ do
     xs <- sortedPosts myPosts
     forM_ (viewAllPostTags (snd <$> xs)) $ \t -> do
       u <- parseRelDir $ T.unpack t
-      needIn outputFolder [$(mkRelDir "posts/tags") </> u </> $(mkRelFile "index.html")]
-      paginate' postsPerPage xs
-        >>= pagePaths (\p -> $(mkRelDir "posts/tags") </> u </> $(mkRelDir "pages") </> p </> $(mkRelFile "index.html"))
-          >>= needIn outputFolder
+      let xs' = filter (elem t . viewTags . snd) xs
+      ps <- paginate' postsPerPage xs'
+      fs <- defaultPagePaths [1..size ps]
+      let tagFolder = outputFolder </> $(mkRelDir "posts/tags") </> u
+      needIn tagFolder ($(mkRelFile "index.html") : fs)
 
   phony "by-month-index" $ do
     xs <- sortedPosts myPosts
     forM_ (viewAllPostTimes (snd <$> xs)) $ \t -> do
       u <- parseRelDir $ defaultMonthUrlFormat t
-      needIn outputFolder [$(mkRelDir "posts/months") </> u </> $(mkRelFile "index.html")]
-      paginate' postsPerPage xs
-        >>= pagePaths (\p -> $(mkRelDir "posts/months") </> u </> $(mkRelDir "pages") </> p </> $(mkRelFile "index.html"))
-          >>= needIn outputFolder
+      let monthFolder = outputFolder </> $(mkRelDir "posts/months") </> u
+      let xs' = filter (sameMonth t . viewPostTime . snd) xs
+      ps <- paginate' postsPerPage xs'
+      fs <- defaultPagePaths [1..size ps]
+      needIn monthFolder ($(mkRelFile "index.html") : fs)
 
   phony "docs" $
     mapM withHtmlExtension tableOfContents >>= needIn outputFolder
