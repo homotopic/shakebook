@@ -1,5 +1,10 @@
 # Changelog for Shakebook
 
+## (v0.4.0.0)
+
+* Remove `SBConfig` and constraints from this library. This was only here for refactoring
+  convenience and creating a context should be up to the user.
+
 ## (v0.3.1.0)
 
 * Add `withContent` lens.
