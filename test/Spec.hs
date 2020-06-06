@@ -84,21 +84,23 @@ rules = do
 
   let myPosts = ["posts/*.md"] `within` sourceFolder
 
+      o' = (`within` outputFolder)
+      s' = (`within` sourceFolder)
+
       myBuildPage tmpl v out = do
         rs <- getRecentPosts myPosts
         let v' = withHighlighting pygments
                . withSocialLinks mySocial
                . withSiteTitle siteTitle
                . withRecentPosts rs $ v
-        buildPageActionWithin (tmpl `within` sourceFolder) v' out
+        buildPageActionWithin (s' tmpl) v' out
 
-
-  ("index.html" `within` outputFolder) %^> \out -> do
+  o' "index.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMarkdownExtension $ out
     v   <- readMDC src
     myBuildPage $(mkRelFile "templates/index.html") v out
 
-  ("posts/*.html" `within` outputFolder) %^> \out -> do
+  o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMarkdownExtension $ out
     xs <- sortedPosts myPosts
     let k = elemIndex src (fst <$> xs)
@@ -107,7 +109,7 @@ rules = do
     let v' = withJSON n $ (extract z) 
     myBuildPage $(mkRelFile "templates/post.html") v' out
 
-  toc' <- mapM (mapM withHtmlExtension) $ fmap (`within` outputFolder) tableOfContents
+  toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void . sequence . flip extend toc' $ \xs -> (fmap toFilePath $ extract xs) %^> \out -> do
     let getDoc = readMDC <=< blinkAndMapM sourceFolder withMarkdownExtension 
     ys <- mapM getDoc toc'
@@ -116,10 +118,10 @@ rules = do
     let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
     myBuildPage $(mkRelFile "templates/docs.html") v' out
 
-  ("posts/index.html" `within` outputFolder) %^>
-    copyFileChangedWithin ($(mkRelFile "posts/pages/1/index.html") `within` outputFolder)
+  o' "posts/index.html" %^>
+    copyFileChangedWithin (o' $(mkRelFile "posts/pages/1/index.html"))
 
-  ("posts/pages/*/index.html" `within` outputFolder) %^> \out -> do
+  o' "posts/pages/*/index.html" %^> \out -> do
     xs <- sortedPosts myPosts
     let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
     p <- seek n <$> genIndexPageData (snd <$> xs) "Posts" ("/posts/pages/" <>) postsPerPage
@@ -127,12 +129,12 @@ rules = do
     let v = withJSON k $ extract $ extendPageNeighbours numPageNeighbours p
     myBuildPage $(mkRelFile "templates/post-list.html") v out
  
-  ("posts/tags/*/index.html" `within` outputFolder) %^> \out -> do
+  o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"
-    copyFileChangedWithin (i `within` outputFolder) out
+    copyFileChangedWithin (o' i) out
 
-  ("posts/tags/*/pages/*/index.html" `within` outputFolder) %^> \out -> do
+  o' "posts/tags/*/pages/*/index.html" %^> \out -> do
     let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
     xs <- filter (elem t . viewTags . snd) <$> sortedPosts myPosts
     let n = (+ (-1)) . read . (!! 4) . splitOn "/" . toFilePath . extract $ out
@@ -141,12 +143,12 @@ rules = do
     let v = withJSON k $ extract $ extendPageNeighbours numPageNeighbours p
     myBuildPage $(mkRelFile "templates/post-list.html") v out
 
-  ("posts/months/*/index.html" `within` outputFolder) %^> \out -> do
+  o' "posts/months/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/months/" <> t <> "/pages/1/index.html"
-    copyFileChangedWithin (i `within` outputFolder) out
+    copyFileChangedWithin (o' i) out
 
-  ("posts/months/*/pages/*/index.html" `within` outputFolder) %^> \out -> do
+  o' "posts/months/*/pages/*/index.html" %^> \out -> do
     let t = parseISODateTime . T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
     xs <- filter (sameMonth t . viewPostTime . snd) <$> sortedPosts myPosts
     let n = (+ (-1)) . read  . (!! 4) . splitOn "/" . toFilePath . extract $ out
@@ -190,7 +192,7 @@ rules = do
     mapM withHtmlExtension tableOfContents >>= needIn outputFolder
     
   phony "posts" $
-    getDirectoryFilesWithin' (["posts/*.md"] `within` sourceFolder) >>= 
+    getDirectoryFilesWithin' (s' ["posts/*.md"]) >>= 
       mapM (blinkAndMapM outputFolder withHtmlExtension) >>=
         needWithin'
 
