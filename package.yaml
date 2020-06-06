@@ -89,6 +89,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - hashable-time
     - shakebook
     - tasty
     - tasty-golden

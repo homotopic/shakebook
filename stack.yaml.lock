@@ -47,12 +47,12 @@ packages:
   original:
     hackage: within-0.1.1.0
 - completed:
-    hackage: zipper-extra-0.1.1.0@sha256:41bf31d05f8f647fd2a6d7d9b13018829ce9145a6ec03a474d264023d9d372b4,948
+    hackage: zipper-extra-0.1.2.0@sha256:10cfa7e9466a099efdae52283ab1a14c0d7c196491a7c5a9a129e878cad8ae5e,948
     pantry-tree:
       size: 330
-      sha256: 4d562b3b1fef873434fb6bbe1db78cd0477f57390217e4c96492661080bb9788
+      sha256: 29c456830e4fdfca11af696f06f79b5e9a196d5c75b1d66deca16b8b978264e5
   original:
-    hackage: zipper-extra-0.1.1.0
+    hackage: zipper-extra-0.1.2.0
 snapshots:
 - completed:
     size: 493124
