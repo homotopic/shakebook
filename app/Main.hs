@@ -4,7 +4,7 @@ module Main where
 import           Control.Comonad.Env as E
 import           Development.Shake.Plus
 import           Options.Applicative
-import           Path
+import           Path.Extensions
 import           RIO
 import qualified RIO.HashMap as HM
 import           RIO.List
@@ -14,7 +14,6 @@ import           Shakebook.Conventions
 import           Shakebook.Mustache
 import           Shakebook.Defaults
 import           Text.Pandoc.Options
-import           Within
 
 sample :: Parser SimpleOpts
 sample = SimpleOpts
@@ -92,7 +91,7 @@ app sbc =  do
           return $ take 5 (sortOn (Down . viewPostTime) $ HM.elems allPosts)
 
         ("index.html" `within` sbOutDir) %^> \out -> do
-          src <- blinkAndMapM sbSrcDir withMarkdownExtension $ out
+          src <- blinkAndMapM sbSrcDir withMdExtension $ out
           v   <- readMDC src
           r   <- getRecentPosts (["posts/*.md"] `within` sbSrcDir)
           let v' = withRecentPosts r v

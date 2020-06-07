@@ -2,11 +2,11 @@
 module Shakebook.Defaults where
 
 import           Data.Aeson                   as A
+import           Development.Shake.Plus
 import           RIO
 import qualified RIO.Map                      as M
 import qualified RIO.Text                     as T
 import           RIO.Time
-import           Path
 import           Shakebook.Conventions
 import           Text.DocTemplates
 import           Text.Pandoc.Definition

@@ -18,7 +18,6 @@ import Development.Shake.Plus
 import RIO
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.Text as T
-import Path
 import qualified Slick.Pandoc
 import Text.Pandoc.Class
 import Text.Pandoc.Definition
@@ -28,7 +27,6 @@ import Text.Pandoc.PDF
 import Text.Pandoc.Templates
 import Text.Pandoc.Walk
 import Text.Pandoc.Writers
-import Within
 
 data PandocActionException = PandocActionException String
   deriving (Show, Eq, Typeable)

@@ -112,6 +112,7 @@ dependencies:
 - pandoc
 - pandoc-types
 - path
+- path-extensions
 - shake
 - shake-plus
 - slick

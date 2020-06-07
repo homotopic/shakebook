@@ -9,12 +9,11 @@ import           Data.Aeson                 as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
 import           Development.Shake.Plus
-import           Path                       as P
+import           Path.Extensions
 import           RIO                        hiding (Lens', lens, view)
 import qualified RIO.Text                   as T
 import           Shakebook.Pandoc
 import           Text.Pandoc
-import           Within
 
 newtype PathDisplay a t = PathDisplay (Path a t)
 
@@ -81,15 +80,6 @@ enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
 -- | Assuming a 'src-path' field, enrich using withUrl using a Text -> Text transformation.
 enrichUrl :: (Text -> Text) -> Value -> Value
 enrichUrl f v = withUrl (f (viewSrcPath v)) v
-
-withHtmlExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
-withHtmlExtension = replaceExtension ".html"
-
-withMarkdownExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
-withMarkdownExtension = replaceExtension ".md"
-
-withHaskellExtension :: MonadThrow m => Path Rel File -> m (Path Rel File)
-withHaskellExtension = replaceExtension ".hs"
 
 toGroundedUrl :: Path Rel File -> Text
 toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)

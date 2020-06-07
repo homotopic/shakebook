@@ -5,7 +5,6 @@ module Shakebook.Feed (
 
 import           Data.Aeson
 import           Development.Shake.Plus
-import           Path
 import           RIO
 import           RIO.List.Partial
 import qualified RIO.Text.Lazy         as TL

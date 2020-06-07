@@ -11,7 +11,7 @@ import           Data.Hashable.Time()
 import           Data.List.Split
 import           Data.Text.Time
 import           Development.Shake.Plus
-import           Path
+import           Path.Extensions
 import           RIO
 import           RIO.Partial
 import qualified RIO.HashMap                  as HM
@@ -25,7 +25,6 @@ import           Shakebook.Conventions
 import           Test.Tasty
 import           Test.Tasty.Golden
 import           Text.Pandoc.Highlighting
-import           Within
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -136,12 +135,12 @@ rules = do
         myBuildBlogPage $(mkRelFile "templates/post-list.html") v out
 
   o' "index.html" %^> \out -> do
-    src <- blinkAndMapM sourceFolder withMarkdownExtension out
+    src <- blinkAndMapM sourceFolder withMdExtension out
     v   <- readMDC src
     myBuildPage $(mkRelFile "templates/index.html") v out
 
   o' "posts/*.html" %^> \out -> do
-    src <- blinkAndMapM sourceFolder withMarkdownExtension out
+    src <- blinkAndMapM sourceFolder withMdExtension out
     xs <- postsZ myPosts
     case HM.lookup src xs of
       Nothing -> logError $ "Attempting to lookup non-existent post " <> display (WithinDisplay src)
@@ -149,7 +148,7 @@ rules = do
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do
-    let getDoc = readMDC <=< blinkAndMapM sourceFolder withMarkdownExtension 
+    let getDoc = readMDC <=< blinkAndMapM sourceFolder withMdExtension 
     ys <- mapM getDoc toc'
     zs <- mapM getDoc (immediateShoots xs)
     v  <- getDoc out

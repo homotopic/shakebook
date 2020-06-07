@@ -13,12 +13,10 @@ module Shakebook.Mustache (
 ) where
 
 import Data.Aeson
-import Path
 import RIO
 import qualified Slick.Mustache
 import Development.Shake.Plus
 import Text.Mustache
-import Within
 
 compileTemplate' :: MonadAction m => Path Rel File -> m Template
 compileTemplate' = liftAction . Slick.Mustache.compileTemplate' . toFilePath
