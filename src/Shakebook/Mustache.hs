@@ -12,18 +12,17 @@ module Shakebook.Mustache (
 , compileTemplate'
 ) where
 
-import Data.Aeson
-import RIO
+import           Data.Aeson
+import           Development.Shake.Plus
+import           RIO
 import qualified Slick.Mustache
-import Development.Shake.Plus
-import Text.Mustache
+import           Text.Mustache
 
+-- | Lifted version of `Slick.Mustache.compileTemplate'` with well-typed `Path`.
 compileTemplate' :: MonadAction m => Path Rel File -> m Template
 compileTemplate' = liftAction . Slick.Mustache.compileTemplate' . toFilePath
 
-{-| 
-  Build a single page straight from a template.
--}
+-- | Build a single page straight from a template.
 buildPageAction :: MonadAction m
                 => Path Rel File -- ^ The HTML templatate.
                 -> Value -- ^ A JSON value.
@@ -33,6 +32,7 @@ buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
+-- | Like `buildPageAction`, but uses `Within` values.
 buildPageActionWithin :: MonadAction m
                       => Within Rel (Path Rel File)
                       -> Value
