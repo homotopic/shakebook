@@ -90,7 +90,7 @@ replaceUnusableImages exts f = walkM handleImages where
 
 prefixAllImages :: Path Rel Dir -> Pandoc -> Pandoc
 prefixAllImages dir = walk handleImages where
-  handleImages (Image attr ins (src, txt)) = Image attr ins (T.pack $ toFilePath dir <> "/" <> src, txt)
+  handleImages (Image attr ins (src, txt)) = Image attr ins (T.pack (toFilePath dir) <> "/" <> src, txt)
   handleImages x = x
 
 flattenMeta :: MonadAction m => (Pandoc -> PandocIO Text) -> Meta -> m Value

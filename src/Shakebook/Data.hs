@@ -24,7 +24,7 @@ newtype WithinDisplay a t = WithinDisplay (Within a t)
 instance Display (WithinDisplay a (Path b t)) where
   display (WithinDisplay (WithinT (EnvT e (Identity a)))) = display (PathDisplay e) <> "[" <> display (PathDisplay a) <> "]"
 
-instance Display t => Display [WithinDisplay a (Path b t)] where
+instance Display [WithinDisplay a (Path b t)] where
   display [] = ""
   display (x : xs) = display x <> " : " <> display xs
 
