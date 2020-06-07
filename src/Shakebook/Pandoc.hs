@@ -28,7 +28,7 @@ import           Text.Pandoc.Templates
 import           Text.Pandoc.Walk
 import           Text.Pandoc.Writers
 
-data PandocActionException = PandocActionException String
+newtype PandocActionException = PandocActionException String
     deriving (Show, Eq, Typeable)
 
 instance Exception PandocActionException where
@@ -55,7 +55,7 @@ readMDFileWithin ropts src = readMDFile ropts (fromWithin src)
 -- | Find all the images in a `Pandoc` data structure and call `Development.Shake.Plus.need` on them.
 needPandocImagesIn :: (MonadAction m, MonadThrow m) => Path Rel Dir -> Pandoc -> m ()
 needPandocImagesIn outDir pdoc =
-  mapM parseRelFile (fmap (drop 1 . T.unpack) $ pullImages pdoc) >>= needIn outDir where
+  mapM parseRelFile (drop 1 . T.unpack <$> pullImages pdoc) >>= needIn outDir where
     pullImages = query f
     f (Image _ _ (src, _)) = [src]
     f _                    = []
@@ -72,7 +72,7 @@ makePDFLaTeX wopts p = do
 -- in the Cofree. This is so that Headers that H1s that would correctly display for an HTML page
 -- will be lower in the table of contents in the PDF equivalent.
 progressivelyDemoteHeaders :: Cofree [] Pandoc -> Cofree [] Pandoc
-progressivelyDemoteHeaders = pushHeaders (0) where
+progressivelyDemoteHeaders = pushHeaders 0 where
   handleHeaders :: Int -> Block -> Block
   handleHeaders i (Header a as xs) = Header (max 1 (a + i)) as xs
   handleHeaders _ x                = x
@@ -81,16 +81,16 @@ progressivelyDemoteHeaders = pushHeaders (0) where
   pushHeaders i (x :< xs) = walk (handleHeaders i) x :< map (pushHeaders (i+1)) xs
 
 -- | For a list of file extensions, replace the images with an Inline based on its src path.
-replaceUnusableImages :: MonadThrow m => [String] -> (Text -> Inline) -> Pandoc -> m (Pandoc)
+replaceUnusableImages :: MonadThrow m => [String] -> (Text -> Inline) -> Pandoc -> m Pandoc
 replaceUnusableImages exts f = walkM handleImages where
   handleImages i@(Image _ _ (src, _)) = do
     x <- parseAbsFile (T.unpack src) >>= fileExtension
-    return $ if elem x exts then f src else i
+    return $ if x `elem` exts then f src else i
   handleImages x = return x
 
 prefixAllImages :: Path Rel Dir -> Pandoc -> Pandoc
 prefixAllImages dir = walk handleImages where
-  handleImages (Image attr ins (src, txt)) = Image attr ins ((T.pack $ toFilePath dir) <> "/" <> src, txt)
+  handleImages (Image attr ins (src, txt)) = Image attr ins (T.pack $ toFilePath dir <> "/" <> src, txt)
   handleImages x = x
 
 flattenMeta :: MonadAction m => (Pandoc -> PandocIO Text) -> Meta -> m Value

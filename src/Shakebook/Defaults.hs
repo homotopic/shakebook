@@ -45,7 +45,7 @@ defaultLatexWriterOptions = def { writerTableOfContents = True
                                 }
 
 defaultVideoReplacement :: Text -> Text -> Inline
-defaultVideoReplacement baseUrl = \x -> Str $ "[Video available at [" <> baseUrl <> "/" <> x <> "]"
+defaultVideoReplacement baseUrl x = Str $ "[Video available at [" <> baseUrl <> "/" <> x <> "]"
 
 defaultPagePaths :: MonadThrow m => [Int] -> m [Path Rel File]
 defaultPagePaths xs = do

@@ -91,7 +91,7 @@ app sbc =  do
           return $ take 5 (sortOn (Down . viewPostTime) $ HM.elems allPosts)
 
         ("index.html" `within` sbOutDir) %^> \out -> do
-          src <- blinkAndMapM sbSrcDir withMdExtension $ out
+          src <- blinkAndMapM sbSrcDir withMdExtension out
           v   <- readMDC src
           r   <- getRecentPosts (["posts/*.md"] `within` sbSrcDir)
           let v' = withRecentPosts r v
