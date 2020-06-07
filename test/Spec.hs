@@ -150,7 +150,7 @@ rules = do
   void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do
     let getDoc = readMDC <=< blinkAndMapM sourceFolder withMdExtension 
     ys <- mapM getDoc toc'
-    zs <- mapM getDoc (immediateShoots xs)
+    zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
     let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
     myBuildPage $(mkRelFile "templates/docs.html") v' out

@@ -2,7 +2,6 @@
 module Shakebook.Data where
 
 import           Control.Comonad.Env as E
-import           Control.Comonad.Cofree
 import           Control.Lens               hiding ((:<))
 import           Control.Monad.Extra
 import           Data.Aeson                 as A
@@ -110,6 +109,3 @@ loadMarkdownAsJSON ropts wopts srcPath = do
   return $ withContent outText
          . withSrcPath (T.pack . toFilePath $ extract srcPath)
          . withUrl supposedUrl $ meta'
-
-immediateShoots :: Cofree [] a -> [a]
-immediateShoots(_ :< xs) = extract <$> xs

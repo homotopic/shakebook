@@ -104,6 +104,7 @@ dependencies:
 - extra
 - feed
 - free
+- ixset-typed
 - lens
 - lens-aeson
 - mustache
