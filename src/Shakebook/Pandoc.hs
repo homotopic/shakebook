@@ -12,24 +12,24 @@ module Shakebook.Pandoc (
 , flattenMeta
 ) where
 
-import Control.Comonad.Cofree
-import Data.Aeson
-import Development.Shake.Plus
-import RIO
-import qualified RIO.ByteString.Lazy as LBS
-import qualified RIO.Text as T
+import           Control.Comonad.Cofree
+import           Data.Aeson
+import           Development.Shake.Plus
+import           RIO
+import qualified RIO.ByteString.Lazy    as LBS
+import qualified RIO.Text               as T
 import qualified Slick.Pandoc
-import Text.Pandoc.Class
-import Text.Pandoc.Definition
-import Text.Pandoc.Readers
-import Text.Pandoc.Options
-import Text.Pandoc.PDF
-import Text.Pandoc.Templates
-import Text.Pandoc.Walk
-import Text.Pandoc.Writers
+import           Text.Pandoc.Class
+import           Text.Pandoc.Definition
+import           Text.Pandoc.Options
+import           Text.Pandoc.PDF
+import           Text.Pandoc.Readers
+import           Text.Pandoc.Templates
+import           Text.Pandoc.Walk
+import           Text.Pandoc.Writers
 
 data PandocActionException = PandocActionException String
-  deriving (Show, Eq, Typeable)
+    deriving (Show, Eq, Typeable)
 
 instance Exception PandocActionException where
   displayException (PandocActionException s) = s
@@ -58,7 +58,7 @@ needPandocImagesIn outDir pdoc =
   mapM parseRelFile (fmap (drop 1 . T.unpack) $ pullImages pdoc) >>= needIn outDir where
     pullImages = query f
     f (Image _ _ (src, _)) = [src]
-    f _ = []
+    f _                    = []
 
 -- | Make a pdflatex in an `Action`.
 makePDFLaTeX :: (MonadAction m, MonadThrow m) => WriterOptions -> Pandoc -> m LBS.ByteString
