@@ -165,14 +165,15 @@ enrichTeaser s v = withTeaser (head (T.splitOn s (viewContent v))) v
 extendNextPrevious :: Zipper [] Value -> Zipper [] Value
 extendNextPrevious  = extendPrevious . extendNext
 
--- | Extend a Zipper of JSON Values to add "previous" objects.
+-- | Extend a Zipper of Values to add "previous" objects.
 extendPrevious :: Zipper [] Value -> Zipper [] Value
 extendPrevious = extend (liftA2 withPrevious zipperPreviousMaybe extract)
 
--- | Extend a Zipper of JSON Values to add "next" objects.
+-- | Extend a Zipper of Values to add "next" objects.
 extendNext :: Zipper [] Value -> Zipper [] Value
 extendNext = extend (liftA2 withNext zipperNextMaybe extract)
 
+-- | Extend a Zipper of Values to add list of "pages" within r hops either side of the focus.
 extendPageNeighbours :: Int -> Zipper [] Value -> Zipper [] Value
 extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 

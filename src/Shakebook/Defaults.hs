@@ -28,7 +28,6 @@ defaultEnrichPost :: Value -> Value
 defaultEnrichPost = enrichTeaser "<!--more-->"
                   . enrichTagLinks ("/posts/tags/" <>)
                   . enrichPrettyDate defaultPrettyTimeFormat
---                  . enrichTypicalUrl
 
 defaultMarkdownReaderOptions :: ReaderOptions
 defaultMarkdownReaderOptions = def { readerExtensions = pandocExtensions }

@@ -72,25 +72,13 @@ viewUrl = view (key "url" . _String)
 withUrl :: Text -> Value -> Value
 withUrl = withStringField "url"
 
--- | Assuming a "url" field, enrich via a baseURL
-enrichFullUrl :: Text -> Value -> Value
-enrichFullUrl base v = withFullUrl (base <> viewUrl v) v
-
--- | Assuming a 'src-path' field, enrich using withUrl using a Text -> Text transformation.
-enrichUrl :: (Text -> Text) -> Value -> Value
-enrichUrl f v = withUrl (f (viewSrcPath v)) v
-
+-- | Add a leading slash to a `Path Rel File` to turn it into a url as `Text`.
 toGroundedUrl :: Path Rel File -> Text
 toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)
 
+-- | Generate a "supposed" url, the grounded version of the markdown source path.
 generateSupposedUrl :: MonadThrow m => Path Rel File -> m Text
 generateSupposedUrl srcPath = toGroundedUrl <$> withHtmlExtension srcPath
-
-enrichSupposedUrl :: MonadThrow m => Value -> m Value
-enrichSupposedUrl v = do
-  x <- parseRelFile $ T.unpack $ viewSrcPath v
-  y <- generateSupposedUrl x
-  return $ withUrl y v
 
 {-|
   Get a JSON Value of Markdown Data with markdown body as "contents" field
