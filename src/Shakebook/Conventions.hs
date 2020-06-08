@@ -53,7 +53,6 @@ import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Zipper.Extra
 import           Control.Lens                 hiding ((:<))
-import           Control.Monad.Extra
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With

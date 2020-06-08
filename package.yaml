@@ -101,7 +101,6 @@ dependencies:
 - comonad
 - comonad-extras
 - doctemplates
-- extra
 - feed
 - free
 - ixset-typed

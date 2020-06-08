@@ -3,7 +3,6 @@ module Shakebook.Data where
 
 import           Control.Comonad.Env as E
 import           Control.Lens               hiding ((:<))
-import           Control.Monad.Extra
 import           Data.Aeson                 as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
