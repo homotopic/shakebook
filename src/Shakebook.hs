@@ -1,12 +1,12 @@
 module Shakebook (
   module Data.Aeson
-  module Development.Shake.Plus
-  module Shakebook.Conventions
-  module Shakebook.Data
-  module Shakebook.Defaults
-  module Shakebook.Feed
-  module Shakebook.Mustache
-  module Shakebook.Pandoc
+, module Development.Shake.Plus
+, module Shakebook.Conventions
+, module Shakebook.Data
+, module Shakebook.Defaults
+, module Shakebook.Feed
+, module Shakebook.Mustache
+, module Shakebook.Pandoc
 ) where
 
 import Data.Aeson
