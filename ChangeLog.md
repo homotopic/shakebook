@@ -2,11 +2,13 @@
 
 ## (v0.5.0.0)
 
-* Upgrade to shake-plus v0.1.6.0.
+* Upgrade to [shake-plus](https://hackage.haskell.org/package/shake-plus) v0.1.6.0.
 * Drop `enrichFullUrl`, `enrichUrl` and `enrichSupposedUrl`.
 * Drop `immediateShoots`.
 * Drop dependency on `extra`.
-* Remove `withXExtension` function and Depend on new library `path-extensions`.
+* Remove `withXExtension` function and Depend on new library [path-extensions](https://hackage.haskell.org/package/path-extensions).
+* Re-export `Development.Shake.Plus` and `Data.Aeson`
+* Re-expot most `Shakebook` submodules.
 
 ## (v0.4.0.0)
 
