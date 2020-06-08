@@ -1,16 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-import           Control.Comonad.Cofree
-import           Control.Comonad.Store
-import           Control.Comonad.Store.Zipper
-import           Control.Comonad.Zipper.Extra
 import           Control.Lens hiding ((:<))
-import           Data.Aeson
 import           Data.Aeson.With
 import           Data.Hashable.Time()
 import           Data.List.Split
 import           Data.Text.Time
-import           Development.Shake.Plus
 import           Path.Extensions
 import           RIO
 import           RIO.Partial
@@ -18,13 +12,9 @@ import qualified RIO.HashMap                  as HM
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text                     as T
-import           Shakebook.Data
-import           Shakebook.Defaults
-import           Shakebook.Mustache
-import           Shakebook.Conventions
+import           Shakebook
 import           Test.Tasty
 import           Test.Tasty.Golden
-import           Text.Pandoc.Highlighting
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")

@@ -9,6 +9,7 @@
 * Remove `withXExtension` function and Depend on new library [path-extensions](https://hackage.haskell.org/package/path-extensions).
 * Re-export `Development.Shake.Plus` and `Data.Aeson`
 * Re-expot most `Shakebook` submodules.
+* Re-export Text.Pandoc.Highlighting
 
 ## (v0.4.0.0)
 

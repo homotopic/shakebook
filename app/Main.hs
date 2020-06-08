@@ -10,9 +10,6 @@ import qualified RIO.HashMap as HM
 import           RIO.List
 import qualified RIO.Text                   as T
 import           Shakebook
-import           Shakebook.Conventions
-import           Shakebook.Mustache
-import           Shakebook.Defaults
 import           Text.Pandoc.Options
 
 sample :: Parser SimpleOpts
