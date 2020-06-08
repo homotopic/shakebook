@@ -1,5 +1,13 @@
 # Changelog for Shakebook
 
+## (v0.5.0.0)
+
+* Upgrade to shake-plus v0.1.6.0.
+* Drop `enrichFullUrl`, `enrichUrl` and `enrichSupposedUrl`.
+* Drop `immediateShoots`.
+* Drop dependency on `extra`.
+* Remove `withXExtension` function and Depend on new library `path-extensions`.
+
 ## (v0.4.0.0)
 
 * Remove `SBConfig` and constraints from this library. This was only here for refactoring
