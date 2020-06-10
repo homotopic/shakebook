@@ -1,5 +1,10 @@
 # Changelog for Shakebook
 
+## (v0.5.1.0)
+
+* Add `tagIndex` and `monthIndex` instead of filter and partition functions.
+* Drop `hashable-time` dependency.
+
 ## (v0.5.0.0)
 
 * Upgrade to [shake-plus](https://hackage.haskell.org/package/shake-plus) v0.1.6.0.
