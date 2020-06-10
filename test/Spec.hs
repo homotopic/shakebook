@@ -86,22 +86,16 @@ rules = do
 
   blogTagIndexPageData <- newCache $ \fp -> do
     xs <- sortedPosts fp
-    zs <- forM (viewAllPostTags (snd <$> xs)) $ \t -> do
-      let ys = filter (elem t . viewTags . snd) xs
-      k <- genIndexPageData (snd <$> ys) ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
-      return (t, k)
-    return $ HM.fromList zs
+    flip HM.traverseWithKey (tagIndex (snd <$> xs)) $ \t ys ->
+      genIndexPageData ys ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
 
   blogMonthIndexPageData <- newCache $ \fp -> do
     xs <- sortedPosts fp
-    zs <- forM (nub $ defaultMonthUrlFormat <$> viewAllPostTimes (snd <$> xs)) $ \t -> do
-      let t' = parseISODateTime . T.pack $ t
-      let ys = filter (sameMonth t' . viewPostTime . snd) xs
-      k <- genIndexPageData (snd <$> ys)
+    flip HM.traverseWithKey (monthIndex (snd <$> xs)) $ \t ys ->
+      let t' = parseISODateTime t
+      in genIndexPageData ys
                    (("Posts from " <>) . T.pack . defaultPrettyMonthFormat $ t')
                    (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t') <> "/pages/") <>) postsPerPage
-      return (t', k)
-    return $ HM.fromList zs
 
   let myPosts = ["posts/*.md"] `within` sourceFolder
 
@@ -172,7 +166,7 @@ rules = do
     copyFileChangedWithin (o' i) out
 
   o' "posts/months/*/pages/*/index.html" %^> \out -> do
-     let t = parseISODateTime . T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
+     let t = T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
      let n = (+ (-1)) . read  . (!! 4) . splitOn "/" . toFilePath . extract $ out
      xs <- blogMonthIndexPageData myPosts
      case HM.lookup t xs of
@@ -205,7 +199,7 @@ rules = do
   phony "by-month-index" $ do
      ps <- blogMonthIndexPageData myPosts
      void $ flip HM.traverseWithKey ps $ \t z -> do
-       u  <- parseRelDir $ defaultMonthUrlFormat t
+       u  <- parseRelDir $ T.unpack t
        fs <- defaultPagePaths [1..size z]
        let monthFolder = outputFolder </> $(mkRelDir "posts/months") </> u
        needIn monthFolder ($(mkRelFile "index.html") : fs)

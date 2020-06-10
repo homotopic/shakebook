@@ -44,9 +44,8 @@ module Shakebook.Conventions (
 , genTocNavbarData
 
 , dateSortPosts
-, monthFilterPosts
-, sameMonth
-, tagFilterPosts
+, monthIndex
+, tagIndex
 ) where
 
 import           Control.Comonad.Cofree
@@ -58,6 +57,7 @@ import           Data.Aeson.Lens
 import           Data.Aeson.With
 import           Data.Text.Time
 import           RIO                          hiding (view)
+import qualified RIO.HashMap                  as HM
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text                     as T
@@ -181,28 +181,17 @@ extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 genLinkData :: Text -> Text -> Value
 genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
--- | Filter a lists of posts by tag.
-tagFilterPosts :: Text -> [Value] -> [Value]
-tagFilterPosts tag = filter (elem tag . viewTags)
+-- | Create a `HashMap` of posts indexed by tag.
+tagIndex :: [Value] -> HashMap Text [Value]
+tagIndex xs = HM.fromList [(t, filter (elem t . viewTags) xs) | t <- viewAllPostTags xs]
+
+-- | Create a `HashMap` of posts indexed by year-month..
+monthIndex :: [Value] -> HashMap Text [Value]
+monthIndex xs = HM.fromList [(t, filter ((== t) . T.pack . formatTime defaultTimeLocale "%Y-%m" . viewPostTime) xs) | t <- nub (T.pack . formatTime defaultTimeLocale "%Y-%m" <$> viewAllPostTimes xs)]
 
 -- | Sort a lists of posts by date.
 dateSortPosts :: [Value] -> [Value]
 dateSortPosts = sortOn (Down . viewPostTime)
-
--- | Check whether two posts were posted in the same month.
-sameMonth :: UTCTime -> UTCTime -> Bool
-sameMonth a b = y1 == y2 && m1 == m2 where
-  (y1, m1, _) = f a
-  (y2, m2, _) = f b
-  f = toGregorian . utctDay
-
-monthFilterPosts :: UTCTime -> [Value] -> [Value]
-monthFilterPosts time = filter (sameMonth time . viewPostTime)
-
-
--- | Partition a list of posts by the month they were posted.
-partitionToMonths :: [Value] -> [[Value]]
-partitionToMonths = groupBy (on sameMonth viewPostTime) . dateSortPosts
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNavbarData :: Text -- ^ "Top level title, e.g "Blog"
@@ -214,12 +203,11 @@ genBlogNavbarData :: Text -- ^ "Top level title, e.g "Blog"
 genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
                                         "title" A..= String a
                                       , "url"   A..= String b
-                                      , "toc2"  A..= Array (V.fromList $ map toc2 (partitionToMonths xs)) ]
+                                      , "toc2"  A..= Array (V.fromList $ map toc2 (HM.elems $ monthIndex xs)) ]
                                      ] where
-       toc2 [] = object []
        toc2 t@(x : _) = object [ "title" A..= String (f (viewPostTime x))
-                               , "url"   A..= String (g (viewPostTime x))
-                               , "toc3"  A..= Array (V.fromList t) ]
+                              , "url"   A..= String (g (viewPostTime x))
+                              , "toc3"  A..= Array (V.fromList t) ]
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
 genTocNavbarData :: Cofree [] Value -> Value
