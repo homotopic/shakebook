@@ -205,6 +205,7 @@ genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
                                       , "url"   A..= String b
                                       , "toc2"  A..= Array (V.fromList $ map toc2 (HM.elems $ monthIndex xs)) ]
                                      ] where
+       toc2 [] = object []
        toc2 t@(x : _) = object [ "title" A..= String (f (viewPostTime x))
                               , "url"   A..= String (g (viewPostTime x))
                               , "toc3"  A..= Array (V.fromList t) ]
