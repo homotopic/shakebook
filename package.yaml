@@ -77,7 +77,6 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - hashable-time
     - shakebook
     - tasty
     - tasty-golden
@@ -91,7 +90,6 @@ dependencies:
 - doctemplates
 - feed
 - free
-- ixset-typed
 - lens
 - lens-aeson
 - mustache

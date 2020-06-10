@@ -2,7 +2,6 @@
 
 import           Control.Lens hiding ((:<))
 import           Data.Aeson.With
-import           Data.Hashable.Time()
 import           Data.List.Split
 import           Data.Text.Time
 import           Path.Extensions
