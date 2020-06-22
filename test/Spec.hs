@@ -126,7 +126,7 @@ rules = do
     src <- blinkAndMapM sourceFolder withMdExtension out
     xs <- postsZ myPosts
     case HM.lookup src xs of
-      Nothing -> logError $ "Attempting to lookup non-existent post " <> display (WithinDisplay src)
+      Nothing -> logError $ "Attempting to lookup non-existent post " <> displayShow src
       Just x  -> myBuildBlogPage $(mkRelFile "templates/post.html") (extract x) out
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
@@ -209,7 +209,7 @@ rules = do
   phony "posts" $ simplePipeline withHtmlExtension ["posts/*.md"]
 
   phony "clean" $ do
-    logInfo $ "Cleaning files in " <> display (PathDisplay outputFolder)
+    logInfo $ "Cleaning files in " <> displayShow outputFolder
     removeFilesAfter outputFolder ["//*"]
 
 tests :: [FilePath] -> TestTree

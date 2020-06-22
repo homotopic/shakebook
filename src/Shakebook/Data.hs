@@ -13,20 +13,6 @@ import qualified RIO.Text                   as T
 import           Shakebook.Pandoc
 import           Text.Pandoc
 
-newtype PathDisplay a t = PathDisplay (Path a t)
-
-instance Display (PathDisplay a t) where
-  display (PathDisplay f) = displayBytesUtf8 . fromString . toFilePath $ f
-
-newtype WithinDisplay a t = WithinDisplay (Within a t)
-
-instance Display (WithinDisplay a (Path b t)) where
-  display (WithinDisplay (WithinT (EnvT e (Identity a)))) = display (PathDisplay e) <> "[" <> display (PathDisplay a) <> "]"
-
-instance Display [WithinDisplay a (Path b t)] where
-  display [] = ""
-  display (x : xs) = display x <> " : " <> display xs
-
 -- | View the "content" field of a JSON value.
 viewContent :: Value -> Text
 viewContent = view (key "content" . _String)
