@@ -98,11 +98,11 @@ withHighlighting :: Style -> Value -> Value
 withHighlighting = withStringField "highlighting-css" . T.pack . styleToCss
 
 -- | Add "next" field from input Value.
-withNext :: Maybe Value -> (Value -> Value)
-withNext = withValueMaybe "next"
+withNext :: ToJSON a => a -> Value -> Value
+withNext = withValue "next"
 
 -- | Add "pages" field from input [Value].
-withPages :: [Value] -> (Value -> Value)
+withPages :: ToJSON a => [a] -> Value -> Value
 withPages = withArrayField "pages"
 
 -- | Add "prettydate" field using input Text.
@@ -110,15 +110,15 @@ withPrettyDate :: Text -> Value -> Value
 withPrettyDate = withStringField "pretty-date"
 
 -- | Add "previous" field using input Value.
-withPrevious :: Maybe Value -> (Value -> Value)
-withPrevious = withValueMaybe "previous"
+withPrevious :: ToJSON a => a -> Value -> Value
+withPrevious = withValue "previous"
 
 -- | Add "posts" field based on input [Value].
-withPosts :: [Value] -> Value -> Value
+withPosts :: ToJSON a => [a] -> Value -> Value
 withPosts = withArrayField "posts"
 
 -- | Add "recent-posts" field using input Value.
-withRecentPosts :: [Value] -> Value -> Value
+withRecentPosts :: ToJSON a => [a] -> Value -> Value
 withRecentPosts = withArrayField "recent-posts"
 
 -- | Add "site-title" field from input Text.
@@ -126,19 +126,19 @@ withSiteTitle :: Text -> Value -> Value
 withSiteTitle = withStringField "site-title"
 
 -- | Add "social-links" field based on input [Value].
-withSocialLinks :: [Value] -> Value -> Value
+withSocialLinks :: ToJSON a => [a] -> Value -> Value
 withSocialLinks = withArrayField "social-links"
 
 -- | Add "subsections" field based on input [Value].
-withSubsections :: [Value] -> (Value -> Value)
+withSubsections :: ToJSON a => [a] -> Value -> Value
 withSubsections = withArrayField "subsections"
 
 -- | Add "tag-index" field based on input [Value].
-withTagIndex :: [Value] -> Value -> Value
+withTagIndex :: ToJSON a => [a] -> Value -> Value
 withTagIndex = withArrayField "tag-index"
 
 -- | Add "tag-links" field based on input [Value].
-withTagLinks :: [Value] -> Value -> Value
+withTagLinks :: ToJSON a => [a] -> Value -> Value
 withTagLinks  = withArrayField "tag-links"
 
 -- | Add "teaser" field based on input Text.
@@ -183,7 +183,7 @@ genLinkData :: Text -> Text -> Value
 genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
 newtype Post = Post { unPost :: Value }
-  deriving (Show, Eq, Ord, Data, Typeable)
+  deriving (Show, Eq, Ord, Data, Typeable, ToJSON)
 
 newtype Tag = Tag Text
   deriving (Show, Eq, Ord, Data, Typeable)

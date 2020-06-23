@@ -103,7 +103,7 @@ rules = do
         let v' = withHighlighting pygments
                . withSocialLinks mySocial
                . withSiteTitle siteTitle
-               . withRecentPosts (take numRecentPosts $ unPost <$> Ix.toDescList (Ix.Proxy :: Ix.Proxy Posted) rs) $ v
+               . withRecentPosts (take numRecentPosts $ Ix.toDescList (Ix.Proxy :: Ix.Proxy Posted) rs) $ v
         buildPageActionWithin (s' tmpl) v' out
 
       myBuildBlogPage tmpl v out = do
