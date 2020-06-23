@@ -200,11 +200,9 @@ newtype SrcFile = SrcFile Text
 instance Indexable Post where
   empty = ixSet [ (ixFun (fmap Tag . viewTags . unPost))
                 , (ixFun (pure . Posted . viewPostTime . unPost))
-                , (ixFun (pure . YearMonth . utctYearMonth . viewPostTime . unPost))
+                , (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime . unPost))
                 , (ixFun (pure . SrcFile . viewSrcPath . unPost))
                 ]
-
-utctYearMonth = (\(a,b,_) -> (a,b)) . toGregorian . utctDay
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNavbarData :: 
