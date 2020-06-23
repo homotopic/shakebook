@@ -1,17 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-import           Control.Lens hiding ((:<))
+import           Control.Lens      hiding ((:<))
 import           Data.Aeson.With
+import qualified Data.IxSet        as Ix
 import           Data.List.Split
-import qualified Data.IxSet             as Ix
 import           Data.Text.Time
 import           Path.Extensions
 import           RIO
-import           RIO.Partial
-import qualified RIO.HashMap                  as HM
+import qualified RIO.HashMap       as HM
 import           RIO.List
 import           RIO.List.Partial
-import qualified RIO.Text                     as T
+import           RIO.Partial
+import qualified RIO.Text          as T
 import           RIO.Time
 import           Shakebook
 import           Test.Tasty
@@ -87,9 +87,10 @@ rules = do
     xs <- postsIx fp
     k <- forM (Ix.groupDescBy xs) $ \(YearMonth (y,m), ys) -> do
       let t' = UTCTime (fromGregorian y m 1) 0
-      z <- genIndexPageData (unPost <$> ys) (("Posts from " <>) . defaultPrettyMonthFormat $ t')
-                               (("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>)
-                               postsPerPage
+      z <- genIndexPageData (unPost <$> ys)
+                            (("Posts from " <>) . defaultPrettyMonthFormat $ t')
+                            (("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>)
+                            postsPerPage
       return (defaultMonthUrlFormat t', z)
     return $ HM.fromList k
 
@@ -128,7 +129,7 @@ rules = do
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do
-    let getDoc = readMDC <=< blinkAndMapM sourceFolder withMdExtension 
+    let getDoc = readMDC <=< blinkAndMapM sourceFolder withMdExtension
     ys <- mapM getDoc toc'
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
@@ -142,7 +143,7 @@ rules = do
     let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
     xs <- blogIndexPageData myPosts
     myBuildPostListPage (seek n xs) out
- 
+
   o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"

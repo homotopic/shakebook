@@ -1,15 +1,15 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Data where
 
-import           Control.Comonad.Env as E
-import           Control.Lens               hiding ((:<))
-import           Data.Aeson                 as A
+import           Control.Comonad.Env    as E
+import           Control.Lens           hiding ((:<))
+import           Data.Aeson             as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
 import           Development.Shake.Plus
 import           Path.Extensions
-import           RIO                        hiding (Lens', lens, view)
-import qualified RIO.Text                   as T
+import           RIO                    hiding (Lens', lens, view)
+import qualified RIO.Text               as T
 import           Shakebook.Pandoc
 import           Text.Pandoc
 

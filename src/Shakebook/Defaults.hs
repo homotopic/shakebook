@@ -1,11 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Defaults where
 
-import           Data.Aeson                   as A
+import           Data.Aeson             as A
 import           Development.Shake.Plus
 import           RIO
-import qualified RIO.Map                      as M
-import qualified RIO.Text                     as T
+import qualified RIO.Map                as M
+import qualified RIO.Text               as T
 import           RIO.Time
 import           Shakebook.Conventions
 import           Text.DocTemplates

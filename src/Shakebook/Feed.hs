@@ -8,10 +8,10 @@ import           Development.Shake.Plus
 import           RIO
 import           RIO.List
 import           RIO.List.Partial
-import qualified RIO.Text.Lazy         as TL
+import qualified RIO.Text.Lazy          as TL
 import           Shakebook.Conventions
 import           Shakebook.Data
-import           Text.Atom.Feed        as Atom
+import           Text.Atom.Feed         as Atom
 import           Text.Atom.Feed.Export
 
 -- | Convert a Post to an Atom Entry

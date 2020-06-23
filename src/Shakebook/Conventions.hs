@@ -56,7 +56,7 @@ import           Control.Lens                 hiding ((:<), Indexable)
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
-import           Data.IxSet as Ix
+import           Data.IxSet                   as Ix
 import           Data.Text.Time
 import           RIO                          hiding (view)
 import           RIO.List
@@ -205,8 +205,7 @@ instance Indexable Post where
                 ]
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
-genBlogNavbarData :: 
-                   Text -- ^ "Top level title, e.g "Blog"
+genBlogNavbarData :: Text -- ^ "Top level title, e.g "Blog"
                   -> Text -- ^ Root page, e.g "/posts"
                   -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
                   -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
@@ -240,6 +239,6 @@ genIndexPageData :: MonadThrow m
                  -> (Text -> Text)
                  -> Int
                  -> m (Zipper [] Value)
-genIndexPageData xs g h n = do 
+genIndexPageData xs g h n = do
  zs <- paginate' n $ sortOn (Down . viewPostTime) xs
  return $ extend (genPageData g h) zs
