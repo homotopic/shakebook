@@ -43,21 +43,22 @@ module Shakebook.Conventions (
 , genPageData
 , genTocNavbarData
 
-, dateSortPosts
-, monthIndex
-, tagIndex
+, Post(..)
+, Tag(..)
+, Posted(..)
+, YearMonth(..)
 ) where
 
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Zipper.Extra
-import           Control.Lens                 hiding ((:<))
+import           Control.Lens                 hiding ((:<), Indexable)
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
+import           Data.IxSet as Ix
 import           Data.Text.Time
 import           RIO                          hiding (view)
-import qualified RIO.HashMap                  as HM
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text                     as T
@@ -149,8 +150,8 @@ withTitle :: Text -> Value -> Value
 withTitle = withStringField "title"
 
 -- | Assuming a "date" field, enrich using withPrettyDate and a format string.
-enrichPrettyDate :: (UTCTime -> String) -> Value -> Value
-enrichPrettyDate f v = withPrettyDate (T.pack . f . viewPostTime $ v) v
+enrichPrettyDate :: (UTCTime -> Text) -> Value -> Value
+enrichPrettyDate f v = withPrettyDate (f . viewPostTime $ v) v
 
 -- | Assuming a "tags" field, enrich using withTagLinks.
 enrichTagLinks :: (Text -> Text) -> Value -> Value
@@ -181,34 +182,47 @@ extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 genLinkData :: Text -> Text -> Value
 genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
--- | Create a `HashMap` of posts indexed by tag.
-tagIndex :: [Value] -> HashMap Text [Value]
-tagIndex xs = HM.fromList [(t, filter (elem t . viewTags) xs) | t <- viewAllPostTags xs]
+newtype Post = Post { unPost :: Value }
+  deriving (Show, Eq, Ord, Data, Typeable)
 
--- | Create a `HashMap` of posts indexed by year-month..
-monthIndex :: [Value] -> HashMap Text [Value]
-monthIndex xs = HM.fromList [(t, filter ((== t) . T.pack . formatTime defaultTimeLocale "%Y-%m" . viewPostTime) xs) | t <- nub (T.pack . formatTime defaultTimeLocale "%Y-%m" <$> viewAllPostTimes xs)]
+newtype Tag = Tag Text
+  deriving (Show, Eq, Ord, Data, Typeable)
 
--- | Sort a lists of posts by date.
-dateSortPosts :: [Value] -> [Value]
-dateSortPosts = sortOn (Down . viewPostTime)
+newtype Posted = Posted UTCTime
+  deriving (Show, Eq, Ord, Data, Typeable)
+
+newtype YearMonth = YearMonth (Integer, Int)
+  deriving (Show, Eq, Ord, Data, Typeable)
+
+newtype SrcFile = SrcFile Text
+  deriving (Show, Eq, Ord, Data, Typeable)
+
+instance Indexable Post where
+  empty = ixSet [ (ixFun (fmap Tag . viewTags . unPost))
+                , (ixFun (pure . Posted . viewPostTime . unPost))
+                , (ixFun (pure . YearMonth . utctYearMonth . viewPostTime . unPost))
+                , (ixFun (pure . SrcFile . viewSrcPath . unPost))
+                ]
+
+utctYearMonth = (\(a,b,_) -> (a,b)) . toGregorian . utctDay
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
-genBlogNavbarData :: Text -- ^ "Top level title, e.g "Blog"
-               -> Text -- ^ Root page, e.g "/posts"
-               -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
-               -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
-               -> [Value]
-               -> Value
+genBlogNavbarData :: 
+                   Text -- ^ "Top level title, e.g "Blog"
+                  -> Text -- ^ Root page, e.g "/posts"
+                  -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
+                  -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
+                  -> IxSet Post
+                  -> Value
 genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
                                         "title" A..= String a
                                       , "url"   A..= String b
-                                      , "toc2"  A..= Array (V.fromList $ map toc2 (HM.elems $ monthIndex xs)) ]
+                                      , "toc2"  A..= Array (V.fromList $ map (uncurry toc2) $ groupDescBy xs)]
                                      ] where
-       toc2 [] = object []
-       toc2 t@(x : _) = object [ "title" A..= String (f (viewPostTime x))
-                              , "url"   A..= String (g (viewPostTime x))
-                              , "toc3"  A..= Array (V.fromList t) ]
+       toc2 _ [] = object []
+       toc2 (YearMonth (_, _)) t@(x : _) = object [ "title" A..= String (f (viewPostTime . unPost $ x))
+                                                  , "url"   A..= String (g (viewPostTime . unPost $ x))
+                                                  , "toc3"  A..= Array (V.fromList $ sortOn (Down . viewPostTime) $ (unPost <$> t)) ]
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
 genTocNavbarData :: Cofree [] Value -> Value
@@ -229,5 +243,5 @@ genIndexPageData :: MonadThrow m
                  -> Int
                  -> m (Zipper [] Value)
 genIndexPageData xs g h n = do 
- zs <- paginate' n xs
+ zs <- paginate' n $ sortOn (Down . viewPostTime) xs
  return $ extend (genPageData g h) zs

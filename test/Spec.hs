@@ -3,6 +3,7 @@
 import           Control.Lens hiding ((:<))
 import           Data.Aeson.With
 import           Data.List.Split
+import qualified Data.IxSet             as Ix
 import           Data.Text.Time
 import           Path.Extensions
 import           RIO
@@ -11,6 +12,7 @@ import qualified RIO.HashMap                  as HM
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text                     as T
+import           RIO.Time
 import           Shakebook
 import           Test.Tasty
 import           Test.Tasty.Golden
@@ -54,47 +56,42 @@ rules = do
 
   readMDC <- newCache $ loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions
 
-  postsC  <- newCache $ \w -> do
-    xs <- batchLoadWithin' w readMDC
-    return $ defaultEnrichPost <$> xs
-
-  sortedPosts <- newCache $ \fp -> do
-    allPosts <- postsC fp
-    return $  sortOn (Down . viewPostTime . snd) $ HM.toList allPosts
-
-  getRecentPosts <- newCache $ \fp -> do
-    xs <- sortedPosts fp
-    return $ take numRecentPosts (snd <$> xs)
+  postsIx <- newCache $ \fp -> do
+    xs <- batchLoadWithin' fp readMDC
+    return $ Ix.fromList $ Post <$> HM.elems (defaultEnrichPost <$> xs)
 
   getBlogNavbar <- newCache $ \fp -> do
-    allPosts <- postsC fp
-    return $ genBlogNavbarData "Blog" "/posts/"
-                  (T.pack . defaultPrettyMonthFormat)
-                  defaultMonthUrlFragment (HM.elems allPosts)
+    xs <- postsIx fp
+    return $ genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment xs
 
   postsZ <- newCache $ \fp -> do
-    xs <- sortedPosts fp
-    zs <- ifor xs $ \i (k, _) -> do
-      z <- zipper' (snd <$> xs)
-      return (k, seek i z)
+    xs <- postsIx fp
+    let ys = Ix.toDescList (Ix.Proxy :: Ix.Proxy Posted) xs
+    zs <- ifor ys $ \i v -> do
+      z <- zipper' (unPost <$> ys)
+      return (viewSrcPath (unPost v), seek i z)
     return $ HM.fromList zs
 
   blogIndexPageData <- newCache $ \fp -> do
-    xs <- sortedPosts fp
-    genIndexPageData (snd <$> xs) "Posts" ("/posts/pages/" <>) postsPerPage
+    xs <- postsIx fp
+    genIndexPageData (unPost <$> Ix.toList xs) "Posts" ("/posts/pages/" <>) postsPerPage
 
   blogTagIndexPageData <- newCache $ \fp -> do
-    xs <- sortedPosts fp
-    flip HM.traverseWithKey (tagIndex (snd <$> xs)) $ \t ys ->
-      genIndexPageData ys ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
+    xs <- postsIx fp
+    k <- forM (Ix.groupDescBy xs) $ \((Tag t), ys) -> do
+      z <- genIndexPageData (unPost <$> ys) ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
+      return (t, z)
+    return $ HM.fromList k
 
   blogMonthIndexPageData <- newCache $ \fp -> do
-    xs <- sortedPosts fp
-    flip HM.traverseWithKey (monthIndex (snd <$> xs)) $ \t ys ->
-      let t' = parseISODateTime t
-      in genIndexPageData ys
-                   (("Posts from " <>) . T.pack . defaultPrettyMonthFormat $ t')
-                   (("/posts/months/"  <> T.pack (defaultMonthUrlFormat t') <> "/pages/") <>) postsPerPage
+    xs <- postsIx fp
+    k <- forM (Ix.groupDescBy xs) $ \(YearMonth (y,m), ys) -> do
+      let t' = UTCTime (fromGregorian y m 1) 0
+      z <- genIndexPageData (unPost <$> ys) (("Posts from " <>) . defaultPrettyMonthFormat $ t')
+                               (("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>)
+                               postsPerPage
+      return (defaultMonthUrlFormat t', z)
+    return $ HM.fromList k
 
   let myPosts = ["posts/*.md"] `within` sourceFolder
 
@@ -102,11 +99,11 @@ rules = do
       s' = (`within` sourceFolder)
 
       myBuildPage tmpl v out = do
-        rs <- getRecentPosts myPosts
+        rs <- postsIx myPosts
         let v' = withHighlighting pygments
                . withSocialLinks mySocial
                . withSiteTitle siteTitle
-               . withRecentPosts rs $ v
+               . withRecentPosts (take numRecentPosts $ unPost <$> Ix.toDescList (Ix.Proxy :: Ix.Proxy Posted) rs) $ v
         buildPageActionWithin (s' tmpl) v' out
 
       myBuildBlogPage tmpl v out = do
@@ -125,7 +122,7 @@ rules = do
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
     xs <- postsZ myPosts
-    case HM.lookup src xs of
+    case HM.lookup (T.pack . toFilePath . extract $ src) xs of
       Nothing -> logError $ "Attempting to lookup non-existent post " <> displayShow src
       Just x  -> myBuildBlogPage $(mkRelFile "templates/post.html") (extract x) out
 

@@ -12,17 +12,17 @@ import           Text.DocTemplates
 import           Text.Pandoc.Definition
 import           Text.Pandoc.Options
 
-defaultMonthUrlFormat :: UTCTime -> String
-defaultMonthUrlFormat = formatTime defaultTimeLocale "%Y-%m"
+defaultMonthUrlFormat :: UTCTime -> Text
+defaultMonthUrlFormat = T.pack . formatTime defaultTimeLocale "%Y-%m"
 
-defaultPrettyMonthFormat :: UTCTime -> String
-defaultPrettyMonthFormat = formatTime defaultTimeLocale "%B, %Y"
+defaultPrettyMonthFormat :: UTCTime -> Text
+defaultPrettyMonthFormat = T.pack . formatTime defaultTimeLocale "%B, %Y"
 
-defaultPrettyTimeFormat :: UTCTime -> String
-defaultPrettyTimeFormat = formatTime defaultTimeLocale "%A, %B %d, %Y"
+defaultPrettyTimeFormat :: UTCTime -> Text
+defaultPrettyTimeFormat = T.pack . formatTime defaultTimeLocale "%A, %B %d, %Y"
 
 defaultMonthUrlFragment :: UTCTime -> Text
-defaultMonthUrlFragment t = T.pack $ "/posts/months/" <> defaultMonthUrlFormat t
+defaultMonthUrlFragment t = "/posts/months/" <> defaultMonthUrlFormat t
 
 defaultEnrichPost :: Value -> Value
 defaultEnrichPost = enrichTeaser "<!--more-->"

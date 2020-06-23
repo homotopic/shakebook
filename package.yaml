@@ -90,6 +90,7 @@ dependencies:
 - doctemplates
 - feed
 - free
+- ixset
 - lens
 - lens-aeson
 - mustache

@@ -6,6 +6,7 @@ module Shakebook.Feed (
 import           Data.Aeson
 import           Development.Shake.Plus
 import           RIO
+import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text.Lazy         as TL
 import           Shakebook.Conventions
@@ -21,7 +22,7 @@ asAtomEntry x = (Atom.nullEntry (viewUrl x) (Atom.TextString $ viewTitle x) (vie
 -- | Build an Atom Feed from a list of posts.
 buildFeed :: MonadAction m => Text -> Text -> [Value] -> Path Rel File -> m ()
 buildFeed title baseUrl xs out = do
-  let fs = asAtomEntry <$> dateSortPosts xs
+  let fs = asAtomEntry <$> sortOn (Down . viewPostTime) xs
   let t = Atom.nullFeed baseUrl (Atom.TextString title) $ Atom.entryUpdated (head fs)
   case  textFeed (t { Atom.feedEntries = fs }) of
     Just a  -> writeFile' out $ TL.toStrict a
