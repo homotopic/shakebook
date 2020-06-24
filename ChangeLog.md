@@ -1,5 +1,10 @@
 # Changelog for Shakebook
 
+## (v0.6.0.0)
+
+* Drop `Display` instances for `Within` and `Path`.
+* Introduce [ixset](https://hackage.haskell.org/package/ixset)
+
 ## (v0.5.1.0)
 
 * Add `tagIndex` and `monthIndex` instead of filter and partition functions.

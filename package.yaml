@@ -1,5 +1,5 @@
 name:                shakebook
-version:             0.5.1.0
+version:             0.6.0.0
 license:             MIT
 category:            Web
 author:              "Daniel Firth"
@@ -82,8 +82,8 @@ tests:
     - tasty-golden
 
 dependencies:
-- aeson
-- aeson-with
+- aeson >= 1.5.2.0
+- aeson-with >= 0.1.0.0
 - base >= 4.7 && < 5
 - comonad
 - comonad-extras
@@ -94,13 +94,12 @@ dependencies:
 - lens
 - lens-aeson
 - mustache
-- relude
 - rio
-- pandoc
+- pandoc >= 2.9.2.1
 - pandoc-types
-- path-extensions
-- shake-plus
-- slick
+- path-extensions >= 0.0.1.0
+- shake-plus >= 0.1.7.0
+- slick >= 1.0.1.1
 - split
 - text-time
 - zipper-extra

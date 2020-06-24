@@ -4,7 +4,6 @@ import           Control.Lens      hiding ((:<))
 import           Data.Aeson.With
 import qualified Data.IxSet        as Ix
 import           Data.List.Split
-import           Data.Text.Time
 import           Path.Extensions
 import           RIO
 import qualified RIO.HashMap       as HM
