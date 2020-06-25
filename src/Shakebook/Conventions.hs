@@ -47,6 +47,7 @@ module Shakebook.Conventions (
 , Tag(..)
 , Posted(..)
 , YearMonth(..)
+, SrcFile(..)
 ) where
 
 import           Control.Comonad.Cofree
@@ -56,7 +57,7 @@ import           Control.Lens                 hiding ((:<), Indexable)
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
-import           Data.IxSet                   as Ix
+import           Data.IxSet.Typed             as Ix
 import           Data.Text.Time
 import           RIO                          hiding (view)
 import           RIO.List
@@ -197,19 +198,19 @@ newtype YearMonth = YearMonth (Integer, Int)
 newtype SrcFile = SrcFile Text
   deriving (Show, Eq, Ord, Data, Typeable)
 
-instance Indexable Post where
-  empty = ixSet [ (ixFun (fmap Tag . viewTags . unPost))
-                , (ixFun (pure . Posted . viewPostTime . unPost))
-                , (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime . unPost))
-                , (ixFun (pure . SrcFile . viewSrcPath . unPost))
-                ]
+instance Indexable '[Tag, Posted, YearMonth, SrcFile] Post where
+  indices = ixList (ixFun (fmap Tag . viewTags . unPost))
+                   (ixFun (pure . Posted . viewPostTime . unPost))
+                   (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime . unPost))
+                   (ixFun (pure . SrcFile . viewSrcPath . unPost))
+                  
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
-genBlogNavbarData :: Text -- ^ "Top level title, e.g "Blog"
+genBlogNavbarData :: IsIndexOf YearMonth ixs => Text -- ^ "Top level title, e.g "Blog"
                   -> Text -- ^ Root page, e.g "/posts"
                   -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
                   -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
-                  -> IxSet Post
+                  -> IxSet ixs Post
                   -> Value
 genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
                                         "title" A..= String a

@@ -2,7 +2,7 @@
 
 import           Control.Lens      hiding ((:<))
 import           Data.Aeson.With
-import qualified Data.IxSet        as Ix
+import qualified Data.IxSet.Typed as Ix
 import           Data.List.Split
 import           Path.Extensions
 import           RIO
@@ -57,7 +57,7 @@ rules = do
 
   postsIx <- newCache $ \fp -> do
     xs <- batchLoadWithin' fp readMDC
-    return $ Ix.fromList $ Post <$> HM.elems (defaultEnrichPost <$> xs)
+    return $ (Ix.fromList $ Post <$> HM.elems (defaultEnrichPost <$> xs) :: Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] Post)
 
   getBlogNavbar <- newCache $ \fp -> do
     xs <- postsIx fp
@@ -65,7 +65,7 @@ rules = do
 
   postsZ <- newCache $ \fp -> do
     xs <- postsIx fp
-    let ys = Ix.toDescList (Ix.Proxy :: Ix.Proxy Posted) xs
+    let ys = Ix.toDescList (Proxy :: Proxy Posted) xs
     zs <- ifor ys $ \i v -> do
       z <- zipper' (unPost <$> ys)
       return (viewSrcPath (unPost v), seek i z)
@@ -103,7 +103,7 @@ rules = do
         let v' = withHighlighting pygments
                . withSocialLinks mySocial
                . withSiteTitle siteTitle
-               . withRecentPosts (take numRecentPosts $ Ix.toDescList (Ix.Proxy :: Ix.Proxy Posted) rs) $ v
+               . withRecentPosts (take numRecentPosts $ Ix.toDescList (Proxy :: Proxy Posted) rs) $ v
         buildPageActionWithin (s' tmpl) v' out
 
       myBuildBlogPage tmpl v out = do
