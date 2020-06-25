@@ -1,9 +1,12 @@
 # Changelog for Shakebook
 
+## (v0.7.0.0)
+
+* Switch to [ixset-typed](httos://hackage.haskell.org/package/ixset-typed).
 ## (v0.6.0.0)
 
 * Drop `Display` instances for `Within` and `Path`.
-* Introduce [ixset](https://hackage.haskell.org/package/ixset)
+* Introduce [ixset](https://hackage.haskell.org/package/ixset).
 
 ## (v0.5.1.0)
 
