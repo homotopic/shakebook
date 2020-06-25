@@ -88,10 +88,12 @@ replaceUnusableImages exts f = walkM handleImages where
     return $ if x `elem` exts then f src else i
   handleImages x = return x
 
+-- | Prefix all images in a `Pandoc` with a directory.
 prefixAllImages :: Path Rel Dir -> Pandoc -> Pandoc
 prefixAllImages dir = walk handleImages where
   handleImages (Image attr ins (src, txt)) = Image attr ins (T.pack (toFilePath dir) <> "/" <> src, txt)
   handleImages x = x
 
+-- | Flatten a pandoc `Meta` object to a `Value`.
 flattenMeta :: MonadAction m => (Pandoc -> PandocIO Text) -> Meta -> m Value
 flattenMeta opts meta = liftAction $ Slick.Pandoc.flattenMeta opts meta
