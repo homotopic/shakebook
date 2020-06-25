@@ -3,3 +3,4 @@
 *.cabal
 test/public
 .shake
+*.swp
