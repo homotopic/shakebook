@@ -57,7 +57,7 @@ rules = do
 
   postsIx <- newCache $ postIndex $ fmap defaultEnrichPost . readMDC
 
-  getBlogNavbar <- newCache $ \fp -> do
+  blogNav <- newCache $ \fp -> do
     xs <- postsIx fp
     return $ genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment xs
 
@@ -105,7 +105,7 @@ rules = do
         buildPageActionWithin (s' tmpl) v' out
 
       myBuildBlogPage tmpl v out = do
-        k <- getBlogNavbar myPosts
+        k <- blogNav myPosts
         myBuildPage tmpl (withJSON k v) out
 
       myBuildPostListPage z out = do
