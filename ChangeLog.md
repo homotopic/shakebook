@@ -3,6 +3,7 @@
 ## (v0.7.1.0)
 
 * Upgrade to [zipper-extra](https://hackage.haskell.org/package/zipper-extra) v0.1.3.0.
+* Add `postZipper` for creating a `Zipper` from an `IxSet` of Posts.
 
 ## (v0.7.0.0)
 

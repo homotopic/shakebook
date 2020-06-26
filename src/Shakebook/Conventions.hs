@@ -53,6 +53,7 @@ module Shakebook.Conventions (
 , YearMonth(..)
 , SrcFile(..)
 , postIndex
+, postZipper
 ) where
 
 import           Control.Comonad.Cofree
@@ -235,6 +236,10 @@ postIndex :: MonadAction m
 postIndex rd fp = do
   xs <- batchLoadWithin' fp rd
   return (Ix.fromList $ Post <$> HM.elems xs)
+
+-- | Create a `Zipper [] Post` from an `IxSet xs Post` by ordering by `Posted`.
+postZipper :: (MonadThrow m, Ix.IsIndexOf Posted xs) => Ix.IxSet xs Post -> m (Zipper [] Post)
+postZipper = zipper' . Ix.toDescList (Proxy :: Proxy Posted)
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNavbarData :: IsIndexOf YearMonth ixs => Text -- ^ "Top level title, e.g "Blog"

@@ -49,9 +49,6 @@ mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-
                                    ,("youtube", "http://youtube.com/blanky-site-nowhere")
                                    ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
 
-postsZipper :: (MonadThrow m, Ix.IsIndexOf Posted xs) => Ix.IxSet xs Post -> m (Zipper [] Post)
-postsZipper = zipper' . Ix.toDescList (Proxy :: Proxy Posted)
-
 rules :: HasLogFunc r => ShakePlus r ()
 rules = do
 
@@ -63,7 +60,7 @@ rules = do
     xs <- postsIx fp
     return $ genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment xs
 
-  postsZ <- newCache $ postsIx >=> postsZipper
+  postsZ <- newCache $ postsIx >=> postZipper
 
   blogIndexPageData <- newCache $ \fp -> do
     xs <- postsIx fp
