@@ -220,7 +220,7 @@ genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
        toc2 _ [] = object []
        toc2 (YearMonth (_, _)) t@(x : _) = object [ "title" A..= String (f (viewPostTime . unPost $ x))
                                                   , "url"   A..= String (g (viewPostTime . unPost $ x))
-                                                  , "toc3"  A..= Array (V.fromList $ sortOn (Down . viewPostTime) $ (unPost <$> t)) ]
+                                                  , "toc3"  A..= Array (V.fromList $ sortOn (Down . viewPostTime) (unPost <$> t)) ]
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
 genTocNavbarData :: Cofree [] Value -> Value

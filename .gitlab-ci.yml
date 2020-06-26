@@ -2,13 +2,18 @@ image: nixos/nix:latest
 
 before_script:
 - export LC_ALL=C.UTF-8
-- nix-env -iA nixpkgs.cachix
 - nix-env -iA nixpkgs.stack
 - nix-env -iA nixpkgs.hlint
 
 stages:
+- lint
 - build
 - test
+
+lint:
+  stage: lint
+  script:
+  - hlint .
 
 build:
   stage: build

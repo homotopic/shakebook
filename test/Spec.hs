@@ -57,7 +57,7 @@ rules = do
 
   postsIx <- newCache $ \fp -> do
     xs <- batchLoadWithin' fp readMDC
-    return $ (Ix.fromList $ Post <$> HM.elems (defaultEnrichPost <$> xs) :: Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] Post)
+    return (Ix.fromList $ Post <$> HM.elems (defaultEnrichPost <$> xs) :: Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] Post)
 
   getBlogNavbar <- newCache $ \fp -> do
     xs <- postsIx fp
@@ -77,7 +77,7 @@ rules = do
 
   blogTagIndexPageData <- newCache $ \fp -> do
     xs <- postsIx fp
-    k <- forM (Ix.groupDescBy xs) $ \((Tag t), ys) -> do
+    k <- forM (Ix.groupDescBy xs) $ \(Tag t, ys) -> do
       z <- genIndexPageData (unPost <$> ys) ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
       return (t, z)
     return $ HM.fromList k
