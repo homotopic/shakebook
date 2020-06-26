@@ -3,7 +3,7 @@ packages:
 - .
 extra-deps:
 - aeson-1.5.2.0
-- aeson-with-0.1.0.2
+- aeson-with-0.1.1.0
 - base-noprelude-4.13.0.0
 - comonad-extras-4.0.1
 - haddock-library-1.8.0

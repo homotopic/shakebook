@@ -109,24 +109,24 @@ flattenMeta :: MonadAction m => (Pandoc -> PandocIO Text) -> Meta -> m Value
 flattenMeta opts meta = liftAction $ Slick.Pandoc.flattenMeta opts meta
 
 -- | View the "content" field of a JSON value.
-viewContent :: Value -> Text
-viewContent = view (key "content" . _String)
+viewContent :: ToJSON a => a -> Text
+viewContent = view' (key "content" . _String)
 
 -- | Add "content" field from input Text.
 withContent :: Text -> Value -> Value
 withContent = withStringField "content"
 
 -- | View the "src-path" field of a JSON Value.
-viewSrcPath :: Value -> Text
-viewSrcPath = view (key "src-path" . _String)
+viewSrcPath :: ToJSON a => a -> Text
+viewSrcPath = view' (key "src-path" . _String)
 
 -- | Add "src-path" field based on input Text.
 withSrcPath :: Text -> Value -> Value
 withSrcPath = withStringField "src-path"
 
 -- | View the "url" field of a JSON Value.
-viewUrl :: Value -> Text
-viewUrl = view (key "url" . _String)
+viewUrl :: ToJSON a => a -> Text
+viewUrl = view' (key "url" . _String)
 
 -- | Add "url" field from input Text.
 withUrl :: Text -> Value -> Value

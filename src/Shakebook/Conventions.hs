@@ -6,7 +6,6 @@ module Shakebook.Conventions (
   viewImage
 , viewPostTime
 , viewPostTimeRaw
-, viewSrcPath
 , viewTags
 , viewTitle
 , viewAllPostTags
@@ -78,31 +77,31 @@ import           Shakebook.Pandoc
 import           Text.Pandoc.Highlighting
 
 -- | View the "image" field of a JSON value.
-viewImage :: Value -> Text
-viewImage = view (key "image" . _String)
+viewImage :: ToJSON a => a -> Text
+viewImage = view' (key "image" . _String)
 
 -- | View the "date" field of a JSON Value as a UTCTime.
-viewPostTime :: Value -> UTCTime
-viewPostTime = parseISODateTime . view (key "date" . _String)
+viewPostTime :: ToJSON a => a -> UTCTime
+viewPostTime = parseISODateTime . view' (key "date" . _String)
 
 -- | View the "date" field of a JSON Value as Text.
-viewPostTimeRaw :: Value -> Text
-viewPostTimeRaw = view (key "date" . _String)
+viewPostTimeRaw :: ToJSON a => a -> Text
+viewPostTimeRaw = view' (key "date" . _String)
 
 -- | View the "tags" field of a JSON Value as a list.
-viewTags :: Value -> [Text]
-viewTags = toListOf (key "tags" . values . _String)
+viewTags :: ToJSON a => a -> [Text]
+viewTags = toListOf' (key "tags" . values . _String)
 
 -- | View the "title" field of a JSON Value.
-viewTitle :: Value -> Text
-viewTitle = view (key "title" . _String)
+viewTitle :: ToJSON a => a -> Text
+viewTitle = view' (key "title" . _String)
 
 -- | View all post tags for a list of posts.
-viewAllPostTags :: [Value] -> [Text]
+viewAllPostTags :: ToJSON a => [a] -> [Text]
 viewAllPostTags = (>>= viewTags)
 
 -- | View all posts times for a list of posts.
-viewAllPostTimes :: [Value] -> [UTCTime]
+viewAllPostTimes :: ToJSON a => [a] -> [UTCTime]
 viewAllPostTimes = fmap viewPostTime
 
 -- | Add "base-url" field from input Text.
@@ -264,14 +263,14 @@ genTocNavbarData (x :< xs) =
   object ["toc1" A..= [_Object . at "toc2" ?~ Array (V.fromList $ map toc2 xs) $ x]] where
       toc2 (y :< ys) = (_Object . at "toc3" ?~ Array (V.fromList $ map extract ys)) y
 
-genPageData :: Text -> (Text -> Text) -> Zipper [] [Value] -> Value
+genPageData :: ToJSON a => Text -> (Text -> Text) -> Zipper [] [a] -> Value
 genPageData t f xs = let x = T.pack . show $ pos xs + 1
                      in withTitle t
                       . withJSON (genLinkData x (f x))
                       . withPosts (extract xs) $ Object mempty
 
-genIndexPageData :: MonadThrow m
-                 => [Value]
+genIndexPageData :: (MonadThrow m, ToJSON a)
+                 => [a]
                  -> Text
                  -> (Text -> Text)
                  -> Int

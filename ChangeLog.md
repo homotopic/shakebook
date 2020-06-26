@@ -1,5 +1,9 @@
 # Changelog for Shakebook
 
+## (v0.7.2.0)
+
+* Upgrade to [aeson-with](https://hackage.haskell.org/package/aeson-with) v0.1.1.0.
+
 ## (v0.7.1.0)
 
 * Upgrade to [zipper-extra](https://hackage.haskell.org/package/zipper-extra) v0.1.3.0.

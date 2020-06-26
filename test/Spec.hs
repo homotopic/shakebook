@@ -64,12 +64,12 @@ rules = do
 
   blogIndexPageData <- newCache $ \fp -> do
     xs <- postsIx fp
-    genIndexPageData (unPost <$> Ix.toList xs) "Posts" ("/posts/pages/" <>) postsPerPage
+    genIndexPageData (Ix.toList xs) "Posts" ("/posts/pages/" <>) postsPerPage
 
   blogTagIndexPageData <- newCache $ \fp -> do
     xs <- postsIx fp
     k <- forM (Ix.groupDescBy xs) $ \(Tag t, ys) -> do
-      z <- genIndexPageData (unPost <$> ys) ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
+      z <- genIndexPageData ys ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
       return (t, z)
     return $ HM.fromList k
 
@@ -77,7 +77,7 @@ rules = do
     xs <- postsIx fp
     k <- forM (Ix.groupDescBy xs) $ \(YearMonth (y,m), ys) -> do
       let t' = UTCTime (fromGregorian y m 1) 0
-      z <- genIndexPageData (unPost <$> ys)
+      z <- genIndexPageData ys
                             (("Posts from " <>) . defaultPrettyMonthFormat $ t')
                             (("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>)
                             postsPerPage
@@ -113,8 +113,8 @@ rules = do
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
     xs  <- postsZ myPosts
-    xs' <- seekOnThrow (viewSrcPath . unPost) (T.pack . toFilePath . extract $ src) xs
-    myBuildBlogPage $(mkRelFile "templates/post.html") (extract (unPost <$> xs')) out
+    xs' <- seekOnThrow viewSrcPath (T.pack . toFilePath . extract $ src) xs
+    myBuildBlogPage $(mkRelFile "templates/post.html") (toJSON $ extract xs') out
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do

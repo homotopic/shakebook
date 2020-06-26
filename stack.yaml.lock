@@ -12,12 +12,12 @@ packages:
   original:
     hackage: aeson-1.5.2.0
 - completed:
-    hackage: aeson-with-0.1.0.2@sha256:d97019a83dd5600e9891ea48122b96f3ff1c0227ac23021d4588d6f4fe2a9e3c,983
+    hackage: aeson-with-0.1.1.0@sha256:dc67b6adeddb7a1bc61098e4b02a339b1b60b32684981af65df5622c1b591ea7,1178
     pantry-tree:
-      size: 269
-      sha256: f6711919f07179ac047f60f62cdb8478082bccc36accd206b32d7b7d5d322d97
+      size: 270
+      sha256: fa02f6d23a58954a6adf3ac56cd71945b31772f3f187ad352dee1f7a0fa62fcb
   original:
-    hackage: aeson-with-0.1.0.2
+    hackage: aeson-with-0.1.1.0
 - completed:
     hackage: base-noprelude-4.13.0.0@sha256:3cccbfda38e1422ca5cc436d58858ba51ff9114d2ed87915a6569be11e4e5a90,6842
     pantry-tree:
