@@ -10,7 +10,7 @@ import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.Text.Lazy          as TL
 import           Shakebook.Conventions
-import           Shakebook.Data
+import           Shakebook.Pandoc
 import           Text.Atom.Feed         as Atom
 import           Text.Atom.Feed.Export
 

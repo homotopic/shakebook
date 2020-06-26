@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Shakebook.Pandoc (
   runPandocA
 , PandocActionException(..)
@@ -10,11 +12,19 @@ module Shakebook.Pandoc (
 , replaceUnusableImages
 , prefixAllImages
 , flattenMeta
+, viewContent
+, viewSrcPath
+, viewUrl
+, loadMarkdownAsJSON
 ) where
 
+import           Control.Comonad
 import           Control.Comonad.Cofree
 import           Data.Aeson
+import           Data.Aeson.Lens
+import           Data.Aeson.With
 import           Development.Shake.Plus
+import           Path.Extensions
 import           RIO
 import qualified RIO.ByteString.Lazy    as LBS
 import qualified RIO.Text               as T
@@ -97,3 +107,50 @@ prefixAllImages dir = walk handleImages where
 -- | Flatten a pandoc `Meta` object to a `Value`.
 flattenMeta :: MonadAction m => (Pandoc -> PandocIO Text) -> Meta -> m Value
 flattenMeta opts meta = liftAction $ Slick.Pandoc.flattenMeta opts meta
+
+-- | View the "content" field of a JSON value.
+viewContent :: Value -> Text
+viewContent = view (key "content" . _String)
+
+-- | Add "content" field from input Text.
+withContent :: Text -> Value -> Value
+withContent = withStringField "content"
+
+-- | View the "src-path" field of a JSON Value.
+viewSrcPath :: Value -> Text
+viewSrcPath = view (key "src-path" . _String)
+
+-- | Add "src-path" field based on input Text.
+withSrcPath :: Text -> Value -> Value
+withSrcPath = withStringField "src-path"
+
+-- | View the "url" field of a JSON Value.
+viewUrl :: Value -> Text
+viewUrl = view (key "url" . _String)
+
+-- | Add "url" field from input Text.
+withUrl :: Text -> Value -> Value
+withUrl = withStringField "url"
+
+-- | Add a leading slash to a `Path Rel File` to turn it into a url as `Text`.
+toGroundedUrl :: Path Rel File -> Text
+toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)
+
+{-|
+  Get a JSON Value of Markdown Data with markdown body as "contents" field
+  and the srcPath as "srcPath" field.
+-}
+loadMarkdownAsJSON :: (MonadAction m, MonadThrow m)
+                   => ReaderOptions
+                   -> WriterOptions
+                   -> Within Rel (Path Rel File)
+                   -> m Value
+loadMarkdownAsJSON ropts wopts srcPath = do
+  pdoc@(Pandoc meta _) <- readMDFileWithin ropts srcPath
+  meta' <- flattenMeta (writeHtml5String wopts) meta
+  outText <- runPandocA $ writeHtml5String wopts pdoc
+  supposedUrl <- toGroundedUrl <$> withHtmlExtension (extract srcPath)
+  return $ withContent outText
+         . withSrcPath (T.pack . toFilePath $ extract srcPath)
+         . withUrl supposedUrl $ meta'
+

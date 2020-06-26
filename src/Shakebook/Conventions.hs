@@ -3,13 +3,16 @@
 
 module Shakebook.Conventions (
   -- * Lenses
-  viewPostTime
+  viewImage
+, viewPostTime
 , viewPostTimeRaw
 , viewSrcPath
 , viewTags
 , viewTitle
 , viewAllPostTags
 , viewAllPostTimes
+, withBaseUrl
+, withFullUrl
 , withHighlighting
 , withNext
 , withPages
@@ -43,11 +46,13 @@ module Shakebook.Conventions (
 , genPageData
 , genTocNavbarData
 
+  -- * Indexing
 , Post(..)
 , Tag(..)
 , Posted(..)
 , YearMonth(..)
 , SrcFile(..)
+, postIndex
 ) where
 
 import           Control.Comonad.Cofree
@@ -59,16 +64,21 @@ import           Data.Aeson.Lens
 import           Data.Aeson.With
 import           Data.IxSet.Typed             as Ix
 import           Data.Text.Time
+import           Development.Shake.Plus
 import           RIO                          hiding (view)
 import           RIO.List
 import           RIO.List.Partial
+import qualified RIO.HashMap                  as HM
 import qualified RIO.Text                     as T
 import qualified RIO.Text.Partial             as T
 import           RIO.Time
 import qualified RIO.Vector                   as V
-import           Shakebook.Data
+import           Shakebook.Pandoc
 import           Text.Pandoc.Highlighting
 
+-- | View the "image" field of a JSON value.
+viewImage :: Value -> Text
+viewImage = view (key "image" . _String)
 
 -- | View the "date" field of a JSON Value as a UTCTime.
 viewPostTime :: Value -> UTCTime
@@ -93,6 +103,14 @@ viewAllPostTags = (>>= viewTags)
 -- | View all posts times for a list of posts.
 viewAllPostTimes :: [Value] -> [UTCTime]
 viewAllPostTimes = fmap viewPostTime
+
+-- | Add "base-url" field from input Text.
+withBaseUrl :: Text -> Value -> Value
+withBaseUrl = withStringField "base-url"
+
+-- | Add "full-url" field  from input Text.
+withFullUrl :: Text -> Value -> Value
+withFullUrl = withStringField "full-url"
 
 -- | Add "highlighting-css" field from input Style.
 withHighlighting :: Style -> Value -> Value
@@ -183,18 +201,23 @@ extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 genLinkData :: Text -> Text -> Value
 genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
+-- | Indexable Post Type
 newtype Post = Post { unPost :: Value }
   deriving (Show, Eq, Ord, Data, Typeable, ToJSON)
 
+-- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag Text
   deriving (Show, Eq, Ord, Data, Typeable)
 
+-- | Posted index for a `Post` for use with `IxSet`.
 newtype Posted = Posted UTCTime
   deriving (Show, Eq, Ord, Data, Typeable)
 
+-- | YearMonth (yyyy, mm) index for a `Post` for use with `IxSet`.
 newtype YearMonth = YearMonth (Integer, Int)
   deriving (Show, Eq, Ord, Data, Typeable)
 
+-- | SrcFile index for a `Post` for use with `IxSet`.
 newtype SrcFile = SrcFile Text
   deriving (Show, Eq, Ord, Data, Typeable)
 
@@ -203,7 +226,14 @@ instance Indexable '[Tag, Posted, YearMonth, SrcFile] Post where
                    (ixFun (pure . Posted . viewPostTime . unPost))
                    (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime . unPost))
                    (ixFun (pure . SrcFile . viewSrcPath . unPost))
-                  
+
+postIndex :: MonadAction m
+          => (Within Rel (Path Rel File) -> m Value)
+          -> Within Rel [FilePattern]
+          -> m (Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] Post)
+postIndex rd fp = do
+  xs <- batchLoadWithin' fp rd
+  return (Ix.fromList $ Post <$> HM.elems xs)
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNavbarData :: IsIndexOf YearMonth ixs => Text -- ^ "Top level title, e.g "Blog"

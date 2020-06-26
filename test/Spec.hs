@@ -55,9 +55,7 @@ rules = do
 
   readMDC <- newCache $ loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions
 
-  postsIx <- newCache $ \fp -> do
-    xs <- batchLoadWithin' fp readMDC
-    return (Ix.fromList $ Post <$> HM.elems (defaultEnrichPost <$> xs) :: Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] Post)
+  postsIx <- newCache $ postIndex $ fmap defaultEnrichPost . readMDC
 
   getBlogNavbar <- newCache $ \fp -> do
     xs <- postsIx fp
