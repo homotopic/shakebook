@@ -3,6 +3,9 @@
 ## (v0.7.0.0)
 
 * Switch to [ixset-typed](httos://hackage.haskell.org/package/ixset-typed).
+* Drop `Shakebook.Data` module and move to `Shakebook.Pandoc` and `Shakebook.Conventions`.
+* Add `postIndex` function.
+
 ## (v0.6.0.0)
 
 * Drop `Display` instances for `Within` and `Path`.

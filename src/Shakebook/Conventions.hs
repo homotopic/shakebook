@@ -227,6 +227,7 @@ instance Indexable '[Tag, Posted, YearMonth, SrcFile] Post where
                    (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime . unPost))
                    (ixFun (pure . SrcFile . viewSrcPath . unPost))
 
+-- | Take a Value loading function and a filepattern and return an indexable set of Posts.
 postIndex :: MonadAction m
           => (Within Rel (Path Rel File) -> m Value)
           -> Within Rel [FilePattern]
