@@ -1,5 +1,9 @@
 # Changelog for Shakebook
 
+## (v0.7.1.0)
+
+* Upgrade to [zipper-extra](https://hackage.haskell.org/package/zipper-extra) v0.1.3.0.
+
 ## (v0.7.0.0)
 
 * Switch to [ixset-typed](httos://hackage.haskell.org/package/ixset-typed).

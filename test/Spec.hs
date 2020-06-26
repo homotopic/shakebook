@@ -1,6 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-import           Control.Lens      hiding ((:<))
 import           Data.Aeson.With
 import qualified Data.IxSet.Typed as Ix
 import           Data.List.Split
@@ -50,23 +49,8 @@ mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-
                                    ,("youtube", "http://youtube.com/blanky-site-nowhere")
                                    ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
 
-data ElemNotFoundException a = ElemNotFoundException a [a]
-    deriving (Show, Eq, Typeable)
-
-instance (Typeable a, Show a) => Exception (ElemNotFoundException a) where
-  displayException (ElemNotFoundException x xs) = "Elem " <> show x <> " not found in " <> show xs
-
-elemIndexThrow x xs = case elemIndex x xs of
-  Nothing -> throwM $ ElemNotFoundException x xs
-  Just a -> return a
-
 postsZipper :: (MonadThrow m, Ix.IsIndexOf Posted xs) => Ix.IxSet xs Post -> m (Zipper [] Post)
 postsZipper = zipper' . Ix.toDescList (Proxy :: Proxy Posted)
-
-seekOn :: (MonadThrow m, Eq b, Typeable b, Show b) => (a -> b) -> b -> Zipper [] a -> m (Zipper [] a)
-seekOn f x ys = do
-  k <- elemIndexThrow x (f <$> unzipper ys)
-  return $ seek k ys
 
 rules :: HasLogFunc r => ShakePlus r ()
 rules = do
@@ -132,7 +116,7 @@ rules = do
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
     xs  <- postsZ myPosts
-    xs' <- seekOn (viewSrcPath . unPost) (T.pack . toFilePath . extract $ src) xs
+    xs' <- seekOnThrow (viewSrcPath . unPost) (T.pack . toFilePath . extract $ src) xs
     myBuildBlogPage $(mkRelFile "templates/post.html") (extract (unPost <$> xs')) out
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
