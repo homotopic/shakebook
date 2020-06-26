@@ -50,6 +50,24 @@ mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-
                                    ,("youtube", "http://youtube.com/blanky-site-nowhere")
                                    ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
 
+data ElemNotFoundException a = ElemNotFoundException a [a]
+    deriving (Show, Eq, Typeable)
+
+instance (Typeable a, Show a) => Exception (ElemNotFoundException a) where
+  displayException (ElemNotFoundException x xs) = "Elem " <> show x <> " not found in " <> show xs
+
+elemIndexThrow x xs = case elemIndex x xs of
+  Nothing -> throwM $ ElemNotFoundException x xs
+  Just a -> return a
+
+postsZipper :: (MonadThrow m, Ix.IsIndexOf Posted xs) => Ix.IxSet xs Post -> m (Zipper [] Post)
+postsZipper = zipper' . Ix.toDescList (Proxy :: Proxy Posted)
+
+seekOn :: (MonadThrow m, Eq b, Typeable b, Show b) => (a -> b) -> b -> Zipper [] a -> m (Zipper [] a)
+seekOn f x ys = do
+  k <- elemIndexThrow x (f <$> unzipper ys)
+  return $ seek k ys
+
 rules :: HasLogFunc r => ShakePlus r ()
 rules = do
 
@@ -61,13 +79,7 @@ rules = do
     xs <- postsIx fp
     return $ genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment xs
 
-  postsZ <- newCache $ \fp -> do
-    xs <- postsIx fp
-    let ys = Ix.toDescList (Proxy :: Proxy Posted) xs
-    zs <- ifor ys $ \i v -> do
-      z <- zipper' (unPost <$> ys)
-      return (viewSrcPath (unPost v), seek i z)
-    return $ HM.fromList zs
+  postsZ <- newCache $ postsIx >=> postsZipper
 
   blogIndexPageData <- newCache $ \fp -> do
     xs <- postsIx fp
@@ -97,11 +109,11 @@ rules = do
       s' = (`within` sourceFolder)
 
       myBuildPage tmpl v out = do
-        rs <- postsIx myPosts
+        rs <- postsZ myPosts
         let v' = withHighlighting pygments
                . withSocialLinks mySocial
                . withSiteTitle siteTitle
-               . withRecentPosts (take numRecentPosts $ Ix.toDescList (Proxy :: Proxy Posted) rs) $ v
+               . withRecentPosts (take numRecentPosts (unzipper rs)) $ v
         buildPageActionWithin (s' tmpl) v' out
 
       myBuildBlogPage tmpl v out = do
@@ -119,10 +131,9 @@ rules = do
 
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
-    xs <- postsZ myPosts
-    case HM.lookup (T.pack . toFilePath . extract $ src) xs of
-      Nothing -> logError $ "Attempting to lookup non-existent post " <> displayShow src
-      Just x  -> myBuildBlogPage $(mkRelFile "templates/post.html") (extract x) out
+    xs  <- postsZ myPosts
+    xs' <- seekOn (viewSrcPath . unPost) (T.pack . toFilePath . extract $ src) xs
+    myBuildBlogPage $(mkRelFile "templates/post.html") (extract (unPost <$> xs')) out
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do
