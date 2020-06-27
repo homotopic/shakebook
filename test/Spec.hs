@@ -21,8 +21,8 @@ sourceFolder = $(mkRelDir "test/site")
 outputFolder :: Path Rel Dir
 outputFolder = $(mkRelDir "test/public")
 
---baseUrl :: Text
---baseUrl = "http://blanky.test"
+baseUrl :: Text
+baseUrl = "http://blanky.test"
 
 siteTitle :: Text
 siteTitle = "Blanky Site"
@@ -162,6 +162,10 @@ rules = do
   o' ["css//*", "js//*", "webfonts//*", "images//*"] |%^> \out ->
     copyFileChangedWithin (blinkLocalDir sourceFolder out) out
 
+  o' "sitemap.xml" %^> \out -> do
+    xs <- postsZ myPosts
+    buildSitemap baseUrl (unzipper $ unPost <$> xs) (fromWithin out)
+
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return
 
@@ -199,6 +203,8 @@ rules = do
     logInfo $ "Cleaning files in " <> displayShow outputFolder
     removeFilesAfter outputFolder ["//*"]
 
+  phony "sitemap" $ needIn outputFolder [$(mkRelFile "sitemap.xml")]
+
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
   map ( \x -> goldenVsFile x x
@@ -208,10 +214,10 @@ tests xs = testGroup "Rendering Tests" $
 
 main :: IO ()
 main = do
-   xs <- findByExtension [".html"] "test/golden"
+   xs <- findByExtension [".html", ".xml"] "test/golden"
    logOptions' <- logOptionsHandle stdout True
    (lf, dlf) <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    shake shakeOptions $ want ["clean"] >> runShakePlus lf rules
-   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "by-tag-index", "by-month-index"] >> runShakePlus lf rules
+   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "by-tag-index", "by-month-index", "sitemap"] >> runShakePlus lf rules
    defaultMain $ tests xs
    dlf
