@@ -232,10 +232,10 @@ newtype SrcFile = SrcFile Text
   deriving (Show, Eq, Ord, Data, Typeable)
 
 instance Indexable '[Tag, Posted, YearMonth, SrcFile] Post where
-  indices = ixList (ixFun (fmap Tag . viewTags . unPost))
-                   (ixFun (pure . Posted . viewPostTime . unPost))
-                   (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime . unPost))
-                   (ixFun (pure . SrcFile . viewSrcPath . unPost))
+  indices = ixList (ixFun (fmap Tag . viewTags))
+                   (ixFun (pure . Posted . viewPostTime))
+                   (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime))
+                   (ixFun (pure . SrcFile . viewSrcPath))
 
 -- | Take a Value loading function and a filepattern and return an indexable set of Posts.
 postIndex :: MonadAction m
@@ -263,8 +263,8 @@ genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
                                       , "toc2"  A..= Array (V.fromList $ map (uncurry toc2) $ groupDescBy xs)]
                                      ] where
        toc2 _ [] = object []
-       toc2 (YearMonth (_, _)) t@(x : _) = object [ "title" A..= String (f (viewPostTime . unPost $ x))
-                                                  , "url"   A..= String (g (viewPostTime . unPost $ x))
+       toc2 (YearMonth (_, _)) t@(x : _) = object [ "title" A..= String (f (viewPostTime x))
+                                                  , "url"   A..= String (g (viewPostTime x))
                                                   , "toc3"  A..= Array (V.fromList $ sortOn (Down . viewPostTime) (unPost <$> t)) ]
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
