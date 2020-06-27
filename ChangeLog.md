@@ -1,5 +1,7 @@
 # Changelog for Shakebook
 
+* Add `Shakebook.Sitemap` module using [sitemap-gen](https://hackage.haskell.org/package/sitemap-gen).
+
 ## (v0.7.2.0)
 
 * Upgrade to [aeson-with](https://hackage.haskell.org/package/aeson-with) v0.1.1.0.
