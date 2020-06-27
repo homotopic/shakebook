@@ -4,6 +4,7 @@
 module Shakebook.Conventions (
   -- * Lenses
   viewImage
+, viewModified
 , viewPostTime
 , viewPostTimeRaw
 , viewTags
@@ -13,6 +14,7 @@ module Shakebook.Conventions (
 , withBaseUrl
 , withFullUrl
 , withHighlighting
+, withModified
 , withNext
 , withPages
 , withPrettyDate
@@ -80,6 +82,10 @@ import           Text.Pandoc.Highlighting
 viewImage :: ToJSON a => a -> Text
 viewImage = view' (key "image" . _String)
 
+-- | View the "modified" field of a JSON value.
+viewModified :: ToJSON a => a -> UTCTime
+viewModified = parseISODateTime . view' (key "modified" . _String)
+
 -- | View the "date" field of a JSON Value as a UTCTime.
 viewPostTime :: ToJSON a => a -> UTCTime
 viewPostTime = parseISODateTime . view' (key "date" . _String)
@@ -115,6 +121,10 @@ withFullUrl = withStringField "full-url"
 -- | Add "highlighting-css" field from input Style.
 withHighlighting :: Style -> Value -> Value
 withHighlighting = withStringField "highlighting-css" . T.pack . styleToCss
+
+-- | Add "modified" field from input UTCTime.
+withModified :: UTCTime -> Value -> Value
+withModified = withStringField "modified" . T.pack . formatTime defaultTimeLocale (iso8601DateFormat Nothing)
 
 -- | Add "next" field from input Value.
 withNext :: ToJSON a => a -> Value -> Value
