@@ -1,6 +1,9 @@
 # Changelog for Shakebook
 
+## (v0.7.3.0)
+
 * Add `Shakebook.Sitemap` module using [sitemap-gen](https://hackage.haskell.org/package/sitemap-gen).
+* Relax bounds on `aeson`.
 
 ## (v0.7.2.0)
 
