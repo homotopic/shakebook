@@ -5,13 +5,6 @@
 
 packages:
 - completed:
-    hackage: aeson-1.5.2.0@sha256:d00c7aa51969b2849550e4dee14c9ce188504d55ed8d7f734ce9f6976db452f6,6786
-    pantry-tree:
-      size: 39758
-      sha256: 992b01282d72e4db664289db69a846a4ec675379ca96824ba902a7541104d409
-  original:
-    hackage: aeson-1.5.2.0
-- completed:
     hackage: aeson-with-0.1.1.0@sha256:dc67b6adeddb7a1bc61098e4b02a339b1b60b32684981af65df5622c1b591ea7,1178
     pantry-tree:
       size: 270
@@ -19,33 +12,12 @@ packages:
   original:
     hackage: aeson-with-0.1.1.0
 - completed:
-    hackage: base-noprelude-4.13.0.0@sha256:3cccbfda38e1422ca5cc436d58858ba51ff9114d2ed87915a6569be11e4e5a90,6842
-    pantry-tree:
-      size: 112
-      sha256: 90db92c8401880187ce642c5345407bcbd9546ea235524dd445cab2566ee3db1
-  original:
-    hackage: base-noprelude-4.13.0.0
-- completed:
     hackage: comonad-extras-4.0.1@sha256:60c93aa274239086d96d162c3c8bf7cde33a3e8470ecb56461b2f77d2625521e,1321
     pantry-tree:
       size: 365
       sha256: 073a63488f2d71ac41355097da8292d70c5e8d56fabb4346955ac943c8ff24b9
   original:
     hackage: comonad-extras-4.0.1
-- completed:
-    hackage: haddock-library-1.8.0@sha256:293544a80c3d817a021fec69c430e808914a9d86db0c6bd6e96a386607a66627,3850
-    pantry-tree:
-      size: 3397
-      sha256: 2fb23fd09565829807a0368011cd57ea13e9a79fa4c65a47810aaf9a528427c2
-  original:
-    hackage: haddock-library-1.8.0
-- completed:
-    hackage: pandoc-2.9.2.1@sha256:0331f5ddf7bec06058fe38713ab55d3e60aac72b32f26a30e247a0ee5b15db13,36158
-    pantry-tree:
-      size: 88382
-      sha256: e5afe198bbb039f7801de61295978669fa64364bd3d01bb70580e03b53cf999d
-  original:
-    hackage: pandoc-2.9.2.1
 - completed:
     hackage: path-extensions-0.1.0.1@sha256:c5b6ca14f8842ef3e7945a785accbcfc833b6d7cfa1e1dbe25ec35fa4aedd4d2,1044
     pantry-tree:
@@ -76,7 +48,7 @@ packages:
     hackage: zipper-extra-0.1.3.0
 snapshots:
 - completed:
-    size: 502299
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/6/22.yaml
-    sha256: 3b16e1f2e6d77dace4d39e0e1f33205474dafeaf492e9b0d8936a74450db55df
-  original: nightly-2020-06-22
+    size: 531674
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/2.yaml
+    sha256: 4b08fb9338ca297de7ade8318f4be1216f14dff8c0426c001fb7886ee88cb84a
+  original: lts-16.2

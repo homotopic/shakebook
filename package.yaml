@@ -82,7 +82,7 @@ tests:
     - tasty-golden
 
 dependencies:
-- aeson >= 1.5.2.0
+- aeson
 - aeson-with >= 0.1.1.0
 - base >= 4.7 && < 5
 - comonad
