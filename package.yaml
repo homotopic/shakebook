@@ -63,6 +63,7 @@ ghc-options:
 - -Wcompat
 - -Wincomplete-record-updates
 - -Wincomplete-uni-patterns
+- -fno-warn-orphans
 - -Wredundant-constraints
 
 library:
