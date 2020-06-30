@@ -5,6 +5,13 @@
 
 packages:
 - completed:
+    hackage: binary-instances-1.0.0.1@sha256:e234be994da675479a3661f050d4a1d53565c9ed7786d9a68b7a29ba8b54b5a7,2659
+    pantry-tree:
+      size: 1035
+      sha256: 6086ebb4c6f3d28200f295c36495227b3cd762ab1de3dafa36f6ce8674a23a90
+  original:
+    hackage: binary-instances-1.0.0.1
+- completed:
     hackage: comonad-extras-4.0.1@sha256:60c93aa274239086d96d162c3c8bf7cde33a3e8470ecb56461b2f77d2625521e,1321
     pantry-tree:
       size: 365

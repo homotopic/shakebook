@@ -1,5 +1,5 @@
 name:                shakebook
-version:             0.7.3.0
+version:             0.8.0.0
 license:             MIT
 category:            Web
 author:              "Daniel Firth"
@@ -86,11 +86,13 @@ dependencies:
 - aeson
 - aeson-with >= 0.1.1.0
 - base >= 4.7 && < 5
+- binary-instances
 - comonad
 - comonad-extras
 - doctemplates
 - feed
 - free
+- http-conduit
 - ixset-typed >= 0.5
 - lens
 - lens-aeson

@@ -5,6 +5,7 @@ module Shakebook (
 , module Control.Comonad.Zipper.Extra
 , module Data.Aeson
 , module Development.Shake.Plus
+, module Shakebook.Conduit
 , module Shakebook.Conventions
 , module Shakebook.Defaults
 , module Shakebook.Feed
@@ -20,6 +21,7 @@ import Control.Comonad.Store.Zipper
 import Control.Comonad.Zipper.Extra
 import Data.Aeson
 import Development.Shake.Plus
+import Shakebook.Conduit
 import Shakebook.Conventions
 import Shakebook.Defaults
 import Shakebook.Feed

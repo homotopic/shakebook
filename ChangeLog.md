@@ -1,5 +1,13 @@
 # Changelog for Shakebook
 
+## (v0.7.4.0)
+
+* Strengthen bounds on `aeson`, `ixset-typed` and `shake-plus`.
+* Add [binary-instances](https://hackage.haskell.org/package/sitemap-gen) for `Value` binary instance.
+* Add [http-conduit](https://hackage.haskell.org/package/http-conduit).
+* Add new module `Shakebook.Conduit` containing `addRemoteJSONOracleCache` and `RemoteJSONCache` data
+  type for remote JSON caching.
+
 ## (v0.7.3.0)
 
 * Add `Shakebook.Sitemap` module using [sitemap-gen](https://hackage.haskell.org/package/sitemap-gen).
