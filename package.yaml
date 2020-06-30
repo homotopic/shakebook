@@ -91,15 +91,15 @@ dependencies:
 - doctemplates
 - feed
 - free
-- ixset-typed
+- ixset-typed >= 0.5
 - lens
 - lens-aeson
 - mustache
 - rio
-- pandoc >= 2.9.2.1
+- pandoc >= 2.10
 - pandoc-types
-- path-extensions >= 0.0.1.0
-- shake-plus >= 0.1.7.0
+- path-extensions >= 0.1.0.1
+- shake-plus >= 0.1.9.0
 - sitemap-gen
 - slick >= 1.0.1.1
 - split
