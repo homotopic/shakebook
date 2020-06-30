@@ -1,10 +1,11 @@
-resolver: lts-16.2
+resolver: nightly-2020-06-29
 packages:
 - .
 extra-deps:
-- aeson-with-0.1.1.0
 - comonad-extras-4.0.1
-- path-extensions-0.1.0.1
+- hslua-1.1.2
+- jira-wiki-markup-1.3.2
+- pandoc-2.10
 - slick-1.0.1.1
 - text-time-0.2.0
 - zipper-extra-0.1.3.0
