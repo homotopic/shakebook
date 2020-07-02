@@ -5,6 +5,13 @@
 
 packages:
 - completed:
+    hackage: aeson-1.5.2.0@sha256:d00c7aa51969b2849550e4dee14c9ce188504d55ed8d7f734ce9f6976db452f6,6786
+    pantry-tree:
+      size: 39758
+      sha256: 992b01282d72e4db664289db69a846a4ec675379ca96824ba902a7541104d409
+  original:
+    hackage: aeson-1.5.2.0
+- completed:
     hackage: binary-instances-1.0.0.1@sha256:e234be994da675479a3661f050d4a1d53565c9ed7786d9a68b7a29ba8b54b5a7,2659
     pantry-tree:
       size: 1035

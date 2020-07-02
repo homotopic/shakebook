@@ -211,8 +211,6 @@ extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 genLinkData :: Text -> Text -> Value
 genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
-deriving instance Ord Value
-
 -- | Indexable Post Type
 newtype Post = Post { unPost :: Value }
   deriving (Show, Eq, Ord, Data, Typeable, ToJSON)
