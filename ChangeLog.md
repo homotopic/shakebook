@@ -1,5 +1,10 @@
 # Changelog for Shakebook
 
+## v(0.8.1.0)
+
+* Update pandoc to v2.10.
+* Strengthen aeson bound to v1.5.2.0.
+
 ## (v0.7.4.0)
 
 * Strengthen bounds on `aeson`, `ixset-typed` and `shake-plus`.
