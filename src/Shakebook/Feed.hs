@@ -1,3 +1,12 @@
+{- |
+   Module     : Shakebook.Feed
+   Copyright  : Copyright (C) 2020 Daniel Firth
+   Maintainer : Daniel Firth <dan.firth@homotopic.tech
+   License    : MIT
+   Stability  : experimental
+
+Utilities from "Text.Atom.Feed" lifted to `MonadAction` and `FileLike`.
+-}
 module Shakebook.Feed (
   asAtomEntry
 , buildFeed
@@ -15,12 +24,12 @@ import           Text.Atom.Feed         as Atom
 import           Text.Atom.Feed.Export
 
 -- | Convert a Post to an Atom Entry
-asAtomEntry :: Value -> Atom.Entry
+asAtomEntry :: ToJSON a => a -> Atom.Entry
 asAtomEntry x = (Atom.nullEntry (viewUrl x) (Atom.TextString $ viewTitle x) (viewPostTimeRaw x)) {
                        Atom.entryContent = Just $ Atom.TextContent (viewContent x) }
 
 -- | Build an Atom Feed from a list of posts.
-buildFeed :: (MonadAction m, FileLike b a) => Text -> Text -> [Value] -> a -> m ()
+buildFeed :: (MonadAction m, FileLike b a, ToJSON a) => Text -> Text -> [a] -> a -> m ()
 buildFeed title baseUrl xs out = do
   let fs = asAtomEntry <$> sortOn (Down . viewPostTime) xs
   let t = Atom.nullFeed baseUrl (Atom.TextString title) $ Atom.entryUpdated (head fs)

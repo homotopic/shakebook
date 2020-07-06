@@ -1,6 +1,12 @@
-{-| Conventions used for common shakebook projects, lenses, enrichments, affixes.
--}
+{- |
+   Module     : Shakebook.Conventions
+   Copyright  : Copyright (C) 2020 Daniel Firth
+   Maintainer : Daniel Firth <dan.firth@homotopic.tech
+   License    : MIT
+   Stability  : experimental
 
+Conventions used in Shakebook projects, common lenses, generators, and indexing wrappers over Values.
+-}
 module Shakebook.Conventions (
   -- * Lenses
   viewImage

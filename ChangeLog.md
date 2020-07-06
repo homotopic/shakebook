@@ -1,6 +1,12 @@
 # Changelog for Shakebook
 
-## v(0.8.1.0)
+## (v0.9.0.0)
+
+* Upgrade shake-plus to v0.2.0.0.
+* Change `readmarkdownFile` to use `FileLike`.
+* Add `readMediaWikiFile` and `readLaTeXFile`.
+
+## (v0.8.1.0)
 
 * Update pandoc to v2.10.
 * Strengthen aeson bound to v1.5.2.0.

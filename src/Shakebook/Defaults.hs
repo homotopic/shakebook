@@ -1,3 +1,13 @@
+{- |
+   Module     : Shakebook.Defaults
+   Copyright  : Copyright (C) 2020 Daniel Firth
+   Maintainer : Daniel Firth <dan.firth@homotopic.tech
+   License    : MIT
+   Stability  : experimental
+
+Seom sensible default settings for certain shakebook functions.
+-}
+
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Defaults where
 

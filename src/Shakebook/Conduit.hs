@@ -1,3 +1,13 @@
+{- |
+   Module     : Shakebook.Conduit
+   Copyright  : Copyright (C) 2020 Daniel Firth
+   Maintainer : Daniel Firth <dan.firth@homotopic.tech
+   License    : MIT
+   Stability  : experimental
+
+Utilities for using conduit to store remote caches.
+-}
+
 module Shakebook.Conduit (
   RemoteJSONLookup(..)
 , addRemoteJSONOracleCache

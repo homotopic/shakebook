@@ -1,8 +1,11 @@
-{-|
-Module      : Shakebook.Mustache
-Description : Slick mustache utilities re-exported to use `Path`
-Copyright   : (c) Daniel Firth 2020
-License     : MIT
+{- |
+   Module     : Shakebook.Mustahce
+   Copyright  : Copyright (C) 2020 Daniel Firth
+   Maintainer : Daniel Firth <dan.firth@homotopic.tech
+   License    : MIT
+   Stability  : experimental
+
+Utilities from "Slick.Mustache" lifted to `MonadAction` and `FileLike`.
 -}
 
 module Shakebook.Mustache (

@@ -1,3 +1,13 @@
+{- |
+   Module     : Shakebook
+   Copyright  : Copyright (C) 2020 Daniel Firth
+   Maintainer : Daniel Firth <dan.firth@homotopic.tech
+   License    : MIT
+   Stability  : experimental
+
+Module exports for Shakebook. Re-exports everything in this package
+as well as shake-plus, aeson and comonad utilities.
+-}
 module Shakebook (
   module Control.Comonad.Cofree
 , module Control.Comonad.Store

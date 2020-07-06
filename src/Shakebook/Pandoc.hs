@@ -1,20 +1,43 @@
+{- |
+   Module     : Shakebook.Pandoc
+   Copyright  : Copyright (C) 2020 Daniel Firth
+   Maintainer : Daniel Firth <dan.firth@homotopic.tech
+   License    : MIT
+   Stability  : experimental
+
+Pandoc utilities lifted to `MonadAction`.
+-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Shakebook.Pandoc (
+-- * runPandocA
   runPandocA
 , PandocActionException(..)
+
+-- * Readers
+, readFilePandoc
+, readCSVFile
+, readLaTeXFile
 , readMarkdownFile
 , readMediaWikiFile
-, needPandocImagesIn
+, loadMarkdownAsJSON
+
+-- * Writers
 , makePDFLaTeX
+
+-- * File Rules
+, needPandocImagesIn
+
+-- * Filters
+, flattenMeta
+, prefixAllImages
 , progressivelyDemoteHeaders
 , replaceUnusableImages
-, prefixAllImages
-, flattenMeta
+
+-- * Lenses
 , viewContent
 , viewSrcPath
 , viewUrl
-, loadMarkdownAsJSON
 ) where
 
 import           Control.Comonad
@@ -60,6 +83,14 @@ readMarkdownFile = readFilePandoc readMarkdown
 -- | Read a mediawiki file and return a `Pandoc` as an Action.
 readMediaWikiFile :: (MonadAction m, MonadThrow m, FileLike b a) => ReaderOptions -> a -> m Pandoc
 readMediaWikiFile = readFilePandoc readMediaWiki
+
+-- | Read a LaTeX file and return a `Pandoc` as an Action.
+readLaTeXFile :: (MonadAction m, MonadThrow m, FileLike b a) => ReaderOptions -> a -> m Pandoc
+readLaTeXFile = readFilePandoc readLaTeX
+
+-- | Read a CSV file and return a `Pandoc` as an Action.
+readCSVFile :: (MonadAction m, MonadThrow m, FileLike b a) => ReaderOptions -> a -> m Pandoc
+readCSVFile = readFilePandoc readCSV
 
 -- | Find all the images in a `Pandoc` data structure and call `Development.Shake.Plus.need` on them.
 needPandocImagesIn :: (MonadAction m, MonadThrow m) => Path Rel Dir -> Pandoc -> m ()
