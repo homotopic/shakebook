@@ -20,7 +20,7 @@ asAtomEntry x = (Atom.nullEntry (viewUrl x) (Atom.TextString $ viewTitle x) (vie
                        Atom.entryContent = Just $ Atom.TextContent (viewContent x) }
 
 -- | Build an Atom Feed from a list of posts.
-buildFeed :: MonadAction m => Text -> Text -> [Value] -> Path Rel File -> m ()
+buildFeed :: (MonadAction m, FileLike b a) => Text -> Text -> [Value] -> a -> m ()
 buildFeed title baseUrl xs out = do
   let fs = asAtomEntry <$> sortOn (Down . viewPostTime) xs
   let t = Atom.nullFeed baseUrl (Atom.TextString title) $ Atom.entryUpdated (head fs)

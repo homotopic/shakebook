@@ -3,9 +3,8 @@
 module Shakebook.Pandoc (
   runPandocA
 , PandocActionException(..)
-, readMDFile
-, readMDFileIn
-, readMDFileWithin
+, readMarkdownFile
+, readMediaWikiFile
 , needPandocImagesIn
 , makePDFLaTeX
 , progressivelyDemoteHeaders
@@ -50,17 +49,17 @@ runPandocA p = do
   result <- liftIO $ runIO p
   either throwM return result
 
--- | Read a markdown file as an Action.
-readMDFile :: (MonadAction m, MonadThrow m) => ReaderOptions -> Path Rel File -> m Pandoc
-readMDFile ropts src = readFile' src >>= runPandocA . readMarkdown ropts
+-- | Run a Pandoc reader as a Shake action.
+readFilePandoc :: (MonadAction m, MonadThrow m, FileLike b a) => (ReaderOptions -> Text -> PandocIO Pandoc) -> ReaderOptions -> a -> m Pandoc
+readFilePandoc run ropts src = readFile' src >>= runPandocA . run ropts
 
--- | Read a markdown file as an Action.
-readMDFileIn :: (MonadAction m, MonadThrow m) => ReaderOptions -> Path Rel Dir -> Path Rel File -> m Pandoc
-readMDFileIn ropts dir src = readFile' (dir </> src) >>= runPandocA . readMarkdown ropts
+-- | Read a markdown file and return a `Pandoc` as an Action.
+readMarkdownFile :: (MonadAction m, MonadThrow m, FileLike b a) => ReaderOptions -> a -> m Pandoc
+readMarkdownFile = readFilePandoc readMarkdown
 
--- | Like `readMDFile` but accepts a `Within`
-readMDFileWithin :: (MonadAction m, MonadThrow m) => ReaderOptions -> Within Rel (Path Rel File) -> m Pandoc
-readMDFileWithin ropts src = readMDFile ropts (fromWithin src)
+-- | Read a mediawiki file and return a `Pandoc` as an Action.
+readMediaWikiFile :: (MonadAction m, MonadThrow m, FileLike b a) => ReaderOptions -> a -> m Pandoc
+readMediaWikiFile = readFilePandoc readMediaWiki
 
 -- | Find all the images in a `Pandoc` data structure and call `Development.Shake.Plus.need` on them.
 needPandocImagesIn :: (MonadAction m, MonadThrow m) => Path Rel Dir -> Pandoc -> m ()
@@ -146,7 +145,7 @@ loadMarkdownAsJSON :: (MonadAction m, MonadThrow m)
                    -> Within Rel (Path Rel File)
                    -> m Value
 loadMarkdownAsJSON ropts wopts srcPath = do
-  pdoc@(Pandoc meta _) <- readMDFileWithin ropts srcPath
+  pdoc@(Pandoc meta _) <- readMarkdownFile ropts srcPath
   meta' <- flattenMeta (writeHtml5String wopts) meta
   outText <- runPandocA $ writeHtml5String wopts pdoc
   supposedUrl <- toGroundedUrl <$> withHtmlExtension (extract srcPath)

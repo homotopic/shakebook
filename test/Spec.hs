@@ -49,16 +49,20 @@ mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-
                                    ,("youtube", "http://youtube.com/blanky-site-nowhere")
                                    ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
 
+myBlogNav :: Ix.IsIndexOf YearMonth xs => Ix.IxSet xs Post -> Value
+myBlogNav = genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment
+
+myDocNav :: Cofree [] Value -> Value
+myDocNav = genTocNavbarData
+
 rules :: HasLogFunc r => ShakePlus r ()
 rules = do
 
   readMDC <- newCache $ loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions
 
-  postsIx <- newCache $ postIndex $ fmap defaultEnrichPost . readMDC
+  postsIx <- newCache $ postIndex $ readMDC >=> return . defaultEnrichPost
 
-  blogNav <- newCache $ \fp -> do
-    xs <- postsIx fp
-    return $ genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment xs
+  blogNav <- newCache $ postsIx >=> return . myBlogNav
 
   postsZ <- newCache $ postsIx >=> postZipper
 
@@ -95,7 +99,7 @@ rules = do
                . withSocialLinks mySocial
                . withSiteTitle siteTitle
                . withRecentPosts (take numRecentPosts (unzipper rs)) $ v
-        buildPageActionWithin (s' tmpl) v' out
+        buildPageAction' (s' tmpl) v' out
 
       myBuildBlogPage tmpl v out = do
         k <- blogNav myPosts
@@ -122,11 +126,11 @@ rules = do
     ys <- mapM getDoc toc'
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
-    let v' = withJSON (genTocNavbarData ys) . withSubsections zs $ v
+    let v' = withJSON (myDocNav ys) . withSubsections zs $ v
     myBuildPage $(mkRelFile "templates/docs.html") v' out
 
   o' "posts/index.html" %^>
-    copyFileChangedWithin (o' $(mkRelFile "posts/pages/1/index.html"))
+    copyFileChanged (o' ($(mkRelFile "posts/pages/1/index.html") :: Path Rel File))
 
   o' "posts/pages/*/index.html" %^> \out -> do
     let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -136,7 +140,7 @@ rules = do
   o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"
-    copyFileChangedWithin (o' i) out
+    copyFileChanged (o' i) out
 
   o' "posts/tags/*/pages/*/index.html" %^> \out -> do
      let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -149,7 +153,7 @@ rules = do
   o' "posts/months/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/months/" <> t <> "/pages/1/index.html"
-    copyFileChangedWithin (o' i) out
+    copyFileChanged (o' i) out
 
   o' "posts/months/*/pages/*/index.html" %^> \out -> do
      let t = T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -160,7 +164,7 @@ rules = do
        Just x  -> myBuildPostListPage (seek n x) out
 
   o' ["css//*", "js//*", "webfonts//*", "images//*"] |%^> \out ->
-    copyFileChangedWithin (blinkLocalDir sourceFolder out) out
+    copyFileChanged (blinkLocalDir sourceFolder out) out
 
   o' "sitemap.xml" %^> \out -> do
     xs <- postsZ myPosts
@@ -171,12 +175,13 @@ rules = do
 
   phony "statics" $ verbatimPipeline ["css//*", "js//*", "webfonts//*", "images//*"]
 
-  phony "index" $ needIn outputFolder [$(mkRelFile "index.html")]
+  phony "index" $ needIn outputFolder [$(mkRelFile "index.html") :: Path Rel File]
 
   phony "post-index" $ do
      ps <- blogIndexPageData myPosts
      fs <- defaultPagePaths [1..size ps]
-     needIn (outputFolder </> $(mkRelDir "posts")) ($(mkRelFile "index.html") : fs)
+     let postFolder = (outputFolder </> $(mkRelDir "posts") :: Path Rel Dir)
+     needIn postFolder ($(mkRelFile "index.html") : fs)
 
   phony "by-tag-index" $ do
      ps <- blogTagIndexPageData myPosts
@@ -203,7 +208,7 @@ rules = do
     logInfo $ "Cleaning files in " <> displayShow outputFolder
     removeFilesAfter outputFolder ["//*"]
 
-  phony "sitemap" $ needIn outputFolder [$(mkRelFile "sitemap.xml")]
+  phony "sitemap" $ needIn outputFolder [($(mkRelFile "sitemap.xml") :: Path Rel File)]
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $

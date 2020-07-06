@@ -12,13 +12,6 @@ packages:
   original:
     hackage: aeson-1.5.2.0
 - completed:
-    hackage: binary-instances-1.0.0.1@sha256:e234be994da675479a3661f050d4a1d53565c9ed7786d9a68b7a29ba8b54b5a7,2659
-    pantry-tree:
-      size: 1035
-      sha256: 6086ebb4c6f3d28200f295c36495227b3cd762ab1de3dafa36f6ce8674a23a90
-  original:
-    hackage: binary-instances-1.0.0.1
-- completed:
     hackage: comonad-extras-4.0.1@sha256:60c93aa274239086d96d162c3c8bf7cde33a3e8470ecb56461b2f77d2625521e,1321
     pantry-tree:
       size: 365
@@ -47,12 +40,12 @@ packages:
   original:
     hackage: pandoc-2.10
 - completed:
-    hackage: shake-plus-0.1.9.0@sha256:8d3ab8313ab23f3d9b0a796bda2140dfff537732e77585c99d7c31564fb4edab,2295
+    hackage: shake-plus-0.2.0.0@sha256:1bdef8c07e7310aa98a0c7c373fc1f66bf3c325fdf54a3dd4b3ce60bbafc28c1,2331
     pantry-tree:
-      size: 1247
-      sha256: 9fdebe2b9eee0c15f9dcb76ddbd56ec278992d3cbbce427aad844600973125b2
+      size: 1204
+      sha256: 00a386ee8bb6bc2d70f3e21d8ec5ac4d843d39d0b347cd5808f6fa923ff1cbc0
   original:
-    hackage: shake-plus-0.1.9.0
+    hackage: shake-plus-0.2.0.0
 - completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
@@ -68,6 +61,13 @@ packages:
   original:
     hackage: text-time-0.2.0
 - completed:
+    hackage: within-0.2.0.0@sha256:0a52b40f66e55de8d16164aa4440143da674cedb555bade690b4bec0dc4f7b8e,1222
+    pantry-tree:
+      size: 259
+      sha256: b1149e54f92e4ab67666e1aab9256a3efb874152d44799d02808b38371bb09de
+  original:
+    hackage: within-0.2.0.0
+- completed:
     hackage: zipper-extra-0.1.3.0@sha256:204f5a7b44e3071788b99dd0a6af01e65177b3d240a8077be7d8716f13d4d365,948
     pantry-tree:
       size: 285
@@ -76,7 +76,7 @@ packages:
     hackage: zipper-extra-0.1.3.0
 snapshots:
 - completed:
-    size: 503821
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/6/29.yaml
-    sha256: e1bb5560cc1143c2eb3ece3ee90807d812d7fd94742fc9b9de016e717b531c32
-  original: nightly-2020-06-29
+    size: 507686
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/7/6.yaml
+    sha256: 984c7a1a32114f92236c737e2179daddc483bbce82e3048616f28cf5d3b79d75
+  original: nightly-2020-07-06
