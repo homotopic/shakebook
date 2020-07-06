@@ -58,33 +58,31 @@ myDocNav = genTocNavbarData
 rules :: HasLogFunc r => ShakePlus r ()
 rules = do
 
-  readMDC <- newCache $ loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions
+  readMDC   <- newCache $ loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions
 
-  postsIx <- newCache $ postIndex $ readMDC >=> return . defaultEnrichPost
+  postsIx   <- newCache $ postIndex $ readMDC >=> return . defaultEnrichPost
 
-  blogNav <- newCache $ postsIx >=> return . myBlogNav
+  blogNav   <- newCache $ postsIx >=> return . myBlogNav
 
-  postsZ <- newCache $ postsIx >=> postZipper
+  postsZ    <- newCache $ postsIx >=> postZipper
 
-  blogIndexPageData <- newCache $ \fp -> do
-    xs <- postsIx fp
-    genIndexPageData (Ix.toList xs) "Posts" ("/posts/pages/" <>) postsPerPage
+  blogIndex <- newCache $ postsIx >=> genIndexPageData "Posts" ("/posts/pages/" <>) postsPerPage . Ix.toList
 
-  blogTagIndexPageData <- newCache $ \fp -> do
+  blogTagIndex <- newCache $ \fp -> do
     xs <- postsIx fp
     k <- forM (Ix.groupDescBy xs) $ \(Tag t, ys) -> do
-      z <- genIndexPageData ys ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
+      z <- genIndexPageData ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage ys
       return (t, z)
     return $ HM.fromList k
 
-  blogMonthIndexPageData <- newCache $ \fp -> do
+  blogMonthIndex <- newCache $ \fp -> do
     xs <- postsIx fp
     k <- forM (Ix.groupDescBy xs) $ \(YearMonth (y,m), ys) -> do
       let t' = UTCTime (fromGregorian y m 1) 0
-      z <- genIndexPageData ys
-                            (("Posts from " <>) . defaultPrettyMonthFormat $ t')
+      z <- genIndexPageData (("Posts from " <>) . defaultPrettyMonthFormat $ t')
                             (("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>)
                             postsPerPage
+                            ys
       return (defaultMonthUrlFormat t', z)
     return $ HM.fromList k
 
@@ -133,9 +131,9 @@ rules = do
     copyFileChanged (o' ($(mkRelFile "posts/pages/1/index.html") :: Path Rel File))
 
   o' "posts/pages/*/index.html" %^> \out -> do
-    let n = (+ (-1)) . read . (!! 2) . splitOn "/" . toFilePath . extract $ out
-    xs <- blogIndexPageData myPosts
-    myBuildPostListPage (seek n xs) out
+    let n = read . (!! 2) . splitOn "/" . toFilePath . extract $ out
+    xs <- blogIndex myPosts
+    myBuildPostListPage (seek (n -1) xs) out
 
   o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -143,12 +141,13 @@ rules = do
     copyFileChanged (o' i) out
 
   o' "posts/tags/*/pages/*/index.html" %^> \out -> do
-     let t = T.pack          . (!! 2) . splitOn "/" . toFilePath . extract $ out
-     let n = (+ (-1)) . read . (!! 4) . splitOn "/" . toFilePath . extract $ out
-     xs <- blogTagIndexPageData myPosts
+     let zs = splitOn "/" . toFilePath . extract $ out
+     let t = T.pack $ zs !! 2
+     let n = read   $ zs !! 4
+     xs <- blogTagIndex myPosts
      case HM.lookup t xs of
        Nothing -> logError $ "Attempting to lookup non-existant tag " <> display t
-       Just x  -> myBuildPostListPage (seek n x) out
+       Just x  -> myBuildPostListPage (seek (n - 1) x) out
 
   o' "posts/months/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -156,19 +155,20 @@ rules = do
     copyFileChanged (o' i) out
 
   o' "posts/months/*/pages/*/index.html" %^> \out -> do
-     let t = T.pack . (!! 2) . splitOn "/" . toFilePath . extract $ out
-     let n = (+ (-1)) . read  . (!! 4) . splitOn "/" . toFilePath . extract $ out
-     xs <- blogMonthIndexPageData myPosts
+     let zs = splitOn "/" . toFilePath . extract $ out
+     let t = T.pack $ zs !! 2
+     let n = read   $ zs !! 4
+     xs <- blogMonthIndex myPosts
      case HM.lookup t xs of
        Nothing -> logError $ "Attempting to lookup non-existant month " <> displayShow t
-       Just x  -> myBuildPostListPage (seek n x) out
+       Just x  -> myBuildPostListPage (seek (n - 1) x) out
 
   o' ["css//*", "js//*", "webfonts//*", "images//*"] |%^> \out ->
     copyFileChanged (blinkLocalDir sourceFolder out) out
 
   o' "sitemap.xml" %^> \out -> do
     xs <- postsZ myPosts
-    buildSitemap baseUrl (unzipper $ unPost <$> xs) (fromWithin out)
+    buildSitemap baseUrl (unzipper xs) out
 
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return
@@ -178,13 +178,13 @@ rules = do
   phony "index" $ needIn outputFolder [$(mkRelFile "index.html") :: Path Rel File]
 
   phony "post-index" $ do
-     ps <- blogIndexPageData myPosts
+     ps <- blogIndex myPosts
      fs <- defaultPagePaths [1..size ps]
      let postFolder = (outputFolder </> $(mkRelDir "posts") :: Path Rel Dir)
      needIn postFolder ($(mkRelFile "index.html") : fs)
 
   phony "by-tag-index" $ do
-     ps <- blogTagIndexPageData myPosts
+     ps <- blogTagIndex myPosts
      void $ flip HM.traverseWithKey ps $ \t z -> do
        u  <- parseRelDir $ T.unpack t
        fs <- defaultPagePaths [1..size z]
@@ -192,7 +192,7 @@ rules = do
        needIn tagFolder ($(mkRelFile "index.html") : fs)
 
   phony "by-month-index" $ do
-     ps <- blogMonthIndexPageData myPosts
+     ps <- blogMonthIndex myPosts
      void $ flip HM.traverseWithKey ps $ \t z -> do
        u  <- parseRelDir $ T.unpack t
        fs <- defaultPagePaths [1..size z]

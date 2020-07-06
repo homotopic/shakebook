@@ -280,11 +280,11 @@ genPageData t f xs = let x = T.pack . show $ pos xs + 1
                       . withPosts (extract xs) $ Object mempty
 
 genIndexPageData :: (MonadThrow m, ToJSON a)
-                 => [a]
-                 -> Text
+                 => Text
                  -> (Text -> Text)
                  -> Int
+                 -> [a]
                  -> m (Zipper [] Value)
-genIndexPageData xs g h n = do
+genIndexPageData g h n xs = do
  zs <- paginate' n $ sortOn (Down . viewPostTime) xs
  return $ extend (genPageData g h) zs

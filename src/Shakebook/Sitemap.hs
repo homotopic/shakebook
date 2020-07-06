@@ -15,6 +15,6 @@ asSitemapUrl baseUrl x = SitemapUrl {
                  , sitemapChangeFrequency = Nothing
                  , sitemapPriority = Nothing }
 
-buildSitemap :: MonadAction m => Text -> [Value] -> Path Rel File -> m ()
+buildSitemap :: (MonadAction m, FileLike b a, ToJSON v) => Text -> [v] -> a -> m ()
 buildSitemap baseUrl xs out = do
-  LBS.writeFile (toFilePath out) $ renderSitemap $ Sitemap $ fmap (asSitemapUrl baseUrl) xs
+  LBS.writeFile (toFilePath . toFile $ out) $ renderSitemap $ Sitemap $ fmap (asSitemapUrl baseUrl) (toJSON <$> xs)
