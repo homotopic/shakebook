@@ -13,7 +13,7 @@ stages:
 lint:
   stage: lint
   script:
-  - hlint .
+  - hlint . --ignore-glob=test/Spec.hs
 
 build:
   stage: build

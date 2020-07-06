@@ -208,7 +208,7 @@ rules = do
     logInfo $ "Cleaning files in " <> displayShow outputFolder
     removeFilesAfter outputFolder ["//*"]
 
-  phony "sitemap" $ needIn outputFolder [($(mkRelFile "sitemap.xml") :: Path Rel File)]
+  phony "sitemap" $ needIn outputFolder [$(mkRelFile "sitemap.xml") :: Path Rel File]
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
