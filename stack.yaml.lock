@@ -26,6 +26,13 @@ packages:
   original:
     hackage: hslua-1.1.2
 - completed:
+    hackage: ixset-typed-conversions-0.1.0.0@sha256:e168909a2c8b464d033b9c77c540031cc8bbc70c08ec1aa169dfb4e72ef2f1bb,1132
+    pantry-tree:
+      size: 342
+      sha256: adad86c9517522bbfdb841c352c7b5b784c7f070bd1c876a5d28ed53436370e0
+  original:
+    hackage: ixset-typed-conversions-0.1.0.0
+- completed:
     hackage: jira-wiki-markup-1.3.2@sha256:b5f0901208a0ee07aff60f5356aeb851b7aa7950c75a18a15fd34247a35886d8,3819
     pantry-tree:
       size: 1180

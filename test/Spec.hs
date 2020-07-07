@@ -2,7 +2,9 @@
 
 import           Data.Aeson.With
 import qualified Data.IxSet.Typed as Ix
+import qualified Data.IxSet.Typed.Conversions as Ix
 import           Data.List.Split
+import           Data.Text.Time
 import           Path.Extensions
 import           RIO
 import qualified RIO.HashMap       as HM
@@ -10,7 +12,6 @@ import           RIO.List
 import           RIO.List.Partial
 import           RIO.Partial
 import qualified RIO.Text          as T
-import           RIO.Time
 import           Shakebook
 import           Test.Tasty
 import           Test.Tasty.Golden
@@ -55,6 +56,19 @@ myBlogNav = genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultM
 myDocNav :: Cofree [] Value -> Value
 myDocNav = genTocNavbarData
 
+myIndex :: MonadThrow m => [Post] -> m (Zipper [] Value)
+myIndex = genIndexPageData "Posts" ("/posts/pages/" <>) postsPerPage
+
+myTagIndex :: MonadThrow m => Tag -> [Post] -> m (Zipper [] Value)
+myTagIndex (Tag t) = genIndexPageData ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage
+
+myMonthIndex :: MonadThrow m => YearMonth -> [Post] -> m (Zipper [] Value)
+myMonthIndex (YearMonth (y, m)) =
+  let t' = fromYearMonthPair (y, m)
+  in genIndexPageData (("Posts from " <>) . defaultPrettyMonthFormat $ t')
+                      (("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>)
+                      postsPerPage
+
 rules :: HasLogFunc r => ShakePlus r ()
 rules = do
 
@@ -66,30 +80,16 @@ rules = do
 
   postsZ    <- newCache $ postsIx >=> postZipper
 
-  blogIndex <- newCache $ postsIx >=> genIndexPageData "Posts" ("/posts/pages/" <>) postsPerPage . Ix.toList
+  blogIndex <- newCache $ postsIx >=> myIndex . Ix.toList
 
-  blogTagIndex <- newCache $ \fp -> do
-    xs <- postsIx fp
-    k <- forM (Ix.groupDescBy xs) $ \(Tag t, ys) -> do
-      z <- genIndexPageData ("Posts tagged " <> t) (("/posts/tags/" <> t <> "/pages/") <>) postsPerPage ys
-      return (t, z)
-    return $ HM.fromList k
+  blogTagIndex <- newCache $ postsIx >=> flip Ix.toHashMapByM myTagIndex
 
-  blogMonthIndex <- newCache $ \fp -> do
-    xs <- postsIx fp
-    k <- forM (Ix.groupDescBy xs) $ \(YearMonth (y,m), ys) -> do
-      let t' = UTCTime (fromGregorian y m 1) 0
-      z <- genIndexPageData (("Posts from " <>) . defaultPrettyMonthFormat $ t')
-                            (("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>)
-                            postsPerPage
-                            ys
-      return (defaultMonthUrlFormat t', z)
-    return $ HM.fromList k
+  blogMonthIndex <- newCache $ postsIx >=> flip Ix.toHashMapByM myMonthIndex
 
-  let myPosts = ["posts/*.md"] `within` sourceFolder
-
-      o' = (`within` outputFolder)
+  let o' = (`within` outputFolder)
       s' = (`within` sourceFolder)
+
+      myPosts = s' ["posts/*.md"]
 
       myBuildPage tmpl v out = do
         rs <- postsZ myPosts
@@ -142,11 +142,11 @@ rules = do
 
   o' "posts/tags/*/pages/*/index.html" %^> \out -> do
      let zs = splitOn "/" . toFilePath . extract $ out
-     let t = T.pack $ zs !! 2
+     let t = Tag $ T.pack $ zs !! 2
      let n = read   $ zs !! 4
      xs <- blogTagIndex myPosts
      case HM.lookup t xs of
-       Nothing -> logError $ "Attempting to lookup non-existant tag " <> display t
+       Nothing -> logError $ "Attempting to lookup non-existant tag " <> displayShow t
        Just x  -> myBuildPostListPage (seek (n - 1) x) out
 
   o' "posts/months/*/index.html" %^> \out -> do
@@ -156,7 +156,7 @@ rules = do
 
   o' "posts/months/*/pages/*/index.html" %^> \out -> do
      let zs = splitOn "/" . toFilePath . extract $ out
-     let t = T.pack $ zs !! 2
+     let t = YearMonth $ toYearMonthPair $ parseISODateTime $ T.pack $ zs !! 2
      let n = read   $ zs !! 4
      xs <- blogMonthIndex myPosts
      case HM.lookup t xs of
@@ -185,7 +185,7 @@ rules = do
 
   phony "by-tag-index" $ do
      ps <- blogTagIndex myPosts
-     void $ flip HM.traverseWithKey ps $ \t z -> do
+     void $ flip HM.traverseWithKey ps $ \(Tag t) z -> do
        u  <- parseRelDir $ T.unpack t
        fs <- defaultPagePaths [1..size z]
        let tagFolder = outputFolder </> $(mkRelDir "posts/tags") </> u
@@ -193,8 +193,8 @@ rules = do
 
   phony "by-month-index" $ do
      ps <- blogMonthIndex myPosts
-     void $ flip HM.traverseWithKey ps $ \t z -> do
-       u  <- parseRelDir $ T.unpack t
+     void $ flip HM.traverseWithKey ps $ \(YearMonth t) z -> do
+       u  <- parseRelDir $ T.unpack $ defaultMonthUrlFormat $ fromYearMonthPair $ t
        fs <- defaultPagePaths [1..size z]
        let monthFolder = outputFolder </> $(mkRelDir "posts/months") </> u
        needIn monthFolder ($(mkRelFile "index.html") : fs)

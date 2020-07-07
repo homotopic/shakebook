@@ -92,8 +92,10 @@ dependencies:
 - doctemplates
 - feed
 - free
+- hashable-time
 - http-conduit
 - ixset-typed >= 0.5
+- ixset-typed-conversions
 - lens
 - lens-aeson
 - mustache

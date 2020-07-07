@@ -61,6 +61,8 @@ module Shakebook.Conventions (
 , SrcFile(..)
 , postIndex
 , postZipper
+, fromYearMonthPair
+, toYearMonthPair
 ) where
 
 import           Control.Comonad.Cofree
@@ -70,7 +72,9 @@ import           Control.Lens                 hiding ((:<), Indexable)
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
+import           Data.Hashable.Time
 import           Data.IxSet.Typed             as Ix
+import           Data.IxSet.Typed.Conversions as Ix
 import           Data.Text.Time
 import           Development.Shake.Plus
 import           RIO                          hiding (view)
@@ -219,29 +223,35 @@ genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
 -- | Indexable Post Type
 newtype Post = Post { unPost :: Value }
-  deriving (Show, Eq, Ord, Data, Typeable, ToJSON)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable, ToJSON)
 
 -- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag Text
-  deriving (Show, Eq, Ord, Data, Typeable)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
 
 -- | Posted index for a `Post` for use with `IxSet`.
 newtype Posted = Posted UTCTime
-  deriving (Show, Eq, Ord, Data, Typeable)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
 
 -- | YearMonth (yyyy, mm) index for a `Post` for use with `IxSet`.
 newtype YearMonth = YearMonth (Integer, Int)
-  deriving (Show, Eq, Ord, Data, Typeable)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
 
 -- | SrcFile index for a `Post` for use with `IxSet`.
 newtype SrcFile = SrcFile Text
-  deriving (Show, Eq, Ord, Data, Typeable)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
 
 instance Indexable '[Tag, Posted, YearMonth, SrcFile] Post where
   indices = ixList (ixFun (fmap Tag . viewTags))
                    (ixFun (pure . Posted . viewPostTime))
-                   (ixFun (pure . YearMonth . (\(a,b,_) -> (a,b)) . toGregorian . utctDay . viewPostTime))
+                   (ixFun (pure . YearMonth . toYearMonthPair . viewPostTime))
                    (ixFun (pure . SrcFile . viewSrcPath))
+
+toYearMonthPair :: UTCTime -> (Integer, Int)
+toYearMonthPair = (\(a, b, _) -> (a, b)) . toGregorian . utctDay
+
+fromYearMonthPair :: (Integer, Int) -> UTCTime
+fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
 
 -- | Take a Value loading function and a filepattern and return an indexable set of Posts.
 postIndex :: MonadAction m
@@ -254,7 +264,7 @@ postIndex rd fp = do
 
 -- | Create a `Zipper [] Post` from an `IxSet xs Post` by ordering by `Posted`.
 postZipper :: (MonadThrow m, Ix.IsIndexOf Posted xs) => Ix.IxSet xs Post -> m (Zipper [] Post)
-postZipper = zipper' . Ix.toDescList (Proxy :: Proxy Posted)
+postZipper = Ix.toZipperDesc (Proxy :: Proxy Posted)
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNavbarData :: IsIndexOf YearMonth ixs => Text -- ^ "Top level title, e.g "Blog"
