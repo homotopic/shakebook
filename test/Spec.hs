@@ -96,6 +96,7 @@ rules = do
         let v' = withHighlighting pygments
                . withSocialLinks mySocial
                . withSiteTitle siteTitle
+               . withCdnImports defaultCdnImports
                . withRecentPosts (take numRecentPosts (unzipper rs)) $ v
         buildPageAction' (s' tmpl) v' out
 

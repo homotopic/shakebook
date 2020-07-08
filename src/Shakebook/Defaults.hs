@@ -13,6 +13,8 @@ module Shakebook.Defaults where
 
 import           Data.Aeson             as A
 import           Development.Shake.Plus
+import           Lucid
+import           Lucid.CDN
 import           RIO
 import qualified RIO.Map                as M
 import qualified RIO.Text               as T
@@ -60,3 +62,12 @@ defaultPagePaths :: MonadThrow m => [Int] -> m [Path Rel File]
 defaultPagePaths xs = do
   xs' <- mapM (parseRelDir . show) xs
   return $ fmap (\i -> $(mkRelDir "pages") </> i </> $(mkRelFile "index.html")) xs'
+
+defaultCdnImports :: Monad m => HtmlT m ()
+defaultCdnImports = do
+  bootstrapCSS_5_0_0_alpha1
+  bootstrapJS_5_0_0_alpha1
+  fontawesome_4_7_0
+  mathjax_3_0_5
+  jquery_3_5_1
+  popper_2_4_4

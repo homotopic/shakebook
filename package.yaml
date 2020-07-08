@@ -1,5 +1,5 @@
 name:                shakebook
-version:             0.9.1.0
+version:             0.10.0.0
 license:             MIT
 category:            Web
 author:              "Daniel Firth"
@@ -98,6 +98,8 @@ dependencies:
 - ixset-typed-conversions
 - lens
 - lens-aeson
+- lucid
+- lucid-cdn
 - mustache
 - rio
 - pandoc >= 2.10

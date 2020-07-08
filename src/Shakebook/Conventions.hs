@@ -18,6 +18,7 @@ module Shakebook.Conventions (
 , viewAllPostTags
 , viewAllPostTimes
 , withBaseUrl
+, withCdnImports
 , withFullUrl
 , withHighlighting
 , withModified
@@ -77,11 +78,13 @@ import           Data.IxSet.Typed             as Ix
 import           Data.IxSet.Typed.Conversions as Ix
 import           Data.Text.Time
 import           Development.Shake.Plus
+import           Lucid
 import           RIO                          hiding (view)
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.HashMap                  as HM
 import qualified RIO.Text                     as T
+import qualified RIO.Text.Lazy                as LT
 import qualified RIO.Text.Partial             as T
 import           RIO.Time
 import qualified RIO.Vector                   as V
@@ -127,6 +130,10 @@ withBaseUrl = withStringField "base-url"
 -- | Add "full-url" field  from input Text.
 withFullUrl :: Text -> Value -> Value
 withFullUrl = withStringField "full-url"
+
+-- | Add "cdn-imports" field from input Lucid.
+withCdnImports :: Html () -> Value -> Value
+withCdnImports = withStringField "cdn-imports" . LT.toStrict . renderText
 
 -- | Add "highlighting-css" field from input Style.
 withHighlighting :: Style -> Value -> Value
