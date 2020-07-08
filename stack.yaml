@@ -1,4 +1,4 @@
-resolver: nightly-2020-07-06
+resolver: nightly-2020-07-08
 packages:
 - .
 extra-deps:
@@ -8,10 +8,8 @@ extra-deps:
 - ixset-typed-conversions-0.1.0.0
 - jira-wiki-markup-1.3.2
 - pandoc-2.10
-- shake-plus-0.2.0.0
 - slick-1.0.1.1
 - text-time-0.2.0
-- within-0.2.0.0
 - zipper-extra-0.1.3.0
 nix:
   enable: false
