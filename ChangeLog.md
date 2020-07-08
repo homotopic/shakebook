@@ -1,5 +1,9 @@
 # Changelog for Shakebook
 
+## (v0.9.1.0)
+
+* Add [ixset-typed-conversions] for producing `Zipper`s and `HashMap`s.
+
 ## (v0.9.0.0)
 
 * Upgrade shake-plus to v0.2.0.0.
