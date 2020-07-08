@@ -99,7 +99,7 @@ dependencies:
 - lens
 - lens-aeson
 - lucid
-- lucid-cdn
+- lucid-cdn >= 0.1.1.0
 - mustache
 - rio
 - pandoc >= 2.10
