@@ -34,6 +34,7 @@ module Shakebook.Conventions (
 , withTagIndex
 , withTagLinks
 , withTeaser
+, withToc
 , withTitle
 
   -- * Enrichments
@@ -69,7 +70,6 @@ module Shakebook.Conventions (
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Zipper.Extra
-import           Control.Lens                 hiding ((:<), Indexable)
 import           Data.Aeson                   as A
 import           Data.Aeson.Lens
 import           Data.Aeson.With
@@ -87,7 +87,6 @@ import qualified RIO.Text                     as T
 import qualified RIO.Text.Lazy                as LT
 import qualified RIO.Text.Partial             as T
 import           RIO.Time
-import qualified RIO.Vector                   as V
 import           Shakebook.Pandoc
 import           Text.Pandoc.Highlighting
 
@@ -187,6 +186,10 @@ withTagIndex = withArrayField "tag-index"
 withTagLinks :: ToJSON a => [a] -> Value -> Value
 withTagLinks  = withArrayField "tag-links"
 
+-- | Add "toc" field based on input Html.
+withToc :: Html () -> Value -> Value
+withToc = withStringField "toc" . LT.toStrict . renderText
+
 -- | Add "teaser" field based on input Text.
 withTeaser :: Text -> Value -> Value
 withTeaser = withStringField "teaser"
@@ -223,10 +226,6 @@ extendNext = extend (liftA2 withNext zipperNextMaybe extract)
 extendPageNeighbours :: Int -> Zipper [] Value -> Zipper [] Value
 extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
 
--- | Create link data object with fields "id" and "url" using an id and a function
--- | transforming an id into a url.
-genLinkData :: Text -> Text -> Value
-genLinkData x u = object ["id" A..= String x, "url" A..= String u]
 
 -- | Indexable Post Type
 newtype Post = Post { unPost :: Value }
@@ -273,28 +272,34 @@ postIndex rd fp = do
 postZipper :: (MonadThrow m, Ix.IsIndexOf Posted xs) => Ix.IxSet xs Post -> m (Zipper [] Post)
 postZipper = Ix.toZipperDesc (Proxy :: Proxy Posted)
 
+genLinkData :: Text -> Text -> Value
+genLinkData x u = object ["id" A..= String x, "url" A..= String u]
+
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
-genBlogNavbarData :: IsIndexOf YearMonth ixs => Text -- ^ "Top level title, e.g "Blog"
+genBlogNavbarData :: IsIndexOf YearMonth ixs
+                  => Text -- ^ "Top level title, e.g "Blog"
                   -> Text -- ^ Root page, e.g "/posts"
                   -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
                   -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
                   -> IxSet ixs Post
-                  -> Value
-genBlogNavbarData a b f g xs = object [ "toc1" A..= object [
-                                        "title" A..= String a
-                                      , "url"   A..= String b
-                                      , "toc2"  A..= Array (V.fromList $ map (uncurry toc2) $ groupDescBy xs)]
-                                     ] where
-       toc2 _ [] = object []
-       toc2 (YearMonth (_, _)) t@(x : _) = object [ "title" A..= String (f (viewPostTime x))
-                                                  , "url"   A..= String (g (viewPostTime x))
-                                                  , "toc3"  A..= Array (V.fromList $ sortOn (Down . viewPostTime) (unPost <$> t)) ]
+                  -> Html ()
+genBlogNavbarData a b f g xs =  
+  ul_ $
+    li_ $ do
+      a_ [href_ a] (toHtml b)
+      ul_ $ forM_ (groupDescBy xs) $ \(YearMonth (y, m), xs') -> do
+        let t' = fromYearMonthPair (y, m)
+        li_ $ a_ [href_ $ g t'] (toHtml $ f t')
+        ul_ $ forM (sortOn (Down . viewPostTime) xs') $ \x ->
+          li_ $ a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
-genTocNavbarData :: Cofree [] Value -> Value
+genTocNavbarData :: Cofree [] Value -> Html ()
 genTocNavbarData (x :< xs) =
-  object ["toc1" A..= [_Object . at "toc2" ?~ Array (V.fromList $ map toc2 xs) $ x]] where
-      toc2 (y :< ys) = (_Object . at "toc3" ?~ Array (V.fromList $ map extract ys)) y
+  ul_ $
+    li_ $ do
+      a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
+      forM_ xs $ genTocNavbarData
 
 genPageData :: ToJSON a => Text -> (Text -> Text) -> Zipper [] [a] -> Value
 genPageData t f xs = let x = T.pack . show $ pos xs + 1

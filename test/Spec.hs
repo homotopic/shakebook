@@ -1,11 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-import           Data.Aeson.With
 import qualified Data.IxSet.Typed as Ix
 import qualified Data.IxSet.Typed.Conversions as Ix
 import           Data.List.Split
 import           Data.Text.Time
 import           Path.Extensions
+import           Lucid
 import           RIO
 import qualified RIO.HashMap       as HM
 import           RIO.List
@@ -50,10 +50,10 @@ mySocial = uncurry genLinkData <$> [("twitter", "http://twitter.com/blanky-site-
                                    ,("youtube", "http://youtube.com/blanky-site-nowhere")
                                    ,("gitlab", "http://gitlab.com/blanky-site-nowhere")]
 
-myBlogNav :: Ix.IsIndexOf YearMonth xs => Ix.IxSet xs Post -> Value
+myBlogNav :: Ix.IsIndexOf YearMonth xs => Ix.IxSet xs Post -> Html ()
 myBlogNav = genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment
 
-myDocNav :: Cofree [] Value -> Value
+myDocNav :: Cofree [] Value -> Html ()
 myDocNav = genTocNavbarData
 
 myIndex :: MonadThrow m => [Post] -> m (Zipper [] Value)
@@ -102,7 +102,7 @@ rules = do
 
       myBuildBlogPage tmpl v out = do
         k <- blogNav myPosts
-        myBuildPage tmpl (withJSON k v) out
+        myBuildPage tmpl (withToc k v) out
 
       myBuildPostListPage z out = do
         let v = extract . extendPageNeighbours numPageNeighbours $ z
@@ -125,7 +125,7 @@ rules = do
     ys <- mapM getDoc toc'
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
-    let v' = withJSON (myDocNav ys) . withSubsections zs $ v
+    let v' = withToc (myDocNav ys) . withSubsections zs $ v
     myBuildPage $(mkRelFile "templates/docs.html") v' out
 
   o' "posts/index.html" %^>
