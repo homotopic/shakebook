@@ -299,7 +299,7 @@ genTocNavbarData (x :< xs) =
   ul_ $
     li_ $ do
       a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
-      forM_ xs $ genTocNavbarData
+      forM_ xs genTocNavbarData
 
 genPageData :: ToJSON a => Text -> (Text -> Text) -> Zipper [] [a] -> Value
 genPageData t f xs = let x = T.pack . show $ pos xs + 1
