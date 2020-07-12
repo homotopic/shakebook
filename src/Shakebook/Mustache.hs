@@ -15,6 +15,8 @@ module Shakebook.Mustache (
 , compileTemplate'
 ) where
 
+import Composite.Record
+import Composite.Aeson
 import           Data.Aeson
 import           Development.Shake.Plus
 import           RIO
@@ -35,6 +37,5 @@ buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
-
-buildPageAction' :: (MonadAction m, FileLike b a) => a -> Value -> a -> m ()
-buildPageAction' = buildPageAction
+buildPageAction' :: (MonadAction m, FileLike b a) => a -> (Record xs) -> JsonFormat e (Record xs) -> a -> m ()
+buildPageAction' t xs f = buildPageAction t (toJsonWithFormat f xs)

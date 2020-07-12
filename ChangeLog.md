@@ -1,8 +1,15 @@
 # Changelog for Shakebook
 
+## (v0.10.0.0)
+
+* Add [lucid](https://hackage.haskell.org/package/lucid).
+* Add [lucid-cdn](https://hackage.haskell.org/package/lucid-cdn).
+* Add `withCdnImports` to `Shakebook.Conventions`.
+* Add `defaultCdnImports` to `Shakebook.Defaults`.
+
 ## (v0.9.1.0)
 
-* Add [ixset-typed-conversions] for producing `Zipper`s and `HashMap`s.
+* Add [ixset-typed-conversions](https://hackage.haskell.org/package/ixset-typed-conversions) for producing `Zipper`s and `HashMap`s.
 
 ## (v0.9.0.0)
 

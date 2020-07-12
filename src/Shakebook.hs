@@ -15,6 +15,7 @@ module Shakebook (
 , module Control.Comonad.Zipper.Extra
 , module Data.Aeson
 , module Development.Shake.Plus
+, module Shakebook.Aeson
 , module Shakebook.Conduit
 , module Shakebook.Conventions
 , module Shakebook.Defaults
@@ -31,6 +32,7 @@ import Control.Comonad.Store.Zipper
 import Control.Comonad.Zipper.Extra
 import Data.Aeson
 import Development.Shake.Plus
+import Shakebook.Aeson
 import Shakebook.Conduit
 import Shakebook.Conventions
 import Shakebook.Defaults

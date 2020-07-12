@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 {- |
    Module     : Shakebook.Conventions
    Copyright  : Copyright (C) 2020 Daniel Firth
@@ -8,55 +10,41 @@
 Conventions used in Shakebook projects, common lenses, generators, and indexing wrappers over Values.
 -}
 module Shakebook.Conventions (
+  -- * Fields
+  FContent
+, FPosted
+, FSiteTitle
+, FTitle
+, FUrl
+, FTags
+, FImage
+, FCdnImports
+, FHighlighting
+, FDescription
+, FModified
+, FSubsections
+, FSocial
+, FSrcPath
+, FTagLinks
+, FToc
+
   -- * Lenses
-  viewImage
+, viewImage
 , viewModified
-, viewPostTime
-, viewPostTimeRaw
+, viewPosted
 , viewTags
 , viewTitle
-, viewAllPostTags
-, viewAllPostTimes
-, withBaseUrl
-, withCdnImports
-, withFullUrl
-, withHighlighting
-, withModified
-, withNext
-, withPages
-, withPrettyDate
-, withPrevious
-, withPosts
-, withRecentPosts
-, withSocialLinks
-, withSiteTitle
-, withSubsections
-, withTagIndex
-, withTagLinks
-, withTeaser
-, withToc
-, withTitle
-
-  -- * Enrichments
-, enrichPrettyDate
-, enrichTagLinks
-, enrichTeaser
-
-  -- * Extensions
-, extendNext
-, extendPrevious
-, extendNextPrevious
-, extendPageNeighbours
+, viewUrl
+, viewSrcPath
 
   -- * Generations
 , genBlogNavbarData
 , genIndexPageData
-, genLinkData
-, genPageData
 , genTocNavbarData
+, addDerivedUrl
 
   -- * Indexing
-, Post(..)
+, Link
 , Tag(..)
 , Posted(..)
 , YearMonth(..)
@@ -65,8 +53,12 @@ module Shakebook.Conventions (
 , postZipper
 , fromYearMonthPair
 , toYearMonthPair
+, RawIndexPage
+, toGroundedUrl
 ) where
 
+import Composite.Record
+import Composite.Aeson
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Zipper.Extra
@@ -77,9 +69,9 @@ import           Data.Hashable.Time
 import           Data.IxSet.Typed             as Ix
 import           Data.IxSet.Typed.Conversions as Ix
 import           Data.Text.Time
-import           Development.Shake.Plus
+import           Development.Shake.Plus hiding ((:->))
 import           Lucid
-import           RIO                          hiding (view)
+import           RIO                          
 import           RIO.List
 import           RIO.List.Partial
 import qualified RIO.HashMap                  as HM
@@ -90,146 +82,61 @@ import           RIO.Time
 import           Shakebook.Pandoc
 import           Text.Pandoc.Highlighting
 
+type FCdnImports    = "cdn-imports"  :-> Html ()
+type FContent       = "content"      :-> Text
+type FDescription   = "description"  :-> Text
+type FElements x    = "elements"     :-> [Record x]
+type FHighlighting  = "highlighting" :-> Style
+type FImage         = "image"        :-> Maybe Text
+type FId            = "id"           :-> Text
+type FModified      = "modified"     :-> UTCTime
+type FNext          = "next"         :-> Html ()
+type FPages         = "pages"        :-> Html ()
+type FPrettyDate    = "prettydate"   :-> UTCTime
+type FPrevious      = "previous"     :-> Html ()
+type FPosted        = "posted"       :-> UTCTime
+type FPosts x       = "posts"        :-> [Record x]
+type FRecentPosts x = "recent-posts" :-> [Record x]
+type FSiteTitle     = "site-title"   :-> Text
+type FSrcPath       = "src-path"     :-> Path Rel File
+type FSocial        = "social"       :-> [Record Link]
+type FTags          = "tags"         :-> [Text]
+type FTagLinks      = "tag-links"    :-> [Record Link]
+type FToc           = "toc"          :-> Html ()
+type FSubsections x = "subsections"  :-> [Record x]
+type FTeaser        = "teaser"       :-> Text
+type FTitle         = "title"        :-> Text
+type FUrl           = "url"          :-> Text
+
+type Link = '[FId, FUrl]
+
 -- | View the "image" field of a JSON value.
-viewImage :: ToJSON a => a -> Text
-viewImage = view' (key "image" . _String)
+viewImage :: RElem FImage xs => Record xs -> Maybe Text
+viewImage = view (rlens (Proxy @FImage))
 
 -- | View the "modified" field of a JSON value.
-viewModified :: ToJSON a => a -> UTCTime
-viewModified = parseISODateTime . view' (key "modified" . _String)
+viewModified :: RElem FModified xs => Record xs -> UTCTime
+viewModified = view (rlens (Proxy @FModified))
 
 -- | View the "date" field of a JSON Value as a UTCTime.
-viewPostTime :: ToJSON a => a -> UTCTime
-viewPostTime = parseISODateTime . view' (key "date" . _String)
-
--- | View the "date" field of a JSON Value as Text.
-viewPostTimeRaw :: ToJSON a => a -> Text
-viewPostTimeRaw = view' (key "date" . _String)
+viewPosted :: RElem FPosted xs => Record xs -> UTCTime
+viewPosted = view (rlens (Proxy @FPosted))
 
 -- | View the "tags" field of a JSON Value as a list.
-viewTags :: ToJSON a => a -> [Text]
-viewTags = toListOf' (key "tags" . values . _String)
+viewSrcPath :: RElem FSrcPath xs => Record xs -> Path Rel File
+viewSrcPath = view (rlens (Proxy @FSrcPath))
+
+-- | View the "tags" field of a JSON Value as a list.
+viewTags :: RElem FTags xs => Record xs -> [Text]
+viewTags = view (rlens (Proxy @FTags))
 
 -- | View the "title" field of a JSON Value.
-viewTitle :: ToJSON a => a -> Text
-viewTitle = view' (key "title" . _String)
+viewTitle :: RElem FTitle xs => Record xs -> Text
+viewTitle = view (rlens (Proxy @FTitle))
 
--- | View all post tags for a list of posts.
-viewAllPostTags :: ToJSON a => [a] -> [Text]
-viewAllPostTags = (>>= viewTags)
-
--- | View all posts times for a list of posts.
-viewAllPostTimes :: ToJSON a => [a] -> [UTCTime]
-viewAllPostTimes = fmap viewPostTime
-
--- | Add "base-url" field from input Text.
-withBaseUrl :: Text -> Value -> Value
-withBaseUrl = withStringField "base-url"
-
--- | Add "full-url" field  from input Text.
-withFullUrl :: Text -> Value -> Value
-withFullUrl = withStringField "full-url"
-
--- | Add "cdn-imports" field from input Lucid.
-withCdnImports :: Html () -> Value -> Value
-withCdnImports = withStringField "cdn-imports" . LT.toStrict . renderText
-
--- | Add "highlighting-css" field from input Style.
-withHighlighting :: Style -> Value -> Value
-withHighlighting = withStringField "highlighting-css" . T.pack . styleToCss
-
--- | Add "modified" field from input UTCTime.
-withModified :: UTCTime -> Value -> Value
-withModified = withStringField "modified" . T.pack . formatTime defaultTimeLocale (iso8601DateFormat Nothing)
-
--- | Add "next" field from input Value.
-withNext :: ToJSON a => a -> Value -> Value
-withNext = withValue "next"
-
--- | Add "pages" field from input [Value].
-withPages :: ToJSON a => [a] -> Value -> Value
-withPages = withArrayField "pages"
-
--- | Add "prettydate" field using input Text.
-withPrettyDate :: Text -> Value -> Value
-withPrettyDate = withStringField "pretty-date"
-
--- | Add "previous" field using input Value.
-withPrevious :: ToJSON a => a -> Value -> Value
-withPrevious = withValue "previous"
-
--- | Add "posts" field based on input [Value].
-withPosts :: ToJSON a => [a] -> Value -> Value
-withPosts = withArrayField "posts"
-
--- | Add "recent-posts" field using input Value.
-withRecentPosts :: ToJSON a => [a] -> Value -> Value
-withRecentPosts = withArrayField "recent-posts"
-
--- | Add "site-title" field from input Text.
-withSiteTitle :: Text -> Value -> Value
-withSiteTitle = withStringField "site-title"
-
--- | Add "social-links" field based on input [Value].
-withSocialLinks :: ToJSON a => [a] -> Value -> Value
-withSocialLinks = withArrayField "social-links"
-
--- | Add "subsections" field based on input [Value].
-withSubsections :: ToJSON a => [a] -> Value -> Value
-withSubsections = withArrayField "subsections"
-
--- | Add "tag-index" field based on input [Value].
-withTagIndex :: ToJSON a => [a] -> Value -> Value
-withTagIndex = withArrayField "tag-index"
-
--- | Add "tag-links" field based on input [Value].
-withTagLinks :: ToJSON a => [a] -> Value -> Value
-withTagLinks  = withArrayField "tag-links"
-
--- | Add "toc" field based on input Html.
-withToc :: Html () -> Value -> Value
-withToc = withStringField "toc" . LT.toStrict . renderText
-
--- | Add "teaser" field based on input Text.
-withTeaser :: Text -> Value -> Value
-withTeaser = withStringField "teaser"
-
--- | Add "title" field based on input Text.
-withTitle :: Text -> Value -> Value
-withTitle = withStringField "title"
-
--- | Assuming a "date" field, enrich using withPrettyDate and a format string.
-enrichPrettyDate :: (UTCTime -> Text) -> Value -> Value
-enrichPrettyDate f v = withPrettyDate (f . viewPostTime $ v) v
-
--- | Assuming a "tags" field, enrich using withTagLinks.
-enrichTagLinks :: (Text -> Text) -> Value -> Value
-enrichTagLinks f v = withTagLinks ((genLinkData <*> f) <$> viewTags v) v
-
--- | Assuming a "content" field with a spitter section, enrich using withTeaser
-enrichTeaser :: Text -> Value -> Value
-enrichTeaser s v = withTeaser (head (T.splitOn s (viewContent v))) v
-
--- | Add both "next" and "previous" fields using `withPostNext` and `withPostPrevious`
-extendNextPrevious :: Zipper [] Value -> Zipper [] Value
-extendNextPrevious  = extendPrevious . extendNext
-
--- | Extend a Zipper of Values to add "previous" objects.
-extendPrevious :: Zipper [] Value -> Zipper [] Value
-extendPrevious = extend (liftA2 withPrevious zipperPreviousMaybe extract)
-
--- | Extend a Zipper of Values to add "next" objects.
-extendNext :: Zipper [] Value -> Zipper [] Value
-extendNext = extend (liftA2 withNext zipperNextMaybe extract)
-
--- | Extend a Zipper of Values to add list of "pages" within r hops either side of the focus.
-extendPageNeighbours :: Int -> Zipper [] Value -> Zipper [] Value
-extendPageNeighbours r = extend (liftA2 withPages (zipperWithin r) extract)
-
-
--- | Indexable Post Type
-newtype Post = Post { unPost :: Value }
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable, ToJSON)
+-- | View the "url" field of a Record.
+viewUrl :: RElem FUrl xs => Record xs -> Text
+viewUrl = view (rlens (Proxy @FUrl))
 
 -- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag Text
@@ -247,11 +154,11 @@ newtype YearMonth = YearMonth (Integer, Int)
 newtype SrcFile = SrcFile Text
   deriving (Show, Eq, Ord, Data, Typeable, Hashable)
 
-instance Indexable '[Tag, Posted, YearMonth, SrcFile] Post where
+instance (Ord (Record xs), RElem FTags xs, RElem FPosted xs, RElem FSrcPath xs) => Indexable '[Tag, Posted, YearMonth, SrcFile] (Record xs) where
   indices = ixList (ixFun (fmap Tag . viewTags))
-                   (ixFun (pure . Posted . viewPostTime))
-                   (ixFun (pure . YearMonth . toYearMonthPair . viewPostTime))
-                   (ixFun (pure . SrcFile . viewSrcPath))
+                   (ixFun (pure . Posted . viewPosted))
+                   (ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
+                   (ixFun (pure . SrcFile . T.pack . toFilePath . toFile . viewSrcPath))
 
 toYearMonthPair :: UTCTime -> (Integer, Int)
 toYearMonthPair = (\(a, b, _) -> (a, b)) . toGregorian . utctDay
@@ -260,28 +167,25 @@ fromYearMonthPair :: (Integer, Int) -> UTCTime
 fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
 
 -- | Take a Value loading function and a filepattern and return an indexable set of Posts.
-postIndex :: MonadAction m
-          => (Within Rel (Path Rel File) -> m Value)
+postIndex :: (MonadAction m, Indexable '[Tag, Posted, YearMonth, SrcFile] (Record xs))
+          => (Within Rel (Path Rel File) -> m (Record xs))
           -> Within Rel [FilePattern]
-          -> m (Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] Post)
+          -> m (Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] (Record xs))
 postIndex rd fp = do
   xs <- batchLoadWithin' fp rd
-  return (Ix.fromList $ Post <$> HM.elems xs)
+  return (Ix.fromList $ HM.elems xs)
 
 -- | Create a `Zipper [] Post` from an `IxSet xs Post` by ordering by `Posted`.
-postZipper :: (MonadThrow m, Ix.IsIndexOf Posted xs) => Ix.IxSet xs Post -> m (Zipper [] Post)
+postZipper :: (MonadThrow m, Ix.IsIndexOf Posted ixs) => Ix.IxSet ixs (Record xs) -> m (Zipper [] (Record xs))
 postZipper = Ix.toZipperDesc (Proxy :: Proxy Posted)
 
-genLinkData :: Text -> Text -> Value
-genLinkData x u = object ["id" A..= String x, "url" A..= String u]
-
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
-genBlogNavbarData :: IsIndexOf YearMonth ixs
+genBlogNavbarData :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
                   => Text -- ^ "Top level title, e.g "Blog"
                   -> Text -- ^ Root page, e.g "/posts"
                   -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
                   -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
-                  -> IxSet ixs Post
+                  -> IxSet ixs (Record xs)
                   -> Html ()
 genBlogNavbarData a b f g xs =  
   ul_ $
@@ -290,29 +194,32 @@ genBlogNavbarData a b f g xs =
       ul_ $ forM_ (groupDescBy xs) $ \(YearMonth (y, m), xs') -> do
         let t' = fromYearMonthPair (y, m)
         li_ $ a_ [href_ $ g t'] (toHtml $ f t')
-        ul_ $ forM (sortOn (Down . viewPostTime) xs') $ \x ->
-          li_ $ a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
+        ul_ $ forM (sortOn (Down . view (rlens (Proxy @FPosted))) xs') $ \x ->
+          li_ $ a_ [href_ $ view (rlens (Proxy @FUrl)) x] (toHtml $ view (rlens (Proxy @FTitle)) x)
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
-genTocNavbarData :: Cofree [] Value -> Html ()
+genTocNavbarData :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
 genTocNavbarData (x :< xs) =
   ul_ $
     li_ $ do
-      a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
+      a_ [href_ $ view (rlens (Proxy @FUrl)) x] (toHtml $ view (rlens (Proxy @FTitle)) x)
       forM_ xs genTocNavbarData
 
-genPageData :: ToJSON a => Text -> (Text -> Text) -> Zipper [] [a] -> Value
-genPageData t f xs = let x = T.pack . show $ pos xs + 1
-                     in withTitle t
-                      . withJSON (genLinkData x (f x))
-                      . withPosts (extract xs) $ Object mempty
+type RawIndexPage x = '[FUrl, FTitle, FElements x]
 
-genIndexPageData :: (MonadThrow m, ToJSON a)
+genIndexPageData :: (MonadThrow m, RElem FPosted xs)
                  => Text
-                 -> (Text -> Text)
+                 -> (Int -> Text)
                  -> Int
-                 -> [a]
-                 -> m (Zipper [] Value)
+                 -> [Record xs]
+                 -> m (Zipper [] (Record (RawIndexPage xs)))
 genIndexPageData g h n xs = do
- zs <- paginate' n $ sortOn (Down . viewPostTime) xs
- return $ extend (genPageData g h) zs
+ zs <- paginate' n $ sortOn (Down . viewPosted) xs
+ return $ extend (\x -> h (pos x) :*: g :*: extract x :*: RNil) zs
+
+addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) -> Record xs -> m (Record (FUrl : xs))
+addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs
+
+-- | Add a leading slash to a `Path Rel File` to turn it into a url as `Text`.
+toGroundedUrl :: Path Rel File -> Text
+toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)

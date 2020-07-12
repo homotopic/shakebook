@@ -1,6 +1,6 @@
 ---
 title: The Quux In The Maw
-date: 2020-07-20
+posted: 2020-07-20
 tags: [quux, spatula]
 ---
 

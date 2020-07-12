@@ -11,6 +11,7 @@ Seom sensible default settings for certain shakebook functions.
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Defaults where
 
+import Composite.Record
 import           Data.Aeson             as A
 import           Development.Shake.Plus
 import           Lucid
@@ -22,6 +23,7 @@ import           RIO.Time
 import           Shakebook.Conventions
 import           Text.DocTemplates
 import           Text.Pandoc.Definition
+import Text.Pandoc.Highlighting
 import           Text.Pandoc.Options
 
 defaultMonthUrlFormat :: UTCTime -> Text
@@ -36,10 +38,14 @@ defaultPrettyTimeFormat = T.pack . formatTime defaultTimeLocale "%A, %B %d, %Y"
 defaultMonthUrlFragment :: UTCTime -> Text
 defaultMonthUrlFragment t = "/posts/months/" <> defaultMonthUrlFormat t
 
-defaultEnrichPost :: Value -> Value
-defaultEnrichPost = enrichTeaser "<!--more-->"
-                  . enrichTagLinks ("/posts/tags/" <>)
-                  . enrichPrettyDate defaultPrettyTimeFormat
+defaultEnrichPost :: RElem FContent xs => Record xs -> Record xs
+defaultEnrichPost = id
+
+defaultEnrichMarkdown :: Record xs -> Record (FCdnImports : FHighlighting : xs)
+defaultEnrichMarkdown v = defaultCdnImports :*: defaultHighlighting :*: v
+
+defaultHighlighting :: Style
+defaultHighlighting = pygments
 
 defaultMarkdownReaderOptions :: ReaderOptions
 defaultMarkdownReaderOptions = def { readerExtensions = pandocExtensions }

@@ -16,14 +16,15 @@ import qualified RIO.ByteString.Lazy as LBS
 import Shakebook.Conventions
 import Shakebook.Pandoc
 import Web.Sitemap.Gen
+import Composite.Record
 
-asSitemapUrl :: Text -> Value -> SitemapUrl
+asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
 asSitemapUrl baseUrl x = SitemapUrl {
                    sitemapLocation = baseUrl <> viewUrl x
-                 , sitemapLastModified = Just (viewPostTime x)
+                 , sitemapLastModified = Just (viewPosted x)
                  , sitemapChangeFrequency = Nothing
                  , sitemapPriority = Nothing }
 
-buildSitemap :: (MonadAction m, FileLike b a, ToJSON v) => Text -> [v] -> a -> m ()
+buildSitemap :: (MonadAction m, FileLike b a, RElem FUrl xs, RElem FPosted xs) => Text -> [Record xs] -> a -> m ()
 buildSitemap baseUrl xs out = do
-  LBS.writeFile (toFilePath . toFile $ out) $ renderSitemap $ Sitemap $ fmap (asSitemapUrl baseUrl) (toJSON <$> xs)
+  LBS.writeFile (toFilePath . toFile $ out) $ renderSitemap $ Sitemap $ fmap (asSitemapUrl baseUrl) xs
