@@ -37,5 +37,5 @@ buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
-buildPageAction' :: (MonadAction m, FileLike b a) => a -> (Record xs) -> JsonFormat e (Record xs) -> a -> m ()
+buildPageAction' :: (MonadAction m, FileLike b a) => a -> Record xs -> JsonFormat e (Record xs) -> a -> m ()
 buildPageAction' t xs f = buildPageAction t (toJsonWithFormat f xs)

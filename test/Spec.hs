@@ -1,4 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE BlockArguments #-}
 
 import Data.Aeson as Aeson
 import Data.Aeson.BetterErrors as ABE
@@ -15,6 +17,7 @@ import           RIO.List.Partial
 import           RIO.Partial
 import qualified RIO.Text          as T
 import qualified RIO.Text.Lazy          as LT
+import qualified RIO.Text.Partial as T
 import           Shakebook hiding ((:->))
 import Composite.Aeson
 import Composite.Record
@@ -39,8 +42,8 @@ tableOfContents = $(mkRelFile "docs/index.md") :< [
                     $(mkRelFile "docs/1/index.md") :< []
                   , $(mkRelFile "docs/2/index.md") :< [
                   $(mkRelFile "docs/2/champ.md") :< []
+                    ]
                   ]
-                ]
 
 numRecentPosts :: Int
 numRecentPosts = 3
@@ -63,19 +66,6 @@ myBlogNav = genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultM
 
 myDocNav :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
 myDocNav = genTocNavbarData
-
-myIndex :: (MonadThrow m, RElem FPosted xs) => [Record xs] -> m (Zipper [] (Record (RawIndexPage xs)))
-myIndex = genIndexPageData "Posts" (("/posts/pages/" <>) . T.pack . show) postsPerPage
-
-myTagIndex :: (MonadThrow m, RElem FPosted xs) => Tag -> [Record xs] -> m (Zipper [] (Record (RawIndexPage xs)))
-myTagIndex (Tag t) = genIndexPageData ("Posts tagged " <> t) ((("/posts/tags/" <> t <> "/pages/") <>) . T.pack .show) postsPerPage
-
-myMonthIndex :: (MonadThrow m, RElem FPosted xs) => YearMonth -> [Record xs] -> m (Zipper [] (Record (RawIndexPage xs)))
-myMonthIndex (YearMonth (y, m)) =
-  let t' = fromYearMonthPair (y, m)
-  in genIndexPageData (("Posts from " <>) . defaultPrettyMonthFormat $ t')
-                      ((("/posts/months/"  <> defaultMonthUrlFormat t' <> "/pages/") <>) . T.pack . show)
-                      postsPerPage
 
 --- Stage 0 Types
 
@@ -106,23 +96,12 @@ rawPostJsonFormat = field textJsonFormat
                  :& field (dateTimeJsonFormat defaultTimeLocale (regularDateTimeFormat "%F" "yyyy-mm-dd" :| []))
                  :& basicMDJsonFormat
 
---- Stage 0 Oracles
+type RawSingle = FTitle : FImage : BasicMD
 
-deriving instance Binary (Within Rel [FilePattern])
-
-deriving instance NFData (Within Rel [FilePattern])
-
-newtype PostUrls = PostUrls (Within Rel [FilePattern])
-  deriving (Eq, Ord, Binary, Hashable, Typeable, NFData)
-
-type instance RuleResult PostUrls = [Text]
-
-getAllPostUrls :: MonadAction m => PostUrls -> m [Text]
-getAllPostUrls (PostUrls fp) = do
-  xs <- getDirectoryFilesWithin fp 
-  return $ toGroundedUrl <$> extract xs
-
---- Stage 1 Types
+rawSingleJsonFormat :: JsonFormatRecord e RawSingle
+rawSingleJsonFormat = field textJsonFormat
+                   :& optionalField textJsonFormat
+                   :& basicMDJsonFormat
 
 type URLised x = FUrl : x
 
@@ -132,24 +111,33 @@ urlisedXJsonFormat x = field defaultJsonFormat :& x
 addUrl :: (MonadThrow m, RElem FSrcPath xs) => Record xs -> m (Record (FUrl : xs))
 addUrl = addDerivedUrl (fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder)
 
-type Stage1Post = FTagLinks : URLised RawPost
+type Stage1Post = FPrettyDate : FTagLinks : FTeaser : URLised RawPost
 
 stage1PostJsonFormat :: JsonFormatRecord e Stage1Post
-stage1PostJsonFormat = field (listJsonFormat $ recordJsonFormat linkJsonFormat)
+stage1PostJsonFormat = field (dateTimeJsonFormat defaultTimeLocale (regularDateTimeFormat "%A, %B %d, %Y" "yyyy-mm-dd" :| []))
+                    :& field (listJsonFormat $ recordJsonFormat linkJsonFormat)
+                    :& field textJsonFormat
                     :& urlisedXJsonFormat rawPostJsonFormat
 
 addTagLinks :: RElem FTags xs => Record xs -> Record (FTagLinks : xs)
 addTagLinks xs = (fmap (\x -> x :*: ("/posts/tags/" <> x) :*: RNil) . viewTags $ xs ) :*: xs
+
+addTeaser :: RElem FContent xs => Record xs -> Record (FTeaser : xs)
+addTeaser xs = head (T.splitOn "<!-- more -->" (viewContent xs)) :*: xs
+
+addPrettyDate :: RElem FPosted xs => Record xs -> Record (FPrettyDate : xs)
+addPrettyDate xs = viewPosted xs :*: xs
+
+stage1Post :: (MonadAction m, MonadThrow m) => Record RawPost -> m (Record Stage1Post)
+stage1Post = addUrl >=> return . addPrettyDate . addTagLinks . addTeaser
 
 type Stage1Doc = URLised RawDoc
 
 stage1DocJsonFormat :: JsonFormatRecord e Stage1Doc
 stage1DocJsonFormat = urlisedXJsonFormat rawDocJsonFormat
 
-newtype PostByUrl = PostByUrl Text
-  deriving (Eq, Ord, Binary, Hashable, Typeable, NFData)
-
-type instance RuleResult PostByUrl = Record Stage1Post
+stage1Doc :: (MonadAction m, MonadThrow m) => Record RawDoc -> m (Record Stage1Doc)
+stage1Doc = addUrl
 
 --- Stage 2 Types
 
@@ -173,8 +161,8 @@ type FinalDoc = FToc : FSubsections Stage1Doc : Enriched Stage1Doc
 
 finalDocJsonFormat :: JsonFormatRecord e FinalDoc
 finalDocJsonFormat = field lucidJsonFormat
-                  :& field (listJsonFormat $ recordJsonFormat $ urlisedXJsonFormat rawDocJsonFormat)
-                  :& enrichedXJsonFormat (urlisedXJsonFormat rawDocJsonFormat)
+                  :& field (listJsonFormat $ recordJsonFormat stage1DocJsonFormat)
+                  :& enrichedXJsonFormat stage1DocJsonFormat
 
 type FinalPost = FToc : Enriched Stage1Post
 
@@ -182,62 +170,101 @@ finalPostJsonFormat :: JsonFormatRecord e FinalPost
 finalPostJsonFormat = field lucidJsonFormat
                    :& enrichedXJsonFormat stage1PostJsonFormat
 
-rawIndexPageJsonFormat :: JsonFormat e (Record x) -> JsonFormatRecord e (RawIndexPage x)
-rawIndexPageJsonFormat x = field textJsonFormat
-                        :& field textJsonFormat
-                        :& field (listJsonFormat $ x)
-                        :& RNil
+type IndexPage x = Enriched (FPageLinks : FToc : FItems x : FTitle : '[])
 
+indexPageJsonFormat :: JsonFormat e (Record x) -> JsonFormatRecord e (IndexPage x)
+indexPageJsonFormat x = enrichedXJsonFormat $ field (listJsonFormat $ recordJsonFormat linkJsonFormat)
+                                           :& field lucidJsonFormat
+                                           :& field (listJsonFormat x)
+                                           :& field textJsonFormat
+                                           :& RNil
 
-rules :: HasLogFunc r => ShakePlus r ()
+type MainPage = FRecentPosts Stage1Post : Enriched (FTitle : FImage : BasicMD)
+
+mainPageJsonFormat :: JsonFormatRecord e MainPage
+mainPageJsonFormat = field (listJsonFormat $ recordJsonFormat stage1PostJsonFormat)
+                  :& enrichedXJsonFormat (field textJsonFormat
+                                       :& optionalField textJsonFormat
+                                       :& basicMDJsonFormat)
+
+instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
+  indices = Ix.ixList (Ix.ixFun (fmap Tag . viewTags))
+                    (Ix.ixFun (pure. Posted. viewPosted))
+                      (Ix.ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
+
+type Stage1PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
+
+data PostIndex a where
+  AllPosts    :: PostIndex Stage1PostSet
+  AllTags     :: PostIndex [Tag]
+  ByTag       :: Tag -> PostIndex Stage1PostSet
+  ByYearMonth :: YearMonth -> PostIndex Stage1PostSet
+  DescPosted  :: PostIndex Stage1PostSet -> PostIndex [Record Stage1Post]
+  DescPostedZ :: PostIndex Stage1PostSet -> PostIndex (Zipper [] (Record Stage1Post))
+  RecentPosts :: Int -> PostIndex [Record Stage1Post]
+  Paginate    :: Int -> PostIndex [Record Stage1Post] -> PostIndex (Zipper [] [Record Stage1Post])
+  PagesRoot   :: PostIndex Stage1PostSet -> PostIndex Text
+  PagesLinks  :: Int -> PostIndex Stage1PostSet -> PostIndex (Zipper [] (Record Link))
+
+postIndex :: (MonadAction m, MonadThrow m ) => (Path Rel File -> m (Record Stage1Post)) -> PostIndex a -> m a
+postIndex rd AllPosts        = batchLoadIndex rd sourceFolder ["posts/*.md"]
+postIndex rd (ByTag t)       = (Ix.@+ [t] <$> postIndex rd AllPosts)
+postIndex rd (ByYearMonth t) = (Ix.@+ [t] <$> postIndex rd AllPosts)
+postIndex rd (DescPosted x)  = Ix.toDescList (Proxy @Posted) <$> postIndex rd x 
+postIndex rd (DescPostedZ x) = Ix.toZipperDesc (Proxy @Posted) =<< postIndex rd x 
+postIndex rd (RecentPosts x) = take x <$> postIndex rd (DescPosted AllPosts)
+postIndex rd (Paginate x f)  = postIndex rd f >>= paginate' x
+postIndex rd (PagesRoot f)   = return $ case f of
+      AllPosts      -> "/posts/"
+      ByTag (Tag t) -> "/posts/tags/" <> t <> "/"
+      ByYearMonth (YearMonth (y, m)) -> "/posts/months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/"
+postIndex rd (PagesLinks x f) = do
+  xs <- postIndex rd (Paginate x (DescPosted f))
+  u <- postIndex rd (PagesRoot f)
+  return $ extend (\x -> T.pack (show (pos x + 1)) :*: (u <> "pages/" <> T.pack (show (pos x + 1))) :*: RNil) xs
+  
+
+rules :: ShakePlus LogFunc ()
 rules = do
 
   readMD <- newCache $ \x -> do
     logInfo $ "Loading " <> displayShow (toFilePath . toFile $ x)
     loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x
 
-  readRawPost <- newCache $ readMD >=> parseValue' (recordJsonFormat rawPostJsonFormat)
+  readRawSingle <- newCache $ readMD >=> parseValue' (recordJsonFormat rawSingleJsonFormat)
+  readRawPost   <- newCache $ readMD >=> parseValue' (recordJsonFormat rawPostJsonFormat)
+  readRawDoc    <- newCache $ readMD >=> parseValue' (recordJsonFormat rawDocJsonFormat)
 
-  readRawDoc  <- newCache $ readMD >=> parseValue' (recordJsonFormat rawDocJsonFormat)
-
-  readStage1Post <- newCache $ readRawPost >=> addUrl >=> return . addTagLinks
-
-  readStage1Doc <- newCache $ readRawDoc >=> addUrl
-
-  genPostsIx   <- newCache $ postIndex readStage1Post
-
-  blogNav   <- newCache $ postsIx >=> return . myBlogNav
-
-  postsZ    <- newCache $ postsIx >=> postZipper
-
-  blogIndex <- newCache $ postsIx >=> myIndex . Ix.toList
-
-  blogTagIndex <- newCache $ postsIx >=> flip Ix.toHashMapByM myTagIndex
-
-  blogMonthIndex <- newCache $ postsIx >=> flip Ix.toHashMapByM myMonthIndex
+  readStage1Post <- newCache $ readRawPost >=> stage1Post
+  readStage1Doc  <- newCache $ readRawDoc  >=> stage1Doc
 
   let o' = (`within` outputFolder)
       s' = (`within` sourceFolder)
 
-      myPosts = s' ["posts/*.md"]
+      postIx :: PostIndex a -> RAction LogFunc a
+      postIx  = postIndex readStage1Post
+
+      blogNav = myBlogNav <$> postIx AllPosts
+
+      indexHtml = $(mkRelFile "index.html") :: Path Rel File
 
   o' "index.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
-    v   <- readMD src
-    return ()
-  --  let v' = pygments :*: mySocial :*: siteTitle :*: defaultCdnImports :*: take numRecentPosts (unzipper rs) :*: v
---    buildPageAction' (s' tmpl) v finalDocJsonFormat out
---    buildPageAction' (s' $(mkRelFile "templates/index.html")) v out
+    v   <- readRawSingle (fromWithin src)
+    xs <- postIx (RecentPosts numRecentPosts)
+    let v' = xs :*: enrichPage v
+    buildPageAction' (s' $(mkRelFile "templates/index.html")) v' (recordJsonFormat mainPageJsonFormat) out
 
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
-    xs <- postsZ myPosts >>= seekOnThrow viewSrcPath (toFile src)
-    let v = myBlogNav xs :*: enrichPage (extract xs)
+    xs  <- postIx (DescPostedZ AllPosts) >>= seekOnThrow viewSrcPath (toFile src)
+    nav <- blogNav
+    let v = nav :*: enrichPage (extract xs)
     buildPageAction' (s' $(mkRelFile "templates/post.html")) v (recordJsonFormat finalPostJsonFormat) out
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do
-    let getDoc = readDoc <=< blinkAndMapM sourceFolder withMdExtension
+    let getDoc = readStage1Doc . fromWithin <=< blinkAndMapM sourceFolder withMdExtension
     ys <- mapM getDoc toc'
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
@@ -248,10 +275,12 @@ rules = do
     copyFileChanged (o' ($(mkRelFile "posts/pages/1/index.html") :: Path Rel File))
 
   o' "posts/pages/*/index.html" %^> \out -> do
---    let n = read . (!! 2) . splitOn "/" . toFilePath . extract $ out
-    xs <- blogIndex myPosts
-    return ()
---    buildPageAction' (s' $(mkRelFile "templates/post-index.html")) (seek (n -1) xs) (recordJsonFormat finalPostIndexPageJsonFormat) out
+    let n = read . (!! 2) . splitOn "/" . toFilePath . extract $ out
+    xs  <- postIx $ Paginate postsPerPage (DescPosted AllPosts)
+    nav <- blogNav
+    ys <- postIx $ PagesLinks postsPerPage AllPosts
+    let v = enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts" :*: RNil)
+    buildPageAction' (s' $(mkRelFile "templates/post-list.html")) v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
 
   o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -259,14 +288,14 @@ rules = do
     copyFileChanged (o' i) out
 
   o' "posts/tags/*/pages/*/index.html" %^> \out -> do
-     let zs = splitOn "/" . toFilePath . extract $ out
-     let t = Tag $ T.pack $ zs !! 2
-  --   let n = read   $ zs !! 4
-     return ()
-  --   xs <- blogTagIndex myPosts
-  --   case HM.lookup t xs of
---       Nothing -> logError $ "Attempting to lookup non-existant tag " <> displayShow t
-  --     Just x  -> myBuildPostListPage (seek (n - 1) x) out
+    let zs = splitOn "/" . toFilePath . extract $ out
+    let t = T.pack $ zs !! 2
+    let n = read   $ zs !! 4
+    xs  <- postIx $ Paginate postsPerPage (DescPosted (ByTag (Tag t)))
+    nav <- blogNav
+    ys <- postIx $ PagesLinks postsPerPage (ByTag (Tag t))
+    let v = enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts Tagged " <> t :*: RNil)
+    buildPageAction' (s' $(mkRelFile "templates/post-list.html")) v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
 
   o' "posts/months/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -274,50 +303,51 @@ rules = do
     copyFileChanged (o' i) out
 
   o' "posts/months/*/pages/*/index.html" %^> \out -> do
-     let zs = splitOn "/" . toFilePath . extract $ out
-     let t = YearMonth $ toYearMonthPair $ parseISODateTime $ T.pack $ zs !! 2
-   --  let n = read   $ zs !! 4
-     return ()
-  --   xs <- blogMonthIndex myPosts
-   --  case HM.lookup t xs of
-   --    Nothing -> logError $ "Attempting to lookup non-existant month " <> displayShow t
-   --    Just x  -> myBuildPostListPage (seek (n - 1) x) out
+    let zs = splitOn "/" . toFilePath . extract $ out
+    let t = parseISODateTime $ T.pack $ zs !! 2
+    let t' = YearMonth $ toYearMonthPair t
+    let n = read   $ zs !! 4
+    xs  <- postIx $ Paginate postsPerPage (DescPosted $ ByYearMonth t')
+    nav <- blogNav
+    ys <- postIx $ PagesLinks postsPerPage (ByYearMonth t')
+    let v = enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts from " <> defaultPrettyMonthFormat t :*: RNil)
+    buildPageAction' (s' $(mkRelFile "templates/post-list.html")) v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
 
   o' ["css//*", "js//*", "webfonts//*", "images//*"] |%^> \out ->
     copyFileChanged (blinkLocalDir sourceFolder out) out
 
   o' "sitemap.xml" %^> \out -> do
-    xs <- postsZ myPosts
-    buildSitemap baseUrl (unzipper xs) out
+    xs <- postIx (DescPosted AllPosts)
+    buildSitemap baseUrl xs out
 
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return
 
   phony "statics" $ verbatimPipeline ["css//*", "js//*", "webfonts//*", "images//*"]
 
-  phony "index" $ needIn outputFolder [$(mkRelFile "index.html") :: Path Rel File]
+  phony "index" $ needIn outputFolder [indexHtml]
 
   phony "post-index" $ do
-     ps <- blogIndex myPosts
-     fs <- defaultPagePaths [1..size ps]
-     let postFolder = (outputFolder </> $(mkRelDir "posts") :: Path Rel Dir)
-     needIn postFolder ($(mkRelFile "index.html") : fs)
+     k  <- postIx (PagesRoot AllPosts) >>= fromGroundedUrlD
+     ps <- postIx (PagesLinks postsPerPage AllPosts) >>= mapM (fromGroundedUrlD . viewUrl)
+     needIn outputFolder (fmap (</> indexHtml) ps)
+     needIn (outputFolder </> k) [indexHtml]
 
   phony "by-tag-index" $ do
-     ps <- blogTagIndex myPosts
-     void $ flip HM.traverseWithKey ps $ \(Tag t) z -> do
-       u  <- parseRelDir $ T.unpack t
-       fs <- defaultPagePaths [1..size z]
-       let tagFolder = outputFolder </> $(mkRelDir "posts/tags") </> u
-       needIn tagFolder ($(mkRelFile "index.html") : fs)
+     xs <- postIx AllPosts
+     forM_ (Ix.indexKeys xs) \t@(Tag _) -> do
+       k  <- postIx (PagesRoot $ ByTag t) >>= fromGroundedUrlD
+       ps <- postIx (PagesLinks postsPerPage $ ByTag t) >>= mapM (fromGroundedUrlD . viewUrl)
+       needIn outputFolder (fmap (</> indexHtml) ps)
+       needIn (outputFolder </> k) [indexHtml]
 
   phony "by-month-index" $ do
-     ps <- blogMonthIndex myPosts
-     void $ flip HM.traverseWithKey ps $ \(YearMonth t) z -> do
-       u  <- parseRelDir $ T.unpack $ defaultMonthUrlFormat $ fromYearMonthPair $ t
-       fs <- defaultPagePaths [1..size z]
-       let monthFolder = outputFolder </> $(mkRelDir "posts/months") </> u
-       needIn monthFolder ($(mkRelFile "index.html") : fs)
+     xs <- postIx AllPosts
+     forM_ (Ix.indexKeys xs) \t@(YearMonth _) -> do
+       k  <- postIx (PagesRoot (ByYearMonth t)) >>= fromGroundedUrlD
+       ps <- postIx (PagesLinks postsPerPage (ByYearMonth t)) >>= mapM (fromGroundedUrlD . viewUrl)
+       needIn outputFolder (fmap (</> indexHtml) ps)
+       needIn (outputFolder </> k) [indexHtml]
 
   phony "docs" $
     mapM withHtmlExtension tableOfContents >>= needIn outputFolder
@@ -343,7 +373,7 @@ main = do
    logOptions' <- logOptionsHandle stdout True
    (lf, dlf) <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    shake shakeOptions $ want ["clean"] >> runShakePlus lf rules
-   --shake shakeOptions $ want ["index", "docs", "posts", "post-index", "by-tag-index", "by-month-index", "sitemap"] >> runShakePlus lf rules
-   shake shakeOptions $ want ["docs"] >> runShakePlus lf rules
+   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "by-tag-index", "by-month-index", "sitemap"] >> runShakePlus lf rules
+  -- shake shakeOptions $ want ["index", "docs", "posts", "post-index"] >> runShakePlus lf rules
    defaultMain $ tests xs
    dlf

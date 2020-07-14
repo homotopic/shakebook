@@ -7,8 +7,6 @@
 
 Pandoc utilities lifted to `MonadAction`.
 -}
-{-# LANGUAGE TemplateHaskell #-}
-
 module Shakebook.Pandoc (
 -- * runPandocA
   runPandocA
@@ -150,5 +148,4 @@ loadMarkdownAsJSON ropts wopts srcPath = do
   meta' <- flattenMeta (writeHtml5String wopts) meta
   outText <- runPandocA $ writeHtml5String wopts pdoc
   return $ withStringField "src-path" (T.pack $ toFilePath $ toFile srcPath)
-         $ withStringField "content" outText
-         $ meta'
+         $ withStringField "content" outText meta'

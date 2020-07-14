@@ -12,6 +12,7 @@ Conventions used in Shakebook projects, common lenses, generators, and indexing 
 module Shakebook.Conventions (
   -- * Fields
   FContent
+, FPageLinks
 , FPosted
 , FSiteTitle
 , FTitle
@@ -27,8 +28,13 @@ module Shakebook.Conventions (
 , FSrcPath
 , FTagLinks
 , FToc
+, FTeaser
+, FRecentPosts
+, FPrettyDate
+, FItems
 
   -- * Lenses
+, viewContent
 , viewImage
 , viewModified
 , viewPosted
@@ -48,13 +54,14 @@ module Shakebook.Conventions (
 , Tag(..)
 , Posted(..)
 , YearMonth(..)
-, SrcFile(..)
-, postIndex
+, batchLoadIndex
 , postZipper
 , fromYearMonthPair
 , toYearMonthPair
 , RawIndexPage
 , toGroundedUrl
+, fromGroundedUrlF
+, fromGroundedUrlD
 ) where
 
 import Composite.Record
@@ -91,24 +98,28 @@ type FImage         = "image"        :-> Maybe Text
 type FId            = "id"           :-> Text
 type FModified      = "modified"     :-> UTCTime
 type FNext          = "next"         :-> Html ()
-type FPages         = "pages"        :-> Html ()
-type FPrettyDate    = "prettydate"   :-> UTCTime
+type FPageLinks     = "page-links"   :-> [Record Link]
+type FPrettyDate    = "pretty-date"  :-> UTCTime
 type FPrevious      = "previous"     :-> Html ()
 type FPosted        = "posted"       :-> UTCTime
-type FPosts x       = "posts"        :-> [Record x]
+type FItems x       = "items"        :-> [Record x]
 type FRecentPosts x = "recent-posts" :-> [Record x]
 type FSiteTitle     = "site-title"   :-> Text
 type FSrcPath       = "src-path"     :-> Path Rel File
 type FSocial        = "social"       :-> [Record Link]
+type FSubsections x = "subsections"  :-> [Record x]
 type FTags          = "tags"         :-> [Text]
 type FTagLinks      = "tag-links"    :-> [Record Link]
-type FToc           = "toc"          :-> Html ()
-type FSubsections x = "subsections"  :-> [Record x]
 type FTeaser        = "teaser"       :-> Text
 type FTitle         = "title"        :-> Text
+type FToc           = "toc"          :-> Html ()
 type FUrl           = "url"          :-> Text
 
 type Link = '[FId, FUrl]
+
+-- | View the "image" field of a JSON value.
+viewContent :: RElem FContent xs => Record xs -> Text
+viewContent = view (rlens (Proxy @FContent))
 
 -- | View the "image" field of a JSON value.
 viewImage :: RElem FImage xs => Record xs -> Maybe Text
@@ -140,25 +151,15 @@ viewUrl = view (rlens (Proxy @FUrl))
 
 -- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag Text
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData)
 
 -- | Posted index for a `Post` for use with `IxSet`.
 newtype Posted = Posted UTCTime
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable, NFData)
 
 -- | YearMonth (yyyy, mm) index for a `Post` for use with `IxSet`.
 newtype YearMonth = YearMonth (Integer, Int)
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
-
--- | SrcFile index for a `Post` for use with `IxSet`.
-newtype SrcFile = SrcFile Text
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable)
-
-instance (Ord (Record xs), RElem FTags xs, RElem FPosted xs, RElem FSrcPath xs) => Indexable '[Tag, Posted, YearMonth, SrcFile] (Record xs) where
-  indices = ixList (ixFun (fmap Tag . viewTags))
-                   (ixFun (pure . Posted . viewPosted))
-                   (ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
-                   (ixFun (pure . SrcFile . T.pack . toFilePath . toFile . viewSrcPath))
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData)
 
 toYearMonthPair :: UTCTime -> (Integer, Int)
 toYearMonthPair = (\(a, b, _) -> (a, b)) . toGregorian . utctDay
@@ -167,12 +168,13 @@ fromYearMonthPair :: (Integer, Int) -> UTCTime
 fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
 
 -- | Take a Value loading function and a filepattern and return an indexable set of Posts.
-postIndex :: (MonadAction m, Indexable '[Tag, Posted, YearMonth, SrcFile] (Record xs))
-          => (Within Rel (Path Rel File) -> m (Record xs))
-          -> Within Rel [FilePattern]
-          -> m (Ix.IxSet '[Tag, Posted, YearMonth, SrcFile] (Record xs))
-postIndex rd fp = do
-  xs <- batchLoadWithin' fp rd
+batchLoadIndex :: (MonadAction m, Indexable ixs x) 
+          => (Path Rel File -> m x)
+          -> Path Rel Dir
+          -> [FilePattern]
+          -> m (Ix.IxSet ixs x)
+batchLoadIndex rd dir fp = do
+  xs <- batchLoad dir fp rd
   return (Ix.fromList $ HM.elems xs)
 
 -- | Create a `Zipper [] Post` from an `IxSet xs Post` by ordering by `Posted`.
@@ -190,7 +192,7 @@ genBlogNavbarData :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, 
 genBlogNavbarData a b f g xs =  
   ul_ $
     li_ $ do
-      a_ [href_ a] (toHtml b)
+      a_ [href_ b] (toHtml a)
       ul_ $ forM_ (groupDescBy xs) $ \(YearMonth (y, m), xs') -> do
         let t' = fromYearMonthPair (y, m)
         li_ $ a_ [href_ $ g t'] (toHtml $ f t')
@@ -221,5 +223,12 @@ addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) 
 addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs
 
 -- | Add a leading slash to a `Path Rel File` to turn it into a url as `Text`.
-toGroundedUrl :: Path Rel File -> Text
+toGroundedUrl :: Path Rel b -> Text
 toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)
+
+
+fromGroundedUrlD :: MonadThrow m => Text -> m (Path Rel Dir)
+fromGroundedUrlD x = (parseAbsDir . T.unpack $ x) >>= stripProperPrefix $(mkAbsDir "/")
+
+fromGroundedUrlF :: MonadThrow m => Text -> m (Path Rel File)
+fromGroundedUrlF x = (parseAbsFile . T.unpack $ x) >>= stripProperPrefix $(mkAbsDir "/")

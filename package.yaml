@@ -110,6 +110,7 @@ dependencies:
 - rio
 - pandoc >= 2.10
 - pandoc-types
+- path
 - path-extensions >= 0.1.0.1
 - shake-plus >= 0.2.0.0
 - sitemap-gen

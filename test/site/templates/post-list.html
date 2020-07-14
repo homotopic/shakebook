@@ -9,7 +9,7 @@
           <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
             <div class="td-content">
               <h1>This post page is called {{{title}}}</h1>
-              {{#posts}}
+              {{#items}}
               <h2>{{{title}}}</h2>
               <p>
               <small>Posted on {{{pretty-date}}} with tags:
@@ -20,14 +20,14 @@
               <p>{{{teaser}}}</p>
               <p><a href={{{url}}}>Read More</a></p>
               </p>
-              {{/posts}}
+              {{/items}}
 
             </div>
             <div>
               Pages:
-              {{#pages}}
+              {{#page-links}}
               <a href="{{{url}}}">{{{id}}}</a>
-              {{/pages}}
+              {{/page-links}}
             </div>
           </main>
         </div>

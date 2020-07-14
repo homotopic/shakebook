@@ -8,7 +8,6 @@
 Utilities from "Text.Atom.Feed" lifted to `MonadAction` and `FileLike`.
 -}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 module Shakebook.Feed 
  where
 
@@ -31,7 +30,7 @@ asAtomEntry :: (RElem FContent xs, RElem FPosted xs, RElem FUrl xs, RElem FTitle
 asAtomEntry x = (Atom.nullEntry
                   (view (rlens (Proxy @FUrl)) x)
                   (Atom.TextString $ view (rlens (Proxy :: Proxy FTitle)) x)
-                  (T.pack $ formatTime defaultTimeLocale (iso8601DateFormat Nothing) $ view (rlens (Proxy :: Proxy FPosted)) $ x)) {
+                  (T.pack $ formatTime defaultTimeLocale (iso8601DateFormat Nothing) $ view (rlens (Proxy :: Proxy FPosted)) x)) {
                     Atom.entryContent = Just $ Atom.TextContent (view (rlens (Proxy :: Proxy FContent)) x)
   }
 
