@@ -18,10 +18,12 @@ module Shakebook.Mustache (
 import Composite.Record
 import Composite.Aeson
 import           Data.Aeson
-import           Development.Shake.Plus
+import           Development.Shake.Plus hiding ((:->))
 import           RIO
+import qualified RIO.Text as T
 import qualified Slick.Mustache
 import           Text.Mustache
+import GHC.TypeLits (KnownSymbol)
 
 -- | Lifted version of `Slick.Mustache.compileTemplate'` with well-typed `Path`.
 compileTemplate' :: (MonadAction m, FileLike b a) => a -> m Template
@@ -37,5 +39,8 @@ buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
-buildPageAction' :: (MonadAction m, FileLike b a) => a -> Record xs -> JsonFormat e (Record xs) -> a -> m ()
-buildPageAction' t xs f = buildPageAction t (toJsonWithFormat f xs)
+buildPageAction' :: (MonadAction m, MonadThrow m, FileLike b a, KnownSymbol s) => Path Rel Dir -> (s :-> xs) -> JsonFormat e xs -> a -> m ()
+buildPageAction' d xs f o = do
+              let (t, v) = valWithName xs
+              t' <- parseRelFile $ T.unpack t
+              buildPageAction (d </> t') (toJsonWithFormat f v) o
