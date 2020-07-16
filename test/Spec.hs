@@ -192,22 +192,21 @@ instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
                     (Ix.ixFun (pure. Posted. viewPosted))
                       (Ix.ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
 
-type Stage1PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
+type PostSet x = Ix.IxSet '[Tag, Posted, YearMonth] (Record x)
 
-data PostIndex a where
-  AllPosts    :: PostIndex Stage1PostSet
-  AllTags     :: PostIndex [Tag]
-  ByTag       :: Tag -> PostIndex Stage1PostSet
-  ByYearMonth :: YearMonth -> PostIndex Stage1PostSet
-  DescPosted  :: PostIndex Stage1PostSet -> PostIndex [Record Stage1Post]
-  DescPostedZ :: PostIndex Stage1PostSet -> PostIndex (Zipper [] (Record Stage1Post))
-  RecentPosts :: Int -> PostIndex [Record Stage1Post]
-  Paginate    :: Int -> PostIndex [Record Stage1Post] -> PostIndex (Zipper [] [Record Stage1Post])
-  PagesRoot   :: PostIndex Stage1PostSet -> PostIndex Text
-  PagesLinks  :: Int -> PostIndex Stage1PostSet -> PostIndex (Zipper [] (Record Link))
+data PostIndex k a where
+  AllPosts    :: PostIndex k (PostSet k)
+  ByTag       :: Tag -> PostIndex k (PostSet k)
+  ByYearMonth :: YearMonth -> PostIndex k (PostSet k)
+  DescPosted  :: PostIndex k (PostSet k) -> PostIndex k [Record k]
+  DescPostedZ :: PostIndex k (PostSet k) -> PostIndex k (Zipper [] (Record k))
+  RecentPosts :: Int -> PostIndex k [Record k]
+  Paginate    :: Int -> PostIndex k [Record k] -> PostIndex k (Zipper [] [Record k])
+  PagesRoot   :: PostIndex k (PostSet k) -> PostIndex k Text
+  PagesLinks  :: Int -> PostIndex k (PostSet k) -> PostIndex k (Zipper [] (Record Link))
 
-postIndex :: (MonadAction m, MonadThrow m ) => (Path Rel File -> m (Record Stage1Post)) -> PostIndex a -> m a
-postIndex rd AllPosts        = batchLoadIndex rd sourceFolder ["posts/*.md"]
+postIndex :: (Ix.Indexable '[Tag, Posted, YearMonth] (Record k), MonadAction m, MonadThrow m) => Ix.IxSet '[Tag, Posted, YearMonth] (Record k) -> PostIndex k a -> m a
+postIndex rd AllPosts        = return rd
 postIndex rd (ByTag t)       = ((Ix.@+ [t]) <$> postIndex rd AllPosts)
 postIndex rd (ByYearMonth t) = ((Ix.@+ [t]) <$> postIndex rd AllPosts)
 postIndex rd (DescPosted x)  = Ix.toDescList (Proxy @Posted) <$> postIndex rd x 
@@ -243,22 +242,22 @@ rules = do
   readStage1Post <- newCache $ readRawPost >=> stage1Post
   readStage1Doc  <- newCache $ readRawDoc  >=> stage1Doc
 
+  postIx' <- newCache $ \() -> batchLoadIndex readStage1Post sourceFolder ["posts/*.md"]
+
   let o' = (`within` outputFolder)
       s' = (`within` sourceFolder)
 
-      postIx :: PostIndex a -> RAction LogFunc a
-      postIx  = postIndex readStage1Post
-
       blogNav = myBlogNav <$> postIx AllPosts
-
+      postIx :: PostIndex Stage1Post a -> RAction LogFunc a
+      postIx l = postIx' () >>= \k -> postIndex k l
       indexHtml = $(mkRelFile "index.html") :: Path Rel File
 
   o' "index.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
     v   <- readRawSingle (fromWithin src)
     xs  <- postIx (RecentPosts numRecentPosts)
-    let (v' :: TMain) = Val $ xs :*: enrichPage v
-    buildPageAction' sourceFolder v' (recordJsonFormat mainPageJsonFormat) out
+    let v' = xs :*: enrichPage v
+    buildPageAction' sourceFolder (Val v' :: TMain) (recordJsonFormat mainPageJsonFormat) out
 
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
@@ -283,7 +282,7 @@ rules = do
     let n = read . (!! 2) . splitOn "/" . toFilePath . extract $ out
     xs  <- postIx $ Paginate postsPerPage (DescPosted AllPosts)
     nav <- blogNav
-    ys <- postIx $ PagesLinks postsPerPage AllPosts
+    ys  <- postIx $ PagesLinks postsPerPage AllPosts
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts" :*: RNil)
     buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
 
@@ -298,7 +297,7 @@ rules = do
     let n = read   $ zs !! 4
     xs  <- postIx $ Paginate postsPerPage (DescPosted (ByTag (Tag t)))
     nav <- blogNav
-    ys <- postIx $ PagesLinks postsPerPage (ByTag (Tag t))
+    ys  <- postIx $ PagesLinks postsPerPage (ByTag (Tag t))
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts Tagged " <> t :*: RNil)
     buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
 
@@ -314,7 +313,7 @@ rules = do
     let n = read   $ zs !! 4
     xs  <- postIx $ Paginate postsPerPage (DescPosted $ ByYearMonth t')
     nav <- blogNav
-    ys <- postIx $ PagesLinks postsPerPage (ByYearMonth t')
+    ys  <- postIx $ PagesLinks postsPerPage (ByYearMonth t')
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts from " <> defaultPrettyMonthFormat t :*: RNil)
     buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
 
