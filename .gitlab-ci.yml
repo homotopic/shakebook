@@ -6,14 +6,8 @@ before_script:
 - nix-env -iA nixpkgs.hlint
 
 stages:
-- lint
 - build
 - test
-
-lint:
-  stage: lint
-  script:
-  - hlint . --ignore-glob=test/Spec.hs
 
 build:
   stage: build
