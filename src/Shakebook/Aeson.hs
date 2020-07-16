@@ -10,6 +10,7 @@ import Data.Aeson.BetterErrors
 import Text.Pandoc.Highlighting
 import qualified RIO.Text as T
 import Path
+import Control.Monad.Error
 
 data AesonParseException a = AesonParseException a
   deriving (Eq, Show, Ord)
@@ -24,10 +25,10 @@ parseValue' f v = do
 
 
 lucidJsonFormat :: JsonFormat e (Html ())
-lucidJsonFormat = JsonFormat $ JsonProfunctor (String . LT.toStrict . renderText) undefined
+lucidJsonFormat = JsonFormat $ JsonProfunctor (String . LT.toStrict . renderText) (throwError $ InvalidJSON "foo")
 
 styleJsonFormat :: JsonFormat e Style
-styleJsonFormat = JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) undefined
+styleJsonFormat = JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) (throwError $ InvalidJSON "foo")
 
 relFileJsonFormat :: JsonFormat e (Path Rel File)
 relFileJsonFormat = aesonJsonFormat

@@ -5,6 +5,20 @@
 
 packages:
 - completed:
+    hackage: aeson-with-0.1.1.1@sha256:dabfacdd323a8add6b5ce102f990e7f034e964087c32afa8377e113c1519938c,1100
+    pantry-tree:
+      size: 270
+      sha256: 6a0340ea484fb164eb9d455b1e47eb21eb23ce9c648c885a5b003e9a3605216c
+  original:
+    hackage: aeson-with-0.1.1.1
+- completed:
+    hackage: binary-instances-1.0.0.1@sha256:e234be994da675479a3661f050d4a1d53565c9ed7786d9a68b7a29ba8b54b5a7,2659
+    pantry-tree:
+      size: 1035
+      sha256: 6086ebb4c6f3d28200f295c36495227b3cd762ab1de3dafa36f6ce8674a23a90
+  original:
+    hackage: binary-instances-1.0.0.1
+- completed:
     subdir: composite-aeson
     name: composite-aeson
     version: 0.7.1.0
@@ -38,13 +52,6 @@ packages:
   original:
     hackage: comonad-extras-4.0.1
 - completed:
-    hackage: hslua-1.1.2@sha256:6c231b2af447430d1ed04f065d40bb6882ece93cc7f32f4051dc99deb69beeae,9694
-    pantry-tree:
-      size: 6820
-      sha256: 62e61f6d08191159a070dcbaa20284a581835de620105a254dbee1c7ddfabd9d
-  original:
-    hackage: hslua-1.1.2
-- completed:
     hackage: ixset-typed-conversions-0.1.0.0@sha256:e168909a2c8b464d033b9c77c540031cc8bbc70c08ec1aa169dfb4e72ef2f1bb,1132
     pantry-tree:
       size: 342
@@ -59,19 +66,26 @@ packages:
   original:
     hackage: lucid-cdn-0.1.1.0
 - completed:
-    hackage: jira-wiki-markup-1.3.2@sha256:b5f0901208a0ee07aff60f5356aeb851b7aa7950c75a18a15fd34247a35886d8,3819
+    hackage: path-extensions-0.1.1.0@sha256:79362f8ffe2f1284456c2da28ddf7c6fb2e1da6814b8d8f3e9997e6643cbd666,1151
     pantry-tree:
-      size: 1180
-      sha256: 90fa545210a211b8ec88b59f92fe2877ebf2f9e55e2ce2fba6103a3615bd0ab9
+      size: 276
+      sha256: c6896ed241d29cd5e88bc346d0c8cf3f46ed5a668588e35f44053e36c798ce10
   original:
-    hackage: jira-wiki-markup-1.3.2
+    hackage: path-extensions-0.1.1.0
 - completed:
-    hackage: pandoc-2.10@sha256:954cb8d8c8a49ff52372fa77ca8414052d6a31e1b99c0c9552fbe349e707ce5f,36760
+    hackage: path-like-0.2.0.1@sha256:7f19c25fc6d7d8961f0e3de11b0acae97e56c846a33b1863889787a078ac3579,1055
     pantry-tree:
-      size: 89401
-      sha256: bd2837083be670e471abd6a3bc3df31c2695444c9095daba34987ca8557aece9
+      size: 264
+      sha256: f0b50d685239c978d104073ac1294edb7a973c01ed0b0a9866a5a89ff53a1511
   original:
-    hackage: pandoc-2.10
+    hackage: path-like-0.2.0.1
+- completed:
+    hackage: shake-plus-0.2.0.0@sha256:1bdef8c07e7310aa98a0c7c373fc1f66bf3c325fdf54a3dd4b3ce60bbafc28c1,2331
+    pantry-tree:
+      size: 1204
+      sha256: 00a386ee8bb6bc2d70f3e21d8ec5ac4d843d39d0b347cd5808f6fa923ff1cbc0
+  original:
+    hackage: shake-plus-0.2.0.0
 - completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
@@ -94,6 +108,13 @@ packages:
   original:
     hackage: vinyl-0.13.0
 - completed:
+    hackage: within-0.2.0.0@sha256:0a52b40f66e55de8d16164aa4440143da674cedb555bade690b4bec0dc4f7b8e,1222
+    pantry-tree:
+      size: 259
+      sha256: b1149e54f92e4ab67666e1aab9256a3efb874152d44799d02808b38371bb09de
+  original:
+    hackage: within-0.2.0.0
+- completed:
     hackage: zipper-extra-0.1.3.0@sha256:204f5a7b44e3071788b99dd0a6af01e65177b3d240a8077be7d8716f13d4d365,948
     pantry-tree:
       size: 285
@@ -102,7 +123,7 @@ packages:
     hackage: zipper-extra-0.1.3.0
 snapshots:
 - completed:
-    size: 510461
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/7/13.yaml
-    sha256: cac791faa45f897561f1157607aaf682ab1c7c48bda8266be3ab909d77b7c11a
-  original: nightly-2020-07-13
+    size: 531707
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/5.yaml
+    sha256: 9751e25e0af5713a53ddcfcc79564b082c71b1b357fadef0d85672a5b5ba3703
+  original: lts-16.5
