@@ -1,21 +1,21 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TemplateHaskell           #-}
 
-import qualified Data.IxSet.Typed as Ix
+import           Composite.Aeson
+import           Composite.Record
+import qualified Data.IxSet.Typed             as Ix
 import qualified Data.IxSet.Typed.Conversions as Ix
 import           Data.List.Split
 import           Data.Text.Time
-import           Path.Extensions
 import           Lucid
+import           Path.Extensions
 import           RIO
 import           RIO.List
 import           RIO.List.Partial
 import           RIO.Partial
-import qualified RIO.Text          as T
-import qualified RIO.Text.Partial as T
-import           Shakebook hiding ((:->))
-import Composite.Aeson
-import Composite.Record
+import qualified RIO.Text                     as T
+import qualified RIO.Text.Partial             as T
+import           Shakebook                    hiding ((:->))
 import           Test.Tasty
 import           Test.Tasty.Golden
 
@@ -94,8 +94,8 @@ postIndex :: (Ix.Indexable '[Tag, Posted, YearMonth] (Record k), MonadAction m, 
 postIndex rd AllPosts        = return rd
 postIndex rd (ByTag t)       = (Ix.@+ [t]) <$> postIndex rd AllPosts
 postIndex rd (ByYearMonth t) = (Ix.@+ [t]) <$> postIndex rd AllPosts
-postIndex rd (DescPosted x)  = Ix.toDescList (Proxy @Posted) <$> postIndex rd x 
-postIndex rd (DescPostedZ x) = Ix.toZipperDesc (Proxy @Posted) =<< postIndex rd x 
+postIndex rd (DescPosted x)  = Ix.toDescList (Proxy @Posted) <$> postIndex rd x
+postIndex rd (DescPostedZ x) = Ix.toZipperDesc (Proxy @Posted) =<< postIndex rd x
 postIndex rd (RecentPosts x) = take x <$> postIndex rd (DescPosted AllPosts)
 postIndex rd (Paginate x f)  = postIndex rd f >>= paginate' x
 postIndex _  (PagesRoot f)   = return $ case f of

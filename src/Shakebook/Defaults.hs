@@ -12,12 +12,12 @@ module Shakebook.Defaults where
 import           Lucid
 import           Lucid.CDN
 import           RIO
-import qualified RIO.Map                as M
-import qualified RIO.Text               as T
+import qualified RIO.Map                  as M
+import qualified RIO.Text                 as T
 import           RIO.Time
 import           Text.DocTemplates
 import           Text.Pandoc.Definition
-import Text.Pandoc.Highlighting
+import           Text.Pandoc.Highlighting
 import           Text.Pandoc.Options
 
 defaultMonthUrlFormat :: UTCTime -> Text

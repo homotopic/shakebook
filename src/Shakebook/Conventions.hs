@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
 {- |
    Module     : Shakebook.Conventions
@@ -91,22 +91,22 @@ module Shakebook.Conventions (
 , Enriched
 ) where
 
-import Composite.Record
-import Composite.Aeson
+import           Composite.Aeson
+import           Composite.Record
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Zipper.Extra
-import Shakebook.Aeson
 import           Data.Hashable.Time
 import           Data.IxSet.Typed             as Ix
 import           Data.IxSet.Typed.Conversions as Ix
-import           Development.Shake.Plus hiding ((:->))
+import           Development.Shake.Plus       hiding ((:->))
 import           Lucid
-import           RIO                          
-import           RIO.List
+import           RIO
 import qualified RIO.HashMap                  as HM
+import           RIO.List
 import qualified RIO.Text                     as T
 import           RIO.Time
+import           Shakebook.Aeson
 import           Text.Pandoc.Highlighting
 
 type FCdnImports    = "cdn-imports"  :-> Html ()
@@ -188,7 +188,7 @@ fromYearMonthPair :: (Integer, Int) -> UTCTime
 fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
 
 -- | Take a Value loading function and a filepattern and return an indexable set of Posts.
-batchLoadIndex :: (MonadAction m, Indexable ixs x) 
+batchLoadIndex :: (MonadAction m, Indexable ixs x)
           => (Path Rel File -> m x)
           -> Path Rel Dir
           -> [FilePattern]
@@ -209,7 +209,7 @@ genBlogNavbarData :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, 
                   -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
                   -> IxSet ixs (Record xs)
                   -> Html ()
-genBlogNavbarData a b f g xs =  
+genBlogNavbarData a b f g xs =
   ul_ $
     li_ $ do
       a_ [href_ b] (toHtml a)

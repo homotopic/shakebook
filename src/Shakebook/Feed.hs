@@ -8,10 +8,10 @@
 Utilities from "Text.Atom.Feed" lifted to `MonadAction` and `FileLike`.
 -}
 {-# LANGUAGE TypeApplications #-}
-module Shakebook.Feed 
+module Shakebook.Feed
  where
 
-import           Composite.Record 
+import           Composite.Record
 import           Development.Shake.Plus hiding ((:->))
 import           RIO
 import           RIO.List

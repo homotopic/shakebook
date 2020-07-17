@@ -1,15 +1,15 @@
 module Shakebook.Aeson where
 
-import RIO
-import Data.Aeson
-import Composite.Aeson
-import Lucid
-import qualified RIO.Text.Lazy as LT
-import Data.Aeson.BetterErrors
-import Text.Pandoc.Highlighting
-import qualified RIO.Text as T
-import Path
-import Control.Monad.Except
+import           Composite.Aeson
+import           Control.Monad.Except
+import           Data.Aeson
+import           Data.Aeson.BetterErrors
+import           Lucid
+import           Path
+import           RIO
+import qualified RIO.Text                 as T
+import qualified RIO.Text.Lazy            as LT
+import           Text.Pandoc.Highlighting
 
 newtype AesonParseException a = AesonParseException a
   deriving (Eq, Show, Ord)

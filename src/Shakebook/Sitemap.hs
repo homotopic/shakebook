@@ -9,12 +9,12 @@ Utilities from "Web.Sitemap.Gen" lifted to `MonadAction` and `FileLike`.
 -}
 module Shakebook.Sitemap where
 
-import Development.Shake.Plus
-import RIO
-import qualified RIO.ByteString.Lazy as LBS
-import Shakebook.Conventions
-import Web.Sitemap.Gen
-import Composite.Record
+import           Composite.Record
+import           Development.Shake.Plus
+import           RIO
+import qualified RIO.ByteString.Lazy    as LBS
+import           Shakebook.Conventions
+import           Web.Sitemap.Gen
 
 asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
 asSitemapUrl baseUrl x = SitemapUrl {

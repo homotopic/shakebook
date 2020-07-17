@@ -13,12 +13,12 @@ module Shakebook.Conduit (
 , addRemoteJSONOracleCache
 ) where
 
-import Data.Aeson
-import Data.Binary.Instances.Aeson()
-import Development.Shake.Plus
-import RIO
-import qualified RIO.Text as T
-import Network.HTTP.Simple
+import           Data.Aeson
+import           Data.Binary.Instances.Aeson ()
+import           Development.Shake.Plus
+import           Network.HTTP.Simple
+import           RIO
+import qualified RIO.Text                    as T
 
 -- | Remote json lookup for an oracle, this should contain a URL as Text.
 newtype RemoteJSONLookup = RemoteJSONLookup Text

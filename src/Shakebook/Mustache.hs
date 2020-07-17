@@ -15,15 +15,15 @@ module Shakebook.Mustache (
 , compileTemplate'
 ) where
 
-import Composite.Record
-import Composite.Aeson
+import           Composite.Aeson
+import           Composite.Record
 import           Data.Aeson
 import           Development.Shake.Plus hiding ((:->))
+import           GHC.TypeLits           (KnownSymbol)
 import           RIO
-import qualified RIO.Text as T
+import qualified RIO.Text               as T
 import qualified Slick.Mustache
 import           Text.Mustache
-import GHC.TypeLits (KnownSymbol)
 
 -- | Lifted version of `Slick.Mustache.compileTemplate'` with well-typed `Path`.
 compileTemplate' :: (MonadAction m, FileLike b a) => a -> m Template
