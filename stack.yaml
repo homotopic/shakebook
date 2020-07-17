@@ -5,7 +5,7 @@ extra-deps:
 - aeson-with-0.1.1.1
 - binary-instances-1.0.0.1
 - git: https://github.com/locallycompact/composite
-  commit: 0c7226cb65e0bdbba39ed812c0d992aa1fad3756
+  commit: 8913379e1f34f6d1a4ac4564ced7a293de737fe4
   subdirs:
   - composite-aeson
   - composite-base

@@ -64,11 +64,6 @@ defaultLatexWriterOptions = def { writerTableOfContents = True
 defaultVideoReplacement :: Text -> Text -> Inline
 defaultVideoReplacement baseUrl x = Str $ "[Video available at [" <> baseUrl <> "/" <> x <> "]"
 
-defaultPagePaths :: MonadThrow m => [Int] -> m [Path Rel File]
-defaultPagePaths xs = do
-  xs' <- mapM (parseRelDir . show) xs
-  return $ fmap (\i -> $(mkRelDir "pages") </> i </> $(mkRelFile "index.html")) xs'
-
 defaultCdnImports :: Monad m => HtmlT m ()
 defaultCdnImports = do
   bootstrapCSS_5_0_0_alpha1
