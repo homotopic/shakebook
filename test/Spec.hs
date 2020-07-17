@@ -177,7 +177,7 @@ rules = do
     xs  <- postIx $ Paginate postsPerPage (DescPosted (ByTag (Tag t)))
     nav <- blogNav
     ys  <- postIx $ PagesLinks postsPerPage (ByTag (Tag t))
-    let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts Tagged " <> t :*: RNil)
+    let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts tagged " <> t :*: RNil)
     buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
 
   o' "posts/months/*/index.html" %^> \out -> do

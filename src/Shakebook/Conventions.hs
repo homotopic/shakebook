@@ -363,4 +363,4 @@ type PostSet x = Ix.IxSet '[Tag, Posted, YearMonth] (Record x)
 type TMain      = "templates/index.html" :-> Record MainPage
 type TDoc       = "templates/docs.html"  :-> Record FinalDoc
 type TPost      = "templates/post.html"  :-> Record FinalPost
-type TPostIndex = "templates/index.html" :-> Record (IndexPage Stage1Post)
+type TPostIndex = "templates/post-list.html" :-> Record (IndexPage Stage1Post)
