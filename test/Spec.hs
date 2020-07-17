@@ -201,7 +201,7 @@ rules = do
 
   o' "sitemap.xml" %^> \out -> do
     xs <- postIx (DescPosted AllPosts)
-    buildSitemap baseUrl xs out
+    buildSitemap (asSitemapUrl baseUrl <$> xs) out
 
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return

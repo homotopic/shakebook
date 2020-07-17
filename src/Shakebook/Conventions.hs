@@ -49,6 +49,7 @@ module Shakebook.Conventions (
 , genBlogNavbarData
 , genTocNavbarData
 , addDerivedUrl
+, asSitemapUrl
 
   -- * Indexing
 , Link
@@ -99,6 +100,7 @@ import qualified RIO.HashMap                  as HM
 import           RIO.List
 import           RIO.Time
 import           Shakebook.Aeson
+import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
 
 type FCdnImports    = "cdn-imports"  :-> Html ()
@@ -214,6 +216,14 @@ genTocNavbarData (x :< xs) =
       forM_ xs genTocNavbarData
 
 type RawIndexPage x = '[FUrl, FTitle, FElements x]
+
+asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
+asSitemapUrl baseUrl x = SitemapUrl {
+   sitemapLocation = baseUrl <> viewUrl x
+ , sitemapLastModified = Just (viewPosted x)
+ , sitemapChangeFrequency = Nothing
+ , sitemapPriority = Nothing
+}
 
 addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) -> Record xs -> m (Record (FUrl : xs))
 addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs

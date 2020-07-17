@@ -7,22 +7,15 @@
 
 Utilities from "Web.Sitemap.Gen" lifted to `MonadAction` and `FileLike`.
 -}
-module Shakebook.Sitemap where
+module Shakebook.Sitemap (
+  module Web.Sitemap.Gen
+, buildSitemap
+)where
 
-import           Composite.Record
 import           Development.Shake.Plus
 import           RIO
 import qualified RIO.ByteString.Lazy    as LBS
-import           Shakebook.Conventions
 import           Web.Sitemap.Gen
 
-asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
-asSitemapUrl baseUrl x = SitemapUrl {
-                   sitemapLocation = baseUrl <> viewUrl x
-                 , sitemapLastModified = Just (viewPosted x)
-                 , sitemapChangeFrequency = Nothing
-                 , sitemapPriority = Nothing }
-
-buildSitemap :: (MonadAction m, FileLike b a, RElem FUrl xs, RElem FPosted xs) => Text -> [Record xs] -> a -> m ()
-buildSitemap baseUrl xs out = do
-  LBS.writeFile (toFilePath . toFile $ out) $ renderSitemap $ Sitemap $ fmap (asSitemapUrl baseUrl) xs
+buildSitemap :: (MonadAction m, FileLike b a) => [SitemapUrl] -> a -> m ()
+buildSitemap xs out = LBS.writeFile (toFilePath . toFile $ out) $ renderSitemap $ Sitemap xs
