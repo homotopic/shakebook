@@ -42,9 +42,6 @@ tableOfContents = $(mkRelFile "docs/index.md") :< [
 numRecentPosts :: Int
 numRecentPosts = 3
 
-numPageNeighbours :: Int
-numPageNeighbours = 1
-
 postsPerPage :: Int
 postsPerPage = 5
 
@@ -101,12 +98,12 @@ postIndex rd (DescPosted x)  = Ix.toDescList (Proxy @Posted) <$> postIndex rd x
 postIndex rd (DescPostedZ x) = Ix.toZipperDesc (Proxy @Posted) =<< postIndex rd x 
 postIndex rd (RecentPosts x) = take x <$> postIndex rd (DescPosted AllPosts)
 postIndex rd (Paginate x f)  = postIndex rd f >>= paginate' x
-postIndex rd (PagesRoot f)   = return $ case f of
+postIndex _  (PagesRoot f)   = return $ case f of
       AllPosts      -> "/posts/"
       ByTag (Tag t) -> "/posts/tags/" <> t <> "/"
       ByYearMonth (YearMonth (y, m)) -> "/posts/months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/"
-postIndex rd (PagesLinks x f) = do
-  xs <- postIndex rd (Paginate x (DescPosted f))
+postIndex rd (PagesLinks n f) = do
+  xs <- postIndex rd (Paginate n (DescPosted f))
   u <- postIndex rd (PagesRoot f)
   return $ extend (\x -> T.pack (show (pos x + 1)) :*: (u <> "pages/" <> T.pack (show (pos x + 1))) :*: RNil) xs
 
@@ -128,7 +125,6 @@ rules = do
   postIx' <- newCache $ \() -> batchLoadIndex readStage1Post sourceFolder ["posts/*.md"]
 
   let o' = (`within` outputFolder)
-      s' = (`within` sourceFolder)
 
       blogNav = myBlogNav <$> postIx AllPosts
       postIx :: PostIndex Stage1Post a -> RAction LogFunc a
@@ -139,8 +135,8 @@ rules = do
     src <- blinkAndMapM sourceFolder withMdExtension out
     v   <- readRawSingle (fromWithin src)
     xs  <- postIx (RecentPosts numRecentPosts)
-    let v' = xs :*: enrichPage v
-    buildPageAction' sourceFolder (Val v' :: TMain) (recordJsonFormat mainPageJsonFormat) out
+    let (v' :: TMain) = Val $ xs :*: enrichPage v
+    buildPageAction' sourceFolder v' (recordJsonFormat mainPageJsonFormat) out
 
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
