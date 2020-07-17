@@ -23,6 +23,7 @@ module Shakebook (
 , module Shakebook.Mustache
 , module Shakebook.Pandoc
 , module Shakebook.Sitemap
+, module Shakebook.Url
 , module Text.Pandoc.Highlighting
 ) where
 
@@ -40,4 +41,5 @@ import Shakebook.Feed
 import Shakebook.Mustache
 import Shakebook.Pandoc
 import Shakebook.Sitemap
+import Shakebook.Url
 import Text.Pandoc.Highlighting

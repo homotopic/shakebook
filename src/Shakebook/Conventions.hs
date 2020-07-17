@@ -59,9 +59,6 @@ module Shakebook.Conventions (
 , fromYearMonthPair
 , toYearMonthPair
 , RawIndexPage
-, toGroundedUrl
-, fromGroundedUrlF
-, fromGroundedUrlD
 
   -- * Stages
 , RawPost
@@ -100,7 +97,6 @@ import           Lucid
 import           RIO
 import qualified RIO.HashMap                  as HM
 import           RIO.List
-import qualified RIO.Text                     as T
 import           RIO.Time
 import           Shakebook.Aeson
 import           Text.Pandoc.Highlighting
@@ -221,17 +217,6 @@ type RawIndexPage x = '[FUrl, FTitle, FElements x]
 
 addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) -> Record xs -> m (Record (FUrl : xs))
 addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs
-
--- | Add a leading slash to a `Path Rel File` to turn it into a url as `Text`.
-toGroundedUrl :: Path Rel b -> Text
-toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)
-
-
-fromGroundedUrlD :: MonadThrow m => Text -> m (Path Rel Dir)
-fromGroundedUrlD x = (parseAbsDir . T.unpack $ x) >>= stripProperPrefix $(mkAbsDir "/")
-
-fromGroundedUrlF :: MonadThrow m => Text -> m (Path Rel File)
-fromGroundedUrlF x = (parseAbsFile . T.unpack $ x) >>= stripProperPrefix $(mkAbsDir "/")
 
 --- Stage 0 Types
 
