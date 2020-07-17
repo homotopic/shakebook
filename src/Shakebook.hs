@@ -37,7 +37,7 @@ import Shakebook.Aeson
 import Shakebook.Conduit
 import Shakebook.Conventions
 import Shakebook.Defaults
-import Shakebook.Feed
+import Shakebook.Feed hiding (Link)
 import Shakebook.Mustache
 import Shakebook.Pandoc
 import Shakebook.Sitemap

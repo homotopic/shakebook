@@ -97,10 +97,12 @@ import           Development.Shake.Plus       hiding ((:->))
 import           Lucid
 import           RIO
 import qualified RIO.HashMap                  as HM
+import qualified RIO.Text as T
 import           RIO.List
 import           RIO.Time
 import           Shakebook.Aeson
 import           Shakebook.Sitemap
+import qualified Shakebook.Feed as Atom
 import           Text.Pandoc.Highlighting
 
 type FCdnImports    = "cdn-imports"  :-> Html ()
@@ -224,6 +226,15 @@ asSitemapUrl baseUrl x = SitemapUrl {
  , sitemapChangeFrequency = Nothing
  , sitemapPriority = Nothing
 }
+
+-- | Convert a Post to an Atom Entry
+asAtomEntry :: (RElem FContent xs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs) => Record xs -> Atom.Entry
+asAtomEntry x = (Atom.nullEntry
+                  (view (rlens (Proxy @FUrl)) x)
+                  (Atom.TextString $ view (rlens (Proxy :: Proxy FTitle)) x)
+                  (T.pack $ formatTime defaultTimeLocale (iso8601DateFormat Nothing) $ view (rlens (Proxy @FPosted)) x)) {
+                    Atom.entryContent = Just $ Atom.TextContent (view (rlens (Proxy :: Proxy FContent)) x)
+  }
 
 addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) -> Record xs -> m (Record (FUrl : xs))
 addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs
