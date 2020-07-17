@@ -11,7 +11,7 @@ import qualified RIO.Text as T
 import Path
 import Control.Monad.Except
 
-data AesonParseException a = AesonParseException a
+newtype AesonParseException a = AesonParseException a
   deriving (Eq, Show, Ord)
 
 

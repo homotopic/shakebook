@@ -92,8 +92,8 @@ data PostIndex k a where
 
 postIndex :: (Ix.Indexable '[Tag, Posted, YearMonth] (Record k), MonadAction m, MonadThrow m) => Ix.IxSet '[Tag, Posted, YearMonth] (Record k) -> PostIndex k a -> m a
 postIndex rd AllPosts        = return rd
-postIndex rd (ByTag t)       = ((Ix.@+ [t]) <$> postIndex rd AllPosts)
-postIndex rd (ByYearMonth t) = ((Ix.@+ [t]) <$> postIndex rd AllPosts)
+postIndex rd (ByTag t)       = (Ix.@+ [t]) <$> postIndex rd AllPosts
+postIndex rd (ByYearMonth t) = (Ix.@+ [t]) <$> postIndex rd AllPosts
 postIndex rd (DescPosted x)  = Ix.toDescList (Proxy @Posted) <$> postIndex rd x 
 postIndex rd (DescPostedZ x) = Ix.toZipperDesc (Proxy @Posted) =<< postIndex rd x 
 postIndex rd (RecentPosts x) = take x <$> postIndex rd (DescPosted AllPosts)

@@ -7,8 +7,6 @@
 
 Seom sensible default settings for certain shakebook functions.
 -}
-
-{-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Defaults where
 
 import           Lucid
