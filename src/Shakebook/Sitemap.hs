@@ -9,12 +9,10 @@ Utilities from "Web.Sitemap.Gen" lifted to `MonadAction` and `FileLike`.
 -}
 module Shakebook.Sitemap where
 
-import Data.Aeson
 import Development.Shake.Plus
 import RIO
 import qualified RIO.ByteString.Lazy as LBS
 import Shakebook.Conventions
-import Shakebook.Pandoc
 import Web.Sitemap.Gen
 import Composite.Record
 

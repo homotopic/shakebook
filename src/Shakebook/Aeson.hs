@@ -3,14 +3,13 @@ module Shakebook.Aeson where
 import RIO
 import Data.Aeson
 import Composite.Aeson
-import Composite.Record
 import Lucid
 import qualified RIO.Text.Lazy as LT
 import Data.Aeson.BetterErrors
 import Text.Pandoc.Highlighting
 import qualified RIO.Text as T
 import Path
-import Control.Monad.Error
+import Control.Monad.Except
 
 data AesonParseException a = AesonParseException a
   deriving (Eq, Show, Ord)

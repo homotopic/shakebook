@@ -31,6 +31,8 @@ module Shakebook.Conventions (
 , FTeaser
 , FRecentPosts
 , FPrettyDate
+, FNext
+, FPrevious
 , FItems
 
   -- * Lenses
@@ -62,6 +64,31 @@ module Shakebook.Conventions (
 , toGroundedUrl
 , fromGroundedUrlF
 , fromGroundedUrlD
+
+  -- * Stages
+, RawPost
+, Stage1Post
+, RawDoc
+, Stage1Doc
+, PostSet
+
+  -- * Formatting
+, rawDocJsonFormat
+, rawPostJsonFormat
+, rawSingleJsonFormat
+, stage1PostJsonFormat
+, stage1DocJsonFormat
+, finalPostJsonFormat
+, mainPageJsonFormat
+, indexPageJsonFormat
+, finalDocJsonFormat
+
+  -- * Templates
+, TMain
+, TDoc
+, TPost
+, TPostIndex
+, Enriched
 ) where
 
 import Composite.Record
@@ -69,24 +96,17 @@ import Composite.Aeson
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Control.Comonad.Zipper.Extra
-import           Data.Aeson                   as A
-import           Data.Aeson.Lens
-import           Data.Aeson.With
+import Shakebook.Aeson
 import           Data.Hashable.Time
 import           Data.IxSet.Typed             as Ix
 import           Data.IxSet.Typed.Conversions as Ix
-import           Data.Text.Time
 import           Development.Shake.Plus hiding ((:->))
 import           Lucid
 import           RIO                          
 import           RIO.List
-import           RIO.List.Partial
 import qualified RIO.HashMap                  as HM
 import qualified RIO.Text                     as T
-import qualified RIO.Text.Lazy                as LT
-import qualified RIO.Text.Partial             as T
 import           RIO.Time
-import           Shakebook.Pandoc
 import           Text.Pandoc.Highlighting
 
 type FCdnImports    = "cdn-imports"  :-> Html ()
@@ -232,3 +252,115 @@ fromGroundedUrlD x = (parseAbsDir . T.unpack $ x) >>= stripProperPrefix $(mkAbsD
 
 fromGroundedUrlF :: MonadThrow m => Text -> m (Path Rel File)
 fromGroundedUrlF x = (parseAbsFile . T.unpack $ x) >>= stripProperPrefix $(mkAbsDir "/")
+
+--- Stage 0 Types
+
+-- "Basic Markdown" - These two fields are always populated by the markdown loader - the source path and the main body content.
+type BasicMD = FSrcPath : FContent : '[]
+
+basicMDJsonFormat :: JsonFormatRecord e BasicMD
+basicMDJsonFormat = field relFileJsonFormat
+                 :& field textJsonFormat
+                 :& RNil
+
+-- A 'RawDoc' contains three mandatory fields - title, description and modified.
+type RawDoc = FDescription : FTitle : FModified : BasicMD
+
+rawDocJsonFormat :: JsonFormatRecord e RawDoc
+rawDocJsonFormat = field aesonJsonFormat
+                :& field defaultJsonFormat
+                :& field iso8601DateTimeJsonFormat
+                :& basicMDJsonFormat
+
+-- A `RawPost` contains three mandatory fields, title, tags, and posted, and an optional image field.
+type RawPost = FTitle : FImage : FTags : FPosted : BasicMD
+
+rawPostJsonFormat :: JsonFormatRecord e RawPost
+rawPostJsonFormat = field textJsonFormat
+                 :& optionalField textJsonFormat
+                 :& field (listJsonFormat textJsonFormat)
+                 :& field (dateTimeJsonFormat defaultTimeLocale (regularDateTimeFormat "%F" "yyyy-mm-dd" :| []))
+                 :& basicMDJsonFormat
+
+type RawSingle = FTitle : FImage : BasicMD
+
+rawSingleJsonFormat :: JsonFormatRecord e RawSingle
+rawSingleJsonFormat = field textJsonFormat
+                   :& optionalField textJsonFormat
+                   :& basicMDJsonFormat
+
+type URLised x = FUrl : x
+
+urlisedXJsonFormat :: JsonFormatRecord e x -> JsonFormatRecord e (URLised x)
+urlisedXJsonFormat x = field defaultJsonFormat :& x
+
+
+type Stage1Post = FPrettyDate : FTagLinks : FTeaser : URLised RawPost
+
+stage1PostJsonFormat :: JsonFormatRecord e Stage1Post
+stage1PostJsonFormat = field (dateTimeJsonFormat defaultTimeLocale (regularDateTimeFormat "%A, %B %d, %Y" "yyyy-mm-dd" :| []))
+                    :& field (listJsonFormat $ recordJsonFormat linkJsonFormat)
+                    :& field textJsonFormat
+                    :& urlisedXJsonFormat rawPostJsonFormat
+
+type Stage1Doc = URLised RawDoc
+
+stage1DocJsonFormat :: JsonFormatRecord e Stage1Doc
+stage1DocJsonFormat = urlisedXJsonFormat rawDocJsonFormat
+
+--- Stage 2 Types
+
+-- Enrichment provides fields most page templates require.
+type Enriched x = FSocial : FCdnImports : FHighlighting : FSiteTitle : x
+
+linkJsonFormat :: JsonFormatRecord e Link
+linkJsonFormat = field textJsonFormat :& field textJsonFormat :& RNil
+
+enrichedXJsonFormat :: JsonFormatRecord e x -> JsonFormatRecord e (Enriched x)
+enrichedXJsonFormat x = field (listJsonFormat (recordJsonFormat linkJsonFormat))
+                     :& field lucidJsonFormat
+                     :& field styleJsonFormat
+                     :& field defaultJsonFormat
+                     :& x
+
+type FinalDoc = FToc : FSubsections Stage1Doc : Enriched Stage1Doc
+
+finalDocJsonFormat :: JsonFormatRecord e FinalDoc
+finalDocJsonFormat = field lucidJsonFormat
+                  :& field (listJsonFormat $ recordJsonFormat stage1DocJsonFormat)
+                  :& enrichedXJsonFormat stage1DocJsonFormat
+
+type FinalPost = FToc : Enriched Stage1Post
+
+finalPostJsonFormat :: JsonFormatRecord e FinalPost
+finalPostJsonFormat = field lucidJsonFormat
+                   :& enrichedXJsonFormat stage1PostJsonFormat
+
+type IndexPage x = Enriched (FPageLinks : FToc : FItems x : FTitle : '[])
+
+indexPageJsonFormat :: JsonFormat e (Record x) -> JsonFormatRecord e (IndexPage x)
+indexPageJsonFormat x = enrichedXJsonFormat $ field (listJsonFormat $ recordJsonFormat linkJsonFormat)
+                                           :& field lucidJsonFormat
+                                           :& field (listJsonFormat x)
+                                           :& field textJsonFormat
+                                           :& RNil
+
+type MainPage = FRecentPosts Stage1Post : Enriched (FTitle : FImage : BasicMD)
+
+mainPageJsonFormat :: JsonFormatRecord e MainPage
+mainPageJsonFormat = field (listJsonFormat $ recordJsonFormat stage1PostJsonFormat)
+                  :& enrichedXJsonFormat (field textJsonFormat
+                                       :& optionalField textJsonFormat
+                                       :& basicMDJsonFormat)
+
+instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
+  indices = Ix.ixList (Ix.ixFun (fmap Tag . viewTags))
+                    (Ix.ixFun (pure. Posted. viewPosted))
+                      (Ix.ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
+
+type PostSet x = Ix.IxSet '[Tag, Posted, YearMonth] (Record x)
+
+type TMain      = "templates/index.html" :-> Record MainPage
+type TDoc       = "templates/docs.html"  :-> Record FinalDoc
+type TPost      = "templates/post.html"  :-> Record FinalPost
+type TPostIndex = "templates/index.html" :-> Record (IndexPage Stage1Post)

@@ -22,6 +22,7 @@ description: >
 default-extensions:
 - BangPatterns
 - BinaryLiterals
+- BlockArguments
 - ConstraintKinds
 - DataKinds
 - DefaultSignatures
@@ -108,7 +109,7 @@ dependencies:
 - mtl
 - mustache
 - rio
-- pandoc >= 2.10
+- pandoc
 - pandoc-types
 - path
 - path-extensions >= 0.1.0.1

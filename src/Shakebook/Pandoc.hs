@@ -33,16 +33,11 @@ module Shakebook.Pandoc (
 , replaceUnusableImages
 ) where
 
-import Composite.Aeson
-import Composite.Record
 import           Control.Comonad
 import           Control.Comonad.Cofree
 import           Data.Aeson
-import Data.Aeson.BetterErrors
-import           Data.Aeson.Lens
 import           Data.Aeson.With
 import           Development.Shake.Plus hiding ((:->))
-import           Path.Extensions
 import           RIO
 import qualified RIO.ByteString.Lazy    as LBS
 import qualified RIO.Text               as T

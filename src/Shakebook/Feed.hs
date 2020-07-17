@@ -12,7 +12,6 @@ module Shakebook.Feed
  where
 
 import           Composite.Record 
-import           Data.Aeson
 import           Development.Shake.Plus hiding ((:->))
 import           RIO
 import           RIO.List
@@ -21,7 +20,6 @@ import qualified RIO.Text               as T
 import qualified RIO.Text.Lazy          as TL
 import           RIO.Time
 import           Shakebook.Conventions
-import           Shakebook.Pandoc
 import           Text.Atom.Feed         as Atom
 import           Text.Atom.Feed.Export
 
