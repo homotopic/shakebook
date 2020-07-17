@@ -22,8 +22,7 @@ lint:
 build:
   stage: build
   script:
-  - GIT_SSL_CAINFO=/etc/ssl/certs/ca-certificates.crt
-  - SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+  - git config --global http.sslVerify false
   - stack --nix build --ghc-options "-Wall -Werror"
 
 test:
