@@ -47,7 +47,6 @@ module Shakebook.Conventions (
 
   -- * Generations
 , genBlogNavbarData
-, genIndexPageData
 , genTocNavbarData
 , addDerivedUrl
 
@@ -57,7 +56,6 @@ module Shakebook.Conventions (
 , Posted(..)
 , YearMonth(..)
 , batchLoadIndex
-, postZipper
 , fromYearMonthPair
 , toYearMonthPair
 , RawIndexPage
@@ -95,10 +93,8 @@ import           Composite.Aeson
 import           Composite.Record
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
-import           Control.Comonad.Zipper.Extra
 import           Data.Hashable.Time
 import           Data.IxSet.Typed             as Ix
-import           Data.IxSet.Typed.Conversions as Ix
 import           Development.Shake.Plus       hiding ((:->))
 import           Lucid
 import           RIO
@@ -197,10 +193,6 @@ batchLoadIndex rd dir fp = do
   xs <- batchLoad dir fp rd
   return (Ix.fromList $ HM.elems xs)
 
--- | Create a `Zipper [] Post` from an `IxSet xs Post` by ordering by `Posted`.
-postZipper :: (MonadThrow m, Ix.IsIndexOf Posted ixs) => Ix.IxSet ixs (Record xs) -> m (Zipper [] (Record xs))
-postZipper = Ix.toZipperDesc (Proxy :: Proxy Posted)
-
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNavbarData :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
                   => Text -- ^ "Top level title, e.g "Blog"
@@ -228,16 +220,6 @@ genTocNavbarData (x :< xs) =
       forM_ xs genTocNavbarData
 
 type RawIndexPage x = '[FUrl, FTitle, FElements x]
-
-genIndexPageData :: (MonadThrow m, RElem FPosted xs)
-                 => Text
-                 -> (Int -> Text)
-                 -> Int
-                 -> [Record xs]
-                 -> m (Zipper [] (Record (RawIndexPage xs)))
-genIndexPageData g h n xs = do
- zs <- paginate' n $ sortOn (Down . viewPosted) xs
- return $ extend (\x -> h (pos x) :*: g :*: extract x :*: RNil) zs
 
 addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) -> Record xs -> m (Record (FUrl : xs))
 addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs
