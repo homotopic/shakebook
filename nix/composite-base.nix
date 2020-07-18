@@ -98,8 +98,8 @@ in { system, compiler, flags, pkgs, hsPkgs, pkgconfPkgs, ... }:
     } // {
     src = (pkgs.lib).mkDefault (pkgs.fetchgit {
       url = "https://github.com/locallycompact/composite";
-      rev = "c489119a911969c2eeed84e916a2fb92f9a34d3b";
-      sha256 = "1jkfkz5fvlqfnxnwrk4bfvx52p4x5wn42y9p7mihfvgqqmxg8rx6";
+      rev = "eb940db72884679cab8ab9dbc9a3d72a12814c70";
+      sha256 = "182llc7ia2xap3day6h7r1wnwxqf9p57l9jghqj8y7rm57ym2fh2";
       });
     postUnpack = "sourceRoot+=/composite-base; echo source root reset to \$sourceRoot";
     }) // { cabal-generator = "hpack"; }
