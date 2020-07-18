@@ -7,6 +7,7 @@ import qualified Data.IxSet.Typed             as Ix
 import qualified Data.IxSet.Typed.Conversions as Ix
 import           Data.List.Split
 import           Data.Text.Time
+import           Development.Shake.Plus.Extended
 import           Lucid
 import           Path.Extensions
 import           RIO
@@ -18,6 +19,7 @@ import qualified RIO.Text.Partial             as T
 import           Shakebook                    hiding ((:->))
 import           Test.Tasty
 import           Test.Tasty.Golden
+import           Within
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -112,7 +114,7 @@ rules :: ShakePlus LogFunc ()
 rules = do
 
   readMD <- newCache $ \x -> do
-    logInfo $ "Loading " <> displayShow (toFilePath . toFile $ x)
+    logInfo $ "Loading " <> (displayShow $ toFilePath x)
     loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x
 
   readRawSingle <- newCache $ readMD >=> parseValue' (recordJsonFormat rawSingleJsonFormat)
@@ -136,14 +138,14 @@ rules = do
     v   <- readRawSingle (fromWithin src)
     xs  <- postIx (RecentPosts numRecentPosts)
     let (v' :: TMain) = Val $ xs :*: enrichPage v
-    buildPageAction' sourceFolder v' (recordJsonFormat mainPageJsonFormat) out
+    buildPageAction' sourceFolder v' (recordJsonFormat mainPageJsonFormat) (fromWithin out)
 
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
-    xs  <- postIx (DescPostedZ AllPosts) >>= seekOnThrow viewSrcPath (toFile src)
+    xs  <- postIx (DescPostedZ AllPosts) >>= seekOnThrow viewSrcPath (fromWithin src)
     nav <- blogNav
     let (v :: TPost) = Val $ nav :*: enrichPage (extract xs)
-    buildPageAction' sourceFolder v (recordJsonFormat finalPostJsonFormat) out
+    buildPageAction' sourceFolder v (recordJsonFormat finalPostJsonFormat) (fromWithin out)
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do
@@ -152,10 +154,10 @@ rules = do
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
     let (v' :: TDoc) = Val $ myDocNav ys :*: zs :*: enrichPage v
-    buildPageAction' sourceFolder v' (recordJsonFormat finalDocJsonFormat) out
+    buildPageAction' sourceFolder v' (recordJsonFormat finalDocJsonFormat) (fromWithin out)
 
-  o' "posts/index.html" %^>
-    copyFileChanged (o' ($(mkRelFile "posts/pages/1/index.html") :: Path Rel File))
+  o' "posts/index.html" %^> \out -> 
+    copyFileChanged (outputFolder </> $(mkRelFile "posts/pages/1/index.html")) (fromWithin out)
 
   o' "posts/pages/*/index.html" %^> \out -> do
     let n = read . (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -163,12 +165,12 @@ rules = do
     nav <- blogNav
     ys  <- postIx $ PagesLinks postsPerPage AllPosts
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts" :*: RNil)
-    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
+    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) (fromWithin out)
 
   o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"
-    copyFileChanged (o' i) out
+    copyFileChanged (outputFolder </> i) (fromWithin out)
 
   o' "posts/tags/*/pages/*/index.html" %^> \out -> do
     let zs = splitOn "/" . toFilePath . extract $ out
@@ -178,12 +180,12 @@ rules = do
     nav <- blogNav
     ys  <- postIx $ PagesLinks postsPerPage (ByTag (Tag t))
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts tagged " <> t :*: RNil)
-    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
+    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) (fromWithin out)
 
   o' "posts/months/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
     i <- parseRelFile $ "posts/months/" <> t <> "/pages/1/index.html"
-    copyFileChanged (o' i) out
+    copyFileChanged (outputFolder </> i) (fromWithin out)
 
   o' "posts/months/*/pages/*/index.html" %^> \out -> do
     let zs = splitOn "/" . toFilePath . extract $ out
@@ -194,14 +196,14 @@ rules = do
     nav <- blogNav
     ys  <- postIx $ PagesLinks postsPerPage (ByYearMonth t')
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts from " <> defaultPrettyMonthFormat t :*: RNil)
-    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) out
+    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) (fromWithin out)
 
   o' ["css//*", "js//*", "webfonts//*", "images//*"] |%^> \out ->
-    copyFileChanged (blinkLocalDir sourceFolder out) out
+    copyFileChanged (fromWithin $ blinkLocalDir sourceFolder out) (fromWithin out)
 
   o' "sitemap.xml" %^> \out -> do
     xs <- postIx (DescPosted AllPosts)
-    buildSitemap (asSitemapUrl baseUrl <$> xs) out
+    buildSitemap (asSitemapUrl baseUrl <$> xs) (fromWithin out)
 
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return

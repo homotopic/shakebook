@@ -20,7 +20,7 @@ import           Text.Atom.Feed
 import           Text.Atom.Feed.Export
 
 -- | Build an Atom Feed from a title, a baseUrl and a list of entries.
-buildFeed :: (MonadAction m, FileLike b a) => Text -> Text -> [Entry] -> a -> m ()
+buildFeed :: MonadAction m => Text -> Text -> [Entry] -> Path b File -> m ()
 buildFeed title baseUrl xs out = do
   let t = nullFeed baseUrl (TextString title) $ entryUpdated (head xs)
   case textFeed (t { feedEntries = xs }) of

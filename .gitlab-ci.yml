@@ -25,9 +25,4 @@ lint:
 build:
   stage: build
   script:
-  - nix-build nix/default.nix -A shakebook
-
-test:
-  stage: test
-  script:
-  - nix-build nix/default.nix -A shakebook.components.tests
+  - nix-build -A shakebook

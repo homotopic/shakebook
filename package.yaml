@@ -113,7 +113,8 @@ dependencies:
 - pandoc-types
 - path
 - path-extensions >= 0.1.0.1
-- shake-plus >= 0.2.0.0
+- shake-plus >= 0.3.0.0
+- shake-plus-extended
 - sitemap-gen
 - slick >= 1.0.1.1
 - split

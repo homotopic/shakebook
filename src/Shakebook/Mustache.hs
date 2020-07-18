@@ -26,20 +26,20 @@ import qualified Slick.Mustache
 import           Text.Mustache
 
 -- | Lifted version of `Slick.Mustache.compileTemplate'` with well-typed `Path`.
-compileTemplate' :: (MonadAction m, FileLike b a) => a -> m Template
-compileTemplate' = liftAction . Slick.Mustache.compileTemplate' . toFilePath . toFile
+compileTemplate' :: MonadAction m => Path b File -> m Template
+compileTemplate' = liftAction . Slick.Mustache.compileTemplate' . toFilePath
 
 -- | Build a single page straight from a template.
-buildPageAction :: (MonadAction m, FileLike b a, FileLike b' a')
-                => a -- ^ The HTML templatate.
+buildPageAction :: MonadAction m
+                => Path b File -- ^ The HTML templatate.
                 -> Value -- ^ A JSON value.
-                -> a' -- ^ The out filepath.
+                -> Path b' File -- ^ The out filepath.
                 -> m ()
 buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
-buildPageAction' :: (MonadAction m, MonadThrow m, FileLike b a, KnownSymbol s) => Path Rel Dir -> (s :-> xs) -> JsonFormat e xs -> a -> m ()
+buildPageAction' :: (MonadAction m, MonadThrow m, KnownSymbol s) => Path Rel Dir -> (s :-> xs) -> JsonFormat e xs -> Path b File -> m ()
 buildPageAction' d xs f o = do
               let (t, v) = valWithName xs
               t' <- parseRelFile $ T.unpack t

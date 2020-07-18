@@ -17,5 +17,5 @@ import           RIO
 import qualified RIO.ByteString.Lazy    as LBS
 import           Web.Sitemap.Gen
 
-buildSitemap :: (MonadAction m, FileLike b a) => [SitemapUrl] -> a -> m ()
-buildSitemap xs out = LBS.writeFile (toFilePath . toFile $ out) $ renderSitemap $ Sitemap xs
+buildSitemap :: MonadAction m => [SitemapUrl] -> Path b File -> m ()
+buildSitemap xs out = LBS.writeFile (toFilePath out) $ renderSitemap $ Sitemap xs

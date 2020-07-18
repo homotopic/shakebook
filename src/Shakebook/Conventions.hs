@@ -55,7 +55,6 @@ module Shakebook.Conventions (
 , Tag(..)
 , Posted(..)
 , YearMonth(..)
-, batchLoadIndex
 , fromYearMonthPair
 , toYearMonthPair
 , RawIndexPage
@@ -181,14 +180,6 @@ toYearMonthPair = (\(a, b, _) -> (a, b)) . toGregorian . utctDay
 
 fromYearMonthPair :: (Integer, Int) -> UTCTime
 fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
-
--- | Take a Value loading function and a filepattern and return an indexable set of Posts.
-batchLoadIndex :: (MonadAction m, Indexable ixs x)
-               => (Path Rel File -> m x)
-               -> Path Rel Dir
-               -> [FilePattern]
-               -> m (Ix.IxSet ixs x)
-batchLoadIndex rd dir fp = Ix.fromList . HM.elems <$> batchLoad dir fp rd
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNavbarData :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
