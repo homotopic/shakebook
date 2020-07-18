@@ -19,6 +19,32 @@ packages:
   original:
     hackage: binary-instances-1.0.0.1
 - completed:
+    subdir: composite-aeson
+    name: composite-aeson
+    version: 0.7.1.0
+    git: https://github.com/ConferOpenSource/composite
+    pantry-tree:
+      size: 1507
+      sha256: 2f121018c1cd615d3275ecc00655fa36af60c456340f524628686e2566dd86f3
+    commit: 2ca84f1f96dcb2919d095d3392d8d12ec06e484b
+  original:
+    subdir: composite-aeson
+    git: https://github.com/ConferOpenSource/composite
+    commit: 2ca84f1f96dcb2919d095d3392d8d12ec06e484b
+- completed:
+    subdir: composite-base
+    name: composite-base
+    version: 0.7.1.0
+    git: https://github.com/ConferOpenSource/composite
+    pantry-tree:
+      size: 708
+      sha256: eddc28aa5fcb939e20d73ab5df1e3a2fe297e42673e11c108547c80c4950090f
+    commit: 2ca84f1f96dcb2919d095d3392d8d12ec06e484b
+  original:
+    subdir: composite-base
+    git: https://github.com/ConferOpenSource/composite
+    commit: 2ca84f1f96dcb2919d095d3392d8d12ec06e484b
+- completed:
     hackage: comonad-extras-4.0.1@sha256:60c93aa274239086d96d162c3c8bf7cde33a3e8470ecb56461b2f77d2625521e,1321
     pantry-tree:
       size: 365

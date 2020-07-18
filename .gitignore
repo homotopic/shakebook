@@ -1,6 +1,5 @@
 .stack-work/
 *~
-*.cabal
 test/public
 .shake
 *.swp
