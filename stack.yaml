@@ -4,8 +4,8 @@ packages:
 extra-deps:
 - aeson-with-0.1.1.1
 - binary-instances-1.0.0.1
-- git: https://github.com/ConferOpenSource/composite
-  commit: 2ca84f1f96dcb2919d095d3392d8d12ec06e484b
+- git: https://github.com/locallycompact/composite
+  commit: c489119a911969c2eeed84e916a2fb92f9a34d3b
   subdirs:
   - composite-aeson
   - composite-base

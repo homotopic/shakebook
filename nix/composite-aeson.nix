@@ -114,9 +114,9 @@ in { system, compiler, flags, pkgs, hsPkgs, pkgconfPkgs, ... }:
       };
     } // {
     src = (pkgs.lib).mkDefault (pkgs.fetchgit {
-      url = "https://github.com/ConferOpenSource/composite";
-      rev = "2ca84f1f96dcb2919d095d3392d8d12ec06e484b";
-      sha256 = "193xli1cwfxxymyhh9carvy5vg8hgqkaxkpakkindfv5hgk0w7sd";
+      url = "https://github.com/locallycompact/composite";
+      rev = "c489119a911969c2eeed84e916a2fb92f9a34d3b";
+      sha256 = "1jkfkz5fvlqfnxnwrk4bfvx52p4x5wn42y9p7mihfvgqqmxg8rx6";
       });
     postUnpack = "sourceRoot+=/composite-aeson; echo source root reset to \$sourceRoot";
     }) // { cabal-generator = "hpack"; }
