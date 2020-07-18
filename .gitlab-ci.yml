@@ -8,6 +8,9 @@ before_script:
 - nix-env -iA nixpkgs.git
 - nix-env -iA nixpkgs.cacert
 - nix-env -iA nixpkgs.hlint
+- nix-env -iA nixpkgs.cachix
+- cachix use iohk
+- cachix use shakebook
 
 stages:
 - lint
@@ -22,10 +25,9 @@ lint:
 build:
   stage: build
   script:
-  - git config --global http.sslVerify false
-  - stack --nix build --ghc-options "-Wall -Werror"
+  - nix-build nix/default.nix -A shakebook
 
 test:
   stage: test
   script:
-  - stack --nix test --ghc-options "-Wall -Werror"
+  - nix-build nix/default.nix -A shakebook.components.tests
