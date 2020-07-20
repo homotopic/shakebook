@@ -56,10 +56,10 @@ mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
 myBlogNav :: (Ix.IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
           => Ix.IxSet ixs (Record xs)
           -> Html ()
-myBlogNav = genBlogNavbarData "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment
+myBlogNav = genBlogNav "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment
 
 myDocNav :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
-myDocNav = genTocNavbarData
+myDocNav = genDocNav
 
 addUrl :: (MonadThrow m, RElem FSrcPath xs) => Record xs -> m (Record (FUrl : xs))
 addUrl = addDerivedUrl (fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder)
@@ -135,7 +135,9 @@ rules = do
       postIx :: PostIndex Stage1Post a -> RAction LogFunc a
       postIx l = postIx' () >>= \k -> postIndex k l
 
-      changeFolder src dst = stripProperPrefix src >=> return . (dst </>)
+      changeFolder :: MonadThrow m => Path b Dir -> Path b' Dir -> Path b t -> m (Path b' t)
+      changeFolder src dst fp = (dst </>) <$> stripProperPrefix src fp
+
       splitPath            = splitOn "/" . toFilePath
 
       outToc   = fmap (outputFolder </>) tableOfContents
@@ -167,17 +169,33 @@ rules = do
       let (v' :: TDoc) = Val $ nav :*: subs :*: enrichPage v
       buildPageAction' sourceFolder v' finalDocJsonFormat out
 
-  (outputFolderFP <> "posts/index.html") %> \out -> 
-    copyFileChanged (outputFolder </> $(mkRelFile "posts/pages/1/index.html")) out
-
+  let buildPostIndex title query pageno out = do
+        nav <- blogNav
+        xs  <- postIx $ Paginate   postsPerPage $ DescPosted query
+        ys  <- postIx $ PagesLinks postsPerPage query
+        let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (pageno-1) xs) :*: title :*: RNil)
+        buildPageAction' sourceFolder v postIndexPageJsonFormat out
+    
   (outputFolderFP <> "posts/pages/*/index.html") %> \out -> do
     out' <- splitPath <$> stripProperPrefix outputFolder out
     let n = read . (!! 2) $ out'
-    xs  <- postIx $ Paginate   postsPerPage $ DescPosted AllPosts
-    ys  <- postIx $ PagesLinks postsPerPage   AllPosts
-    nav <- blogNav
-    let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts" :*: RNil)
-    buildPageAction' sourceFolder v postIndexPageJsonFormat out
+    buildPostIndex "Posts" AllPosts n out
+
+  (outputFolderFP <> "posts/tags/*/pages/*/index.html") %> \out -> do
+    out' <- splitPath <$> stripProperPrefix outputFolder out
+    let t = T.pack $ out' !! 2
+    let n = read   $ out' !! 4
+    buildPostIndex ("Posts tagged " <> t) (ByTag (Tag t)) n out
+
+  (outputFolderFP <> "posts/months/*/pages/*/index.html") %> \out -> do
+    out' <- splitPath <$> stripProperPrefix outputFolder out
+    let t  = parseISODateTime $ T.pack $ out' !! 2
+    let t' = YearMonth $ toYearMonthPair t
+    let n  = read $ out' !! 4
+    buildPostIndex ("Posts from " <> defaultPrettyMonthFormat t) (ByYearMonth t') n out
+
+  (outputFolderFP <> "posts/index.html") %> \out -> 
+    copyFileChanged (outputFolder </> $(mkRelFile "posts/pages/1/index.html")) out
 
   (outputFolderFP <> "posts/tags/*/index.html") %> \out -> do
     out' <- splitPath <$> stripProperPrefix outputFolder out
@@ -185,32 +203,11 @@ rules = do
     i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"
     copyFileChanged (outputFolder </> i) out
 
-  (outputFolderFP <> "posts/tags/*/pages/*/index.html") %> \out -> do
-    out' <- splitPath <$> stripProperPrefix outputFolder out
-    let t = T.pack $ out' !! 2
-    let n = read   $ out' !! 4
-    nav <- blogNav
-    xs  <- postIx $ Paginate   postsPerPage $ DescPosted $ ByTag $ Tag t
-    ys  <- postIx $ PagesLinks postsPerPage $ ByTag $ Tag t
-    let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts tagged " <> t :*: RNil)
-    buildPageAction' sourceFolder v postIndexPageJsonFormat out
-
   (outputFolderFP <> "posts/months/*/index.html") %> \out -> do
     out' <- splitPath <$> stripProperPrefix outputFolder out
     let t = (!! 2) out'
     i <- parseRelFile $ "posts/months/" <> t <> "/pages/1/index.html"
     copyFileChanged (outputFolder </> i) out
-
-  (outputFolderFP <> "posts/months/*/pages/*/index.html") %> \out -> do
-    out' <- splitPath <$> stripProperPrefix outputFolder out
-    let t  = parseISODateTime $ T.pack $ out' !! 2
-    let t' = YearMonth $ toYearMonthPair t
-    let n  = read $ out' !! 4
-    nav <- blogNav
-    xs  <- postIx $ Paginate   postsPerPage $ DescPosted $ ByYearMonth t'
-    ys  <- postIx $ PagesLinks postsPerPage $ ByYearMonth t'
-    let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts from " <> defaultPrettyMonthFormat t :*: RNil)
-    buildPageAction' sourceFolder v postIndexPageJsonFormat out
 
   ((outputFolderFP <>) <$> ["css//*", "js//*", "webfonts//*", "images//*"]) |%> \out -> do
     a <- changeFolder outputFolder sourceFolder out

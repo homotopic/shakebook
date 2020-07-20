@@ -45,10 +45,11 @@ module Shakebook.Conventions (
 , viewUrl
 
   -- * Generations
-, genBlogNavbarData
-, genTocNavbarData
+, genBlogNav
+, genDocNav
 , addDerivedUrl
 , asSitemapUrl
+, asAtomEntry
 
   -- * Indexing
 , Link
@@ -57,7 +58,6 @@ module Shakebook.Conventions (
 , YearMonth(..)
 , fromYearMonthPair
 , toYearMonthPair
-, RawIndexPage
 
   -- * Stages
 , RawPost
@@ -97,7 +97,6 @@ import           Data.IxSet.Typed         as Ix
 import           Development.Shake.Plus   hiding ((:->))
 import           Lucid
 import           RIO
-import qualified RIO.HashMap              as HM
 import           RIO.List
 import qualified RIO.Text                 as T
 import           RIO.Time
@@ -109,7 +108,6 @@ import           Text.Pandoc.Highlighting
 type FCdnImports    = "cdn-imports"  :-> Html ()
 type FContent       = "content"      :-> Text
 type FDescription   = "description"  :-> Text
-type FElements x    = "elements"     :-> [Record x]
 type FHighlighting  = "highlighting" :-> Style
 type FImage         = "image"        :-> Maybe Text
 type FId            = "id"           :-> Text
@@ -184,14 +182,14 @@ fromYearMonthPair :: (Integer, Int) -> UTCTime
 fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
-genBlogNavbarData :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
-                  => Text -- ^ "Top level title, e.g "Blog"
-                  -> Text -- ^ Root page, e.g "/posts"
-                  -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
-                  -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
-                  -> IxSet ixs (Record xs)
-                  -> Html ()
-genBlogNavbarData a b f g xs =
+genBlogNav :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
+           => Text -- ^ "Top level title, e.g "Blog"
+           -> Text -- ^ Root page, e.g "/posts"
+           -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
+           -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
+           -> IxSet ixs (Record xs)
+           -> Html ()
+genBlogNav a b f g xs =
   ul_ $
     li_ $ do
       a_ [href_ b] (toHtml a)
@@ -202,14 +200,10 @@ genBlogNavbarData a b f g xs =
           li_ $ a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
-genTocNavbarData :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
-genTocNavbarData (x :< xs) =
-  ul_ $
-    li_ $ do
+genDocNav :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
+genDocNav (x :< xs) = ul_ $ li_ $ do
       a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
-      forM_ xs genTocNavbarData
-
-type RawIndexPage x = '[FUrl, FTitle, FElements x]
+      forM_ xs genDocNav
 
 asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
 asSitemapUrl baseUrl x = SitemapUrl {
