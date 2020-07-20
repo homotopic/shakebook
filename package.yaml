@@ -91,8 +91,8 @@ dependencies:
 - aeson-with >= 0.1.1.0
 - base >= 4.7 && < 5
 - binary-instances
-- composite-aeson
-- composite-base
+- composite-aeson >= 0.7.2.0
+- composite-base >= 0.7.2.0
 - comonad
 - comonad-extras
 - doctemplates
@@ -120,5 +120,4 @@ dependencies:
 - split
 - text-time
 - vinyl
-- within >= 0.2.0.0
 - zipper-extra >= 0.1.3.0

@@ -16,7 +16,6 @@ extra-deps:
 - slick-1.0.1.1
 - text-time-0.2.0
 - vinyl-0.13.0
-- within-0.2.0.0
 - zipper-extra-0.1.3.0
 allow-newer: true
 nix:
