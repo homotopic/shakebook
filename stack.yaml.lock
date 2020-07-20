@@ -19,6 +19,20 @@ packages:
   original:
     hackage: binary-instances-1.0.0.1
 - completed:
+    hackage: composite-aeson-0.7.2.0@sha256:b483fcc3b5de01435d143bcae3404d01bb0a9d15322029b2dd2d541bd1475f93,3785
+    pantry-tree:
+      size: 1402
+      sha256: 568e64a64d083b616ec6ad720c2fdd6cc87f13863e95c044168298067e2b8a2e
+  original:
+    hackage: composite-aeson-0.7.2.0
+- completed:
+    hackage: composite-base-0.7.2.0@sha256:392fddff5656ac13f3a5aa7bcf5fbd37ff4818b4c876769d229bec088a7467fa,2896
+    pantry-tree:
+      size: 604
+      sha256: bd2bbf6a399c722f4bffabd4653ae04cd817cc8444a595e719fbe0487d8cf0a7
+  original:
+    hackage: composite-base-0.7.2.0
+- completed:
     hackage: comonad-extras-4.0.1@sha256:60c93aa274239086d96d162c3c8bf7cde33a3e8470ecb56461b2f77d2625521e,1321
     pantry-tree:
       size: 365

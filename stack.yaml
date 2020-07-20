@@ -4,11 +4,8 @@ packages:
 extra-deps:
 - aeson-with-0.1.1.1
 - binary-instances-1.0.0.1
-- git: https://github.com/locallycompact/composite
-  commit: eb940db72884679cab8ab9dbc9a3d72a12814c70
-  subdirs:
-  - composite-aeson
-  - composite-base
+- composite-aeson-0.7.2.0
+- composite-base-0.7.2.0
 - comonad-extras-4.0.1
 - ixset-typed-conversions-0.1.0.0
 - lucid-cdn-0.1.1.0

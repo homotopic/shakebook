@@ -35,10 +35,10 @@ siteTitle :: Text
 siteTitle = "Blanky Site"
 
 tableOfContents :: Cofree [] (Path Rel File)
-tableOfContents = $(mkRelFile "docs/index.md") :< [
-                    $(mkRelFile "docs/1/index.md") :< []
-                  , $(mkRelFile "docs/2/index.md") :< [
-                  $(mkRelFile "docs/2/champ.md") :< []
+tableOfContents = $(mkRelFile "docs/index.html") :< [
+                    $(mkRelFile "docs/1/index.html") :< []
+                  , $(mkRelFile "docs/2/index.html") :< [
+                  $(mkRelFile "docs/2/champ.html") :< []
                     ]
                   ]
 
@@ -135,33 +135,37 @@ rules = do
       postIx :: PostIndex Stage1Post a -> RAction LogFunc a
       postIx l = postIx' () >>= \k -> postIndex k l
 
+      changeFolder src dst = stripProperPrefix src >=> return . (dst </>)
+      splitPath            = splitOn "/" . toFilePath
+
+      outToc   = fmap (outputFolder </>) tableOfContents
+
+      mdSrcFor = changeFolder outputFolder sourceFolder >=> withMdExtension
+      getDoc   = mdSrcFor >=> readStage1Doc
+      docNav   = myDocNav <$> mapM (withMdExtension >=> getDoc) outToc
+
       indexHtml = $(mkRelFile "index.html") :: Path Rel File
 
-  let changeFolder src dst = stripProperPrefix src >=> return . (dst </>)
-  let splitPath = splitOn "/" . toFilePath
-
   (outputFolderFP <> "index.html") %> \out -> do
-    src <- withMdExtension =<< changeFolder outputFolder sourceFolder out
-    v   <- readRawSingle src
+    v   <- readRawSingle =<< mdSrcFor out
     xs  <- postIx $ RecentPosts numRecentPosts
     let (v' :: TMain) = Val $ xs :*: enrichPage v
     buildPageAction' sourceFolder v' mainPageJsonFormat out
 
   (outputFolderFP <> "posts/*.html") %> \out -> do
-    src <- withMdExtension =<< changeFolder outputFolder sourceFolder out
+    src <- mdSrcFor out
     xs  <- postIx (DescPostedZ AllPosts) >>= seekOnThrow viewSrcPath src
     nav <- blogNav
     let (v :: TPost) = Val $ nav :*: enrichPage (extract xs)
     buildPageAction' sourceFolder v finalPostJsonFormat out
 
-  toc' <- mapM (withHtmlExtension . (outputFolder </>)) tableOfContents
-  sequence_ $ toc' =>> \xs -> (toFilePath . extract $ xs) %> \out -> do
-    let getDoc = readStage1Doc <=< withMdExtension <=< changeFolder outputFolder sourceFolder
-    ys <- mapM getDoc toc'
-    zs <- mapM getDoc (fmap extract . unwrap $ xs)
-    v  <- getDoc out
-    let (v' :: TDoc) = Val $ myDocNav ys :*: zs :*: enrichPage v
-    buildPageAction' sourceFolder v' finalDocJsonFormat out
+  sequence_ $ outToc =>> \xs ->
+    (toFilePath . extract $ xs) %> \out -> do
+      nav  <- docNav
+      subs <- mapM getDoc (fmap extract . unwrap $ xs)
+      v    <- getDoc out
+      let (v' :: TDoc) = Val $ nav :*: subs :*: enrichPage v
+      buildPageAction' sourceFolder v' finalDocJsonFormat out
 
   (outputFolderFP <> "posts/index.html") %> \out -> 
     copyFileChanged (outputFolder </> $(mkRelFile "posts/pages/1/index.html")) out
