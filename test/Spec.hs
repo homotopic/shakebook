@@ -92,7 +92,10 @@ data PostIndex k a where
   PagesRoot   :: PostIndex k (PostSet k) -> PostIndex k Text
   PagesLinks  :: Int -> PostIndex k (PostSet k) -> PostIndex k (Zipper [] (Record Link))
 
-postIndex :: (Ix.Indexable '[Tag, Posted, YearMonth] (Record k), MonadAction m, MonadThrow m) => Ix.IxSet '[Tag, Posted, YearMonth] (Record k) -> PostIndex k a -> m a
+postIndex :: (Ix.Indexable '[Tag, Posted, YearMonth] (Record k), MonadAction m, MonadThrow m)
+          => Ix.IxSet '[Tag, Posted, YearMonth] (Record k)
+          -> PostIndex k a
+          -> m a
 postIndex rd AllPosts        = return rd
 postIndex rd (ByTag t)       = (Ix.@+ [t]) <$> postIndex rd AllPosts
 postIndex rd (ByYearMonth t) = (Ix.@+ [t]) <$> postIndex rd AllPosts
@@ -148,7 +151,7 @@ rules = do
     buildPageAction' sourceFolder v (recordJsonFormat finalPostJsonFormat) (fromWithin out)
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
-  void . sequence . flip extend toc' $ \xs -> (toFilePath <$> extract xs) %^> \out -> do
+  void $ sequence $ toc' =>> \xs -> (toFilePath <$> extract xs) %^> \out -> do
     let getDoc = readStage1Doc . fromWithin <=< blinkAndMapM sourceFolder withMdExtension
     ys <- mapM getDoc toc'
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
