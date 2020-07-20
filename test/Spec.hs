@@ -1,7 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
 
-import           Composite.Aeson
 import           Composite.Record
 import qualified Data.IxSet.Typed             as Ix
 import qualified Data.IxSet.Typed.Conversions as Ix
@@ -138,17 +137,17 @@ rules = do
 
   o' "index.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
-    v   <- readRawSingle (fromWithin src)
-    xs  <- postIx (RecentPosts numRecentPosts)
+    v   <- readRawSingle $ fromWithin src
+    xs  <- postIx $ RecentPosts numRecentPosts
     let (v' :: TMain) = Val $ xs :*: enrichPage v
-    buildPageAction' sourceFolder v' mainPageJsonFormat (fromWithin out)
+    buildPageAction' sourceFolder v' mainPageJsonFormat $ fromWithin out
 
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
     xs  <- postIx (DescPostedZ AllPosts) >>= seekOnThrow viewSrcPath (fromWithin src)
     nav <- blogNav
     let (v :: TPost) = Val $ nav :*: enrichPage (extract xs)
-    buildPageAction' sourceFolder v finalPostJsonFormat (fromWithin out)
+    buildPageAction' sourceFolder v finalPostJsonFormat $ fromWithin out
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   sequence_ $ toc' =>> \xs -> (toFilePath <$> extract xs) %^> \out -> do
@@ -157,18 +156,18 @@ rules = do
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
     let (v' :: TDoc) = Val $ myDocNav ys :*: zs :*: enrichPage v
-    buildPageAction' sourceFolder v' finalDocJsonFormat (fromWithin out)
+    buildPageAction' sourceFolder v' finalDocJsonFormat $ fromWithin out
 
   o' "posts/index.html" %^> \out -> 
-    copyFileChanged (outputFolder </> $(mkRelFile "posts/pages/1/index.html")) (fromWithin out)
+    copyFileChanged (outputFolder </> $(mkRelFile "posts/pages/1/index.html")) $ fromWithin out
 
   o' "posts/pages/*/index.html" %^> \out -> do
     let n = read . (!! 2) . splitOn "/" . toFilePath . extract $ out
-    xs  <- postIx $ Paginate postsPerPage (DescPosted AllPosts)
+    xs  <- postIx $ Paginate   postsPerPage $ DescPosted AllPosts
+    ys  <- postIx $ PagesLinks postsPerPage   AllPosts
     nav <- blogNav
-    ys  <- postIx $ PagesLinks postsPerPage AllPosts
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts" :*: RNil)
-    buildPageAction' sourceFolder v postIndexPageJsonFormat (fromWithin out)
+    buildPageAction' sourceFolder v postIndexPageJsonFormat $ fromWithin out
 
   o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -179,11 +178,11 @@ rules = do
     let zs = splitOn "/" . toFilePath . extract $ out
     let t = T.pack $ zs !! 2
     let n = read   $ zs !! 4
-    xs  <- postIx $ Paginate postsPerPage (DescPosted (ByTag (Tag t)))
     nav <- blogNav
-    ys  <- postIx $ PagesLinks postsPerPage (ByTag (Tag t))
+    xs  <- postIx $ Paginate   postsPerPage $ DescPosted $ ByTag $ Tag t
+    ys  <- postIx $ PagesLinks postsPerPage $ ByTag $ Tag t
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts tagged " <> t :*: RNil)
-    buildPageAction' sourceFolder v postIndexPageJsonFormat (fromWithin out)
+    buildPageAction' sourceFolder v postIndexPageJsonFormat $ fromWithin out
 
   o' "posts/months/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -194,19 +193,19 @@ rules = do
     let zs = splitOn "/" . toFilePath . extract $ out
     let t = parseISODateTime $ T.pack $ zs !! 2
     let t' = YearMonth $ toYearMonthPair t
-    let n = read   $ zs !! 4
-    xs  <- postIx $ Paginate postsPerPage (DescPosted $ ByYearMonth t')
+    let n = read $ zs !! 4
     nav <- blogNav
-    ys  <- postIx $ PagesLinks postsPerPage (ByYearMonth t')
+    xs  <- postIx $ Paginate   postsPerPage $ DescPosted $ ByYearMonth t'
+    ys  <- postIx $ PagesLinks postsPerPage $ ByYearMonth t'
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts from " <> defaultPrettyMonthFormat t :*: RNil)
-    buildPageAction' sourceFolder v postIndexPageJsonFormat (fromWithin out)
+    buildPageAction' sourceFolder v postIndexPageJsonFormat $ fromWithin out
 
   o' ["css//*", "js//*", "webfonts//*", "images//*"] |%^> \out ->
-    copyFileChanged (fromWithin $ blinkLocalDir sourceFolder out) (fromWithin out)
+    copyFileChanged (fromWithin $ blinkLocalDir sourceFolder out) $ fromWithin out
 
   o' "sitemap.xml" %^> \out -> do
-    xs <- postIx (DescPosted AllPosts)
-    buildSitemap (asSitemapUrl baseUrl <$> xs) (fromWithin out)
+    xs <- postIx $ DescPosted AllPosts
+    buildSitemap (asSitemapUrl baseUrl <$> xs) $ fromWithin out
 
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return
