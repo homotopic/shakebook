@@ -31,3 +31,12 @@ styleJsonFormat = JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) (th
 
 relFileJsonFormat :: JsonFormat e (Path Rel File)
 relFileJsonFormat = aesonJsonFormat
+
+instance DefaultJsonFormat (Html ()) where
+  defaultJsonFormat = lucidJsonFormat
+
+instance DefaultJsonFormat Style where
+  defaultJsonFormat = styleJsonFormat
+
+instance DefaultJsonFormat (Path Rel File) where
+  defaultJsonFormat = relFileJsonFormat
