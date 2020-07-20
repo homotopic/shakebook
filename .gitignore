@@ -3,3 +3,6 @@
 test/public
 .shake
 *.swp
+result*
+.stack-to-nix.cache
+*.swo
