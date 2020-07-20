@@ -120,9 +120,9 @@ rules = do
     logInfo $ "Loading " <> (displayShow $ toFilePath x)
     loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x
 
-  readRawSingle <- newCache $ readMD >=> parseValue' (recordJsonFormat rawSingleJsonFormat)
-  readRawPost   <- newCache $ readMD >=> parseValue' (recordJsonFormat rawPostJsonFormat)
-  readRawDoc    <- newCache $ readMD >=> parseValue' (recordJsonFormat rawDocJsonFormat)
+  readRawSingle <- newCache $ readMD >=> parseValue' rawSingleJsonFormat
+  readRawPost   <- newCache $ readMD >=> parseValue' rawPostJsonFormat
+  readRawDoc    <- newCache $ readMD >=> parseValue' rawDocJsonFormat
 
   readStage1Post <- newCache $ readRawPost >=> stage1Post
   readStage1Doc  <- newCache $ readRawDoc  >=> stage1Doc
@@ -141,14 +141,14 @@ rules = do
     v   <- readRawSingle (fromWithin src)
     xs  <- postIx (RecentPosts numRecentPosts)
     let (v' :: TMain) = Val $ xs :*: enrichPage v
-    buildPageAction' sourceFolder v' (recordJsonFormat mainPageJsonFormat) (fromWithin out)
+    buildPageAction' sourceFolder v' mainPageJsonFormat (fromWithin out)
 
   o' "posts/*.html" %^> \out -> do
     src <- blinkAndMapM sourceFolder withMdExtension out
     xs  <- postIx (DescPostedZ AllPosts) >>= seekOnThrow viewSrcPath (fromWithin src)
     nav <- blogNav
     let (v :: TPost) = Val $ nav :*: enrichPage (extract xs)
-    buildPageAction' sourceFolder v (recordJsonFormat finalPostJsonFormat) (fromWithin out)
+    buildPageAction' sourceFolder v finalPostJsonFormat (fromWithin out)
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
   void $ sequence $ toc' =>> \xs -> (toFilePath <$> extract xs) %^> \out -> do
@@ -157,7 +157,7 @@ rules = do
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
     v  <- getDoc out
     let (v' :: TDoc) = Val $ myDocNav ys :*: zs :*: enrichPage v
-    buildPageAction' sourceFolder v' (recordJsonFormat finalDocJsonFormat) (fromWithin out)
+    buildPageAction' sourceFolder v' finalDocJsonFormat (fromWithin out)
 
   o' "posts/index.html" %^> \out -> 
     copyFileChanged (outputFolder </> $(mkRelFile "posts/pages/1/index.html")) (fromWithin out)
@@ -168,7 +168,7 @@ rules = do
     nav <- blogNav
     ys  <- postIx $ PagesLinks postsPerPage AllPosts
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts" :*: RNil)
-    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) (fromWithin out)
+    buildPageAction' sourceFolder v postIndexPageJsonFormat (fromWithin out)
 
   o' "posts/tags/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -183,7 +183,7 @@ rules = do
     nav <- blogNav
     ys  <- postIx $ PagesLinks postsPerPage (ByTag (Tag t))
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts tagged " <> t :*: RNil)
-    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) (fromWithin out)
+    buildPageAction' sourceFolder v postIndexPageJsonFormat (fromWithin out)
 
   o' "posts/months/*/index.html" %^> \out -> do
     let t = (!! 2) . splitOn "/" . toFilePath . extract $ out
@@ -199,7 +199,7 @@ rules = do
     nav <- blogNav
     ys  <- postIx $ PagesLinks postsPerPage (ByYearMonth t')
     let (v :: TPostIndex) = Val $ enrichPage (unzipper ys :*: nav :*: extract (seek (n -1) xs) :*: "Posts from " <> defaultPrettyMonthFormat t :*: RNil)
-    buildPageAction' sourceFolder v (recordJsonFormat $ indexPageJsonFormat (recordJsonFormat stage1PostJsonFormat)) (fromWithin out)
+    buildPageAction' sourceFolder v postIndexPageJsonFormat (fromWithin out)
 
   o' ["css//*", "js//*", "webfonts//*", "images//*"] |%^> \out ->
     copyFileChanged (fromWithin $ blinkLocalDir sourceFolder out) (fromWithin out)
