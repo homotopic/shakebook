@@ -196,15 +196,15 @@ genBlogNavbarData a b f g xs =
       ul_ $ forM_ (groupDescBy xs) $ \(YearMonth (y, m), xs') -> do
         let t' = fromYearMonthPair (y, m)
         li_ $ a_ [href_ $ g t'] (toHtml $ f t')
-        ul_ $ forM (sortOn (Down . view (rlens (Proxy @FPosted))) xs') $ \x ->
-          li_ $ a_ [href_ $ view (rlens (Proxy @FUrl)) x] (toHtml $ view (rlens (Proxy @FTitle)) x)
+        ul_ $ forM (sortOn (Down . viewPosted) xs') $ \x ->
+          li_ $ a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
 genTocNavbarData :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
 genTocNavbarData (x :< xs) =
   ul_ $
     li_ $ do
-      a_ [href_ $ view (rlens (Proxy @FUrl)) x] (toHtml $ view (rlens (Proxy @FTitle)) x)
+      a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
       forM_ xs genTocNavbarData
 
 type RawIndexPage x = '[FUrl, FTitle, FElements x]
@@ -219,12 +219,11 @@ asSitemapUrl baseUrl x = SitemapUrl {
 
 -- | Convert a Post to an Atom Entry
 asAtomEntry :: (RElem FContent xs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs) => Record xs -> Atom.Entry
-asAtomEntry x = (Atom.nullEntry
-                  (view (rlens (Proxy @FUrl)) x)
-                  (Atom.TextString $ view (rlens (Proxy :: Proxy FTitle)) x)
-                  (T.pack $ formatTime defaultTimeLocale (iso8601DateFormat Nothing) $ view (rlens (Proxy @FPosted)) x)) {
-                    Atom.entryContent = Just $ Atom.TextContent (view (rlens (Proxy :: Proxy FContent)) x)
-  }
+asAtomEntry x = (Atom.nullEntry (viewUrl x)
+                  (Atom.TextString $ viewTitle x)
+                  (T.pack $ formatTime defaultTimeLocale (iso8601DateFormat Nothing) $ viewPosted x)) {
+                    Atom.entryContent = Just $ Atom.TextContent (viewContent x)
+                  }
 
 addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) -> Record xs -> m (Record (FUrl : xs))
 addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs
@@ -331,7 +330,7 @@ mainPageJsonFormat = field (listJsonFormat $ recordJsonFormat stage1PostJsonForm
 
 instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
   indices = Ix.ixList (Ix.ixFun (fmap Tag . viewTags))
-                    (Ix.ixFun (pure. Posted. viewPosted))
+                      (Ix.ixFun (pure . Posted . viewPosted))
                       (Ix.ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
 
 type PostSet x = Ix.IxSet '[Tag, Posted, YearMonth] (Record x)
