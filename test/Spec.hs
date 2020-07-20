@@ -227,32 +227,25 @@ rules = do
 
   phony "index" $ needIn outputFolder [indexHtml]
 
-  phony "post-index" $ do
-     k  <- postIx (PagesRoot AllPosts) >>= fromGroundedUrlD
-     ps <- postIx (PagesLinks postsPerPage AllPosts) >>= mapM (fromGroundedUrlD . viewUrl)
-     needIn outputFolder (fmap (</> indexHtml) ps)
-     needIn (outputFolder </> k) [indexHtml]
+  phony "docs" $ mapM withHtmlExtension tableOfContents >>= needIn outputFolder
+
+  phony "posts" $ simplePipeline withHtmlExtension ["posts/*.md"]
+
+  let phonyIndex x = do
+        k  <- postIx $ PagesRoot x
+        ps <- postIx $ PagesLinks postsPerPage x
+        xs <- mapM fromGroundedUrlD $ k : (viewUrl <$> unzipper ps)
+        needIn outputFolder $ fmap (</> indexHtml) xs
+
+  phony "post-index" $ phonyIndex AllPosts
 
   phony "by-tag-index" $ do
      xs <- postIx AllPosts
-     forM_ (Ix.indexKeys xs) \t@(Tag _) -> do
-       k  <- postIx (PagesRoot $ ByTag t) >>= fromGroundedUrlD
-       ps <- postIx (PagesLinks postsPerPage $ ByTag t) >>= mapM (fromGroundedUrlD . viewUrl)
-       needIn outputFolder (fmap (</> indexHtml) ps)
-       needIn (outputFolder </> k) [indexHtml]
+     forM_ (Ix.indexKeys xs) $ phonyIndex . ByTag
 
   phony "by-month-index" $ do
      xs <- postIx AllPosts
-     forM_ (Ix.indexKeys xs) \t@(YearMonth _) -> do
-       k  <- postIx (PagesRoot (ByYearMonth t)) >>= fromGroundedUrlD
-       ps <- postIx (PagesLinks postsPerPage (ByYearMonth t)) >>= mapM (fromGroundedUrlD . viewUrl)
-       needIn outputFolder (fmap (</> indexHtml) ps)
-       needIn (outputFolder </> k) [indexHtml]
-
-  phony "docs" $
-    mapM withHtmlExtension tableOfContents >>= needIn outputFolder
-
-  phony "posts" $ simplePipeline withHtmlExtension ["posts/*.md"]
+     forM_ (Ix.indexKeys xs) $ phonyIndex . ByYearMonth
 
   phony "clean" $ do
     logInfo $ "Cleaning files in " <> displayShow outputFolder
