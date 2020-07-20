@@ -117,7 +117,7 @@ rules :: ShakePlus LogFunc ()
 rules = do
 
   readMD <- newCache $ \x -> do
-    logInfo $ "Loading " <> (displayShow $ toFilePath x)
+    logInfo $ "Loading " <> displayShow (toFilePath x)
     loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x
 
   readRawSingle <- newCache $ readMD >=> parseValue' rawSingleJsonFormat
@@ -151,7 +151,7 @@ rules = do
     buildPageAction' sourceFolder v finalPostJsonFormat (fromWithin out)
 
   toc' <- mapM (mapM withHtmlExtension) $ fmap o' tableOfContents
-  void $ sequence $ toc' =>> \xs -> (toFilePath <$> extract xs) %^> \out -> do
+  sequence_ $ toc' =>> \xs -> (toFilePath <$> extract xs) %^> \out -> do
     let getDoc = readStage1Doc . fromWithin <=< blinkAndMapM sourceFolder withMdExtension
     ys <- mapM getDoc toc'
     zs <- mapM getDoc (fmap extract . unwrap $ xs)
