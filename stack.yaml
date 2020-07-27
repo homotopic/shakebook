@@ -4,6 +4,8 @@ packages:
 extra-deps:
 - aeson-with-0.1.1.1
 - binary-instances-1.0.0.1
+- ../../homotopic-tech/ixset-binary-instance
+- ../../homotopic-tech/path-binary-instance
 - composite-aeson-0.7.2.0
 - composite-base-0.7.2.0
 - comonad-extras-4.0.1
@@ -11,8 +13,10 @@ extra-deps:
 - lucid-cdn-0.1.1.0
 - path-extensions-0.1.1.0
 - path-like-0.2.0.1
+- path-0.8.0
 - shake-plus-0.3.0.0
-- shake-plus-extended-0.1.0.0
+- git: https://gitlab.com/shake-plus/shake-plus-extended
+  commit: 9fc6f6c0dea8e324c23e1c1e9e7ca1fa4bb2b82b
 - slick-1.0.1.1
 - text-time-0.2.0
 - vinyl-0.13.0

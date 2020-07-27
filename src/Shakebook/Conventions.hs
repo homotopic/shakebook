@@ -89,6 +89,7 @@ module Shakebook.Conventions (
 ) where
 
 import           Composite.Aeson
+import Data.Binary.Instances.Time
 import           Composite.Record
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
@@ -104,6 +105,8 @@ import           Shakebook.Aeson
 import qualified Shakebook.Feed           as Atom
 import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
+import Data.Binary
+import Path.Binary
 
 type FCdnImports    = "cdn-imports"  :-> Html ()
 type FContent       = "content"      :-> Text
@@ -129,6 +132,45 @@ type FTeaser        = "teaser"       :-> Text
 type FTitle         = "title"        :-> Text
 type FToc           = "toc"          :-> Html ()
 type FUrl           = "url"          :-> Text
+
+
+instance Binary (Record Link)
+
+instance Binary (Record Stage1Post)
+
+instance forall xs. ValuesAllHave '[NFData] xs => NFData (Record xs) where
+  rnf x = seq x ()
+
+instance Hashable (Record '[]) where
+  hashWithSalt n RNil = n `hashWithSalt` ()
+
+instance (Hashable a, Hashable (Record xs), x ~ (s :-> a)) => Hashable (Record (x : xs)) where
+  hashWithSalt n (x :*: xs) = n `hashWithSalt` x `hashWithSalt` xs
+
+instance (Ix.Indexable ixs x, Hashable x) => Hashable (Ix.IxSet ixs x) where
+  hashWithSalt n x = n `hashWithSalt` Ix.toList x
+
+
+instance Binary (Html ()) where
+  put = put . renderText
+  get = fmap toHtmlRaw (get :: Get Text)
+
+instance Hashable (Html ()) where
+  hashWithSalt n x = n `hashWithSalt` renderText x
+
+instance Eq (Html ()) where
+  a == b = renderText a == renderText b
+
+
+instance Hashable a => Hashable (s :-> a) where
+  hashWithSalt n x = hashWithSalt n $ getVal x
+
+instance Binary a => Binary (s :-> a) where
+  put = put . getVal
+  get = fmap (runIdentity . val) get
+
+instance NFData a => NFData (s :-> a) where
+  rnf x = seq x ()
 
 
 -- | View the "image" field of a JSON value.
@@ -165,15 +207,15 @@ viewUrl = view (rlens (Proxy @FUrl))
 
 -- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag Text
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData, Generic)
 
 -- | Posted index for a `Post` for use with `IxSet`.
 newtype Posted = Posted UTCTime
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable, NFData)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Generic, NFData)
 
 -- | YearMonth (yyyy, mm) index for a `Post` for use with `IxSet`.
 newtype YearMonth = YearMonth (Integer, Int)
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData)
+  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData, Generic)
 
 toYearMonthPair :: UTCTime -> (Integer, Int)
 toYearMonthPair = (\(a, b, _) -> (a, b)) . toGregorian . utctDay

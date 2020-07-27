@@ -90,6 +90,7 @@ dependencies:
 - aeson-better-errors
 - aeson-with >= 0.1.1.0
 - base >= 4.7 && < 5
+- binary
 - binary-instances
 - composite-aeson >= 0.7.2.0
 - composite-base >= 0.7.2.0
@@ -101,6 +102,7 @@ dependencies:
 - hashable-time
 - http-conduit
 - ixset-typed >= 0.5
+- ixset-binary-instance
 - ixset-typed-conversions
 - lens
 - lens-aeson
@@ -112,6 +114,7 @@ dependencies:
 - pandoc
 - pandoc-types
 - path
+- path-binary-instance
 - path-extensions >= 0.1.0.1
 - shake-plus >= 0.3.0.0
 - shake-plus-extended
