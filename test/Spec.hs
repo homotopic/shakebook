@@ -2,10 +2,7 @@
 {-# LANGUAGE TemplateHaskell           #-}
 
 import           Composite.Record
-import Data.Binary.Instances.Time
 import Data.Hashable.Time
-import Data.IxSet.Typed.Binary
-import Path.Binary
 import qualified Data.IxSet.Typed             as Ix
 import qualified Data.IxSet.Typed.Conversions as Ix
 import           Data.List.Split
@@ -23,7 +20,6 @@ import           Shakebook                    hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
 import           Test.Tasty.Golden
-import           Data.Binary
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -158,14 +154,14 @@ rules = do
   readStage1Post <- newCache $ readRawPost >=> stage1Post
   readStage1Doc  <- newCache $ readRawDoc  >=> stage1Doc
 
-  postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @'[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
+  postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
 
   addOracle $ \(PostsRoot ())                      -> return "/posts/"
   addOracle $ \(TagRoot (Tag t))                   -> askOracle (PostsRoot ()) >>= \x -> return (x <> "tags/" <> t <> "/")
-  addOracle $ \(YearMonthRoot (YearMonth t@(y,m))) -> askOracle (PostsRoot ()) >>= \x -> return (x <> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
+  addOracle $ \(YearMonthRoot (YearMonth (y,m))) -> askOracle (PostsRoot ()) >>= \x -> return (x <> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
 
-  let indexPages x ps = do
-        r <- askOracle x
+  let indexPages q ps = do
+        r <- askOracle q
         k <- Ix.toDescList (Proxy @Posted) <$> ps
         p <- paginate' postsPerPage k
         return $ unzipper $ extend (\x -> r <> "pages/" <> (T.pack $ show $ pos x + 1) :*: extract x :*: pos x + 1:*: RNil) p
@@ -213,11 +209,11 @@ rules = do
         let (v :: TPostIndex) = Val $ enrichPage (links :*: nav :*: title :*: (extract $ seek (pageno - 1) xs'))
         buildPageAction' sourceFolder v postIndexPageJsonFormat out
 
-  "posts/pages/*/index.html" /%> \out@(dir, fp) -> do
+  "posts/pages/*/index.html" /%> \(dir, fp) -> do
     let n = read . (!! 2) $ splitPath fp
     buildPostIndex "Posts" (PostPages ()) n $ dir </> fp
 
-  "posts/tags/*/pages/*/index.html" /%> \out@(dir, fp) -> do
+  "posts/tags/*/pages/*/index.html" /%> \(dir, fp) -> do
     let fp' = splitPath fp
     let t = T.pack $ fp' !! 2
     let n = read   $ fp' !! 4
@@ -246,11 +242,11 @@ rules = do
   ["css//*", "js//*", "webfonts//*", "images//*"] /|%> \(dir, fp) ->
     copyFileChanged (sourceFolder </> fp) (dir </> fp)
 
-{--
   "sitemap.xml" /%> \(dir, fp) -> do
-    xs <- Ix.toDescList (Proxy @FPosted) <$> postIx' ()
-    buildSitemap (asSitemapUrl baseUrl <$> xs) $ dir </> fp
---}
+    xs <- postIx' ()
+    let xs' = Ix.toDescList (Proxy @Posted) xs
+    buildSitemap (asSitemapUrl baseUrl <$> xs') $ dir </> fp
+
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return
 
@@ -294,6 +290,6 @@ main = do
    (lf, dlf) <- newLogFunc (setLogMinLevel LevelInfo logOptions')
    let env = SimpleSPlus lf outputFolder
    shake shakeOptions $ want ["clean"] >> runShakePlus env rules
-   shake shakeOptions $ want ["index", "docs", "posts", "post-index"] >> runShakePlus env rules
+   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "sitemap"] >> runShakePlus env rules
    defaultMain $ tests xs
    dlf
