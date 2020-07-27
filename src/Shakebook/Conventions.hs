@@ -33,11 +33,13 @@ module Shakebook.Conventions (
 , FTitle
 , FToc
 , FUrl
+, FPageNo
 
   -- * Lenses
 , viewContent
 , viewImage
 , viewModified
+, viewPageNo
 , viewPosted
 , viewSrcPath
 , viewTags
@@ -89,7 +91,7 @@ module Shakebook.Conventions (
 ) where
 
 import           Composite.Aeson
-import Data.Binary.Instances.Time
+import Data.Binary.Instances.Time()
 import           Composite.Record
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
@@ -103,6 +105,7 @@ import qualified RIO.Text                 as T
 import           RIO.Time
 import           Shakebook.Aeson
 import qualified Shakebook.Feed           as Atom
+import           Shakebook.Lucid()
 import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
 import Data.Binary
@@ -116,6 +119,7 @@ type FImage         = "image"        :-> Maybe Text
 type FId            = "id"           :-> Text
 type FModified      = "modified"     :-> UTCTime
 type FNext          = "next"         :-> Html ()
+type FPageNo        = "pageno"       :-> Int
 type FPageLinks     = "page-links"   :-> [Record Link]
 type FPrettyDate    = "pretty-date"  :-> UTCTime
 type FPrevious      = "previous"     :-> Html ()
@@ -134,11 +138,17 @@ type FToc           = "toc"          :-> Html ()
 type FUrl           = "url"          :-> Text
 
 
-instance Binary (Record Link)
+instance Binary (Record '[])
 
-instance Binary (Record Stage1Post)
+instance (Binary a, Binary (Record xs), x ~ (s :-> a)) => Binary (Record (x : xs)) where
+  put (x :*: xs) = put x >> put xs
+  get = liftA2 (:*:) get get
 
-instance forall xs. ValuesAllHave '[NFData] xs => NFData (Record xs) where
+--instance Binary (Record Link)
+
+--instance Binary (Record Stage1Post)
+
+instance NFData (Record xs) where
   rnf x = seq x ()
 
 instance Hashable (Record '[]) where
@@ -147,21 +157,6 @@ instance Hashable (Record '[]) where
 instance (Hashable a, Hashable (Record xs), x ~ (s :-> a)) => Hashable (Record (x : xs)) where
   hashWithSalt n (x :*: xs) = n `hashWithSalt` x `hashWithSalt` xs
 
-instance (Ix.Indexable ixs x, Hashable x) => Hashable (Ix.IxSet ixs x) where
-  hashWithSalt n x = n `hashWithSalt` Ix.toList x
-
-
-instance Binary (Html ()) where
-  put = put . renderText
-  get = fmap toHtmlRaw (get :: Get Text)
-
-instance Hashable (Html ()) where
-  hashWithSalt n x = n `hashWithSalt` renderText x
-
-instance Eq (Html ()) where
-  a == b = renderText a == renderText b
-
-
 instance Hashable a => Hashable (s :-> a) where
   hashWithSalt n x = hashWithSalt n $ getVal x
 
@@ -169,7 +164,7 @@ instance Binary a => Binary (s :-> a) where
   put = put . getVal
   get = fmap (runIdentity . val) get
 
-instance NFData a => NFData (s :-> a) where
+instance NFData (s :-> a) where
   rnf x = seq x ()
 
 
@@ -184,6 +179,10 @@ viewImage = view (rlens (Proxy @FImage))
 -- | View the "modified" field of a JSON value.
 viewModified :: RElem FModified xs => Record xs -> UTCTime
 viewModified = view (rlens (Proxy @FModified))
+
+-- | View the "pageno" field of a JSON Value as a UTCTime.
+viewPageNo :: RElem FPageNo xs => Record xs -> Int
+viewPageNo = view (rlens (Proxy @FPageNo))
 
 -- | View the "date" field of a JSON Value as a UTCTime.
 viewPosted :: RElem FPosted xs => Record xs -> UTCTime
@@ -381,13 +380,15 @@ finalPostJsonFormatRecord = field lucidJsonFormat
 finalPostJsonFormat :: JsonFormat e (Record FinalPost)
 finalPostJsonFormat = recordJsonFormat finalPostJsonFormatRecord
 
-type IndexPage x = Enriched (FPageLinks : FToc : FItems x : FTitle : '[])
+type IndexPage x = Enriched (FPageLinks : FToc : FTitle : FUrl : FItems x : FPageNo : '[])
 
 indexPageJsonFormatRecord :: JsonFormat e (Record x) -> JsonFormatRecord e (IndexPage x)
 indexPageJsonFormatRecord x = enrichedXJsonFormatRecord $ field (listJsonFormat linkJsonFormat)
                                                        :& field lucidJsonFormat
-                                                       :& field (listJsonFormat x)
                                                        :& field textJsonFormat
+                                                       :& field textJsonFormat
+                                                       :& field (listJsonFormat x)
+                                                       :& field integralJsonFormat
                                                        :& RNil
 
 type PostIndexPage = IndexPage Stage1Post

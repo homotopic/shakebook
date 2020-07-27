@@ -102,8 +102,9 @@ dependencies:
 - hashable-time
 - http-conduit
 - ixset-typed >= 0.5
-- ixset-binary-instance
+- ixset-typed-binary-instance
 - ixset-typed-conversions
+- ixset-typed-hashable-instance
 - lens
 - lens-aeson
 - lucid
@@ -117,7 +118,7 @@ dependencies:
 - path-binary-instance
 - path-extensions >= 0.1.0.1
 - shake-plus >= 0.3.0.0
-- shake-plus-extended
+- shake-plus-extended >= 0.1.2.0
 - sitemap-gen
 - slick >= 1.0.1.1
 - split

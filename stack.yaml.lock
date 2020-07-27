@@ -19,6 +19,20 @@ packages:
   original:
     hackage: binary-instances-1.0.0.1
 - completed:
+    hackage: ixset-typed-binary-instance-0.1.0.0@sha256:34b9cb1b501ede194b5c94477d0d4cbf4fd16f2ad3c83d67f41b10b048ba011f,989
+    pantry-tree:
+      size: 292
+      sha256: 1f9b947919b4da3b0648b7623c3406366ac58d8d9819d5d77df2ab4ec0cf538b
+  original:
+    hackage: ixset-typed-binary-instance-0.1.0.0
+- completed:
+    hackage: ixset-typed-hashable-instance-0.1.0.1@sha256:b48d3559b53afcfb349db52046e3717031c496c381627a0eea53052f2467d803,996
+    pantry-tree:
+      size: 296
+      sha256: 98508fc243c1fd4698938da773de7bc28bb90bf4053fca123d25e25ba95e4e27
+  original:
+    hackage: ixset-typed-hashable-instance-0.1.0.1
+- completed:
     hackage: composite-aeson-0.7.2.0@sha256:b483fcc3b5de01435d143bcae3404d01bb0a9d15322029b2dd2d541bd1475f93,3785
     pantry-tree:
       size: 1402
@@ -54,6 +68,13 @@ packages:
   original:
     hackage: lucid-cdn-0.1.1.0
 - completed:
+    hackage: path-binary-instance-0.1.0.0@sha256:0d9f36ab19f7f4ef6e9d25fba10fe6876010f69ce26e5c98fd45c24e4b365300,751
+    pantry-tree:
+      size: 273
+      sha256: f6d35558a6e2b26748d907c35af5d9660dc0083acfcf3a802a6168bfe41bda8e
+  original:
+    hackage: path-binary-instance-0.1.0.0
+- completed:
     hackage: path-extensions-0.1.1.0@sha256:79362f8ffe2f1284456c2da28ddf7c6fb2e1da6814b8d8f3e9997e6643cbd666,1151
     pantry-tree:
       size: 276
@@ -82,16 +103,12 @@ packages:
   original:
     hackage: shake-plus-0.3.0.0
 - completed:
-    name: shake-plus-extended
-    version: 0.1.0.0
-    git: https://gitlab.com/shake-plus/shake-plus-extended
+    hackage: shake-plus-extended-0.1.2.0@sha256:66ebaf89ec4a371f80bd144fd65dcbe0ad5f5fb3ba8e8c67ec12ec72003747c9,1855
     pantry-tree:
-      size: 946
-      sha256: 93c6230a9b055bcf459d4f86afdf42556e46d3a921b1cbc6fc8e7c92b4eb166a
-    commit: 9fc6f6c0dea8e324c23e1c1e9e7ca1fa4bb2b82b
+      size: 687
+      sha256: 1236b055cc08c08057a4198ae5e13886d369f72c03e6119a9507da4f4a28daf0
   original:
-    git: https://gitlab.com/shake-plus/shake-plus-extended
-    commit: 9fc6f6c0dea8e324c23e1c1e9e7ca1fa4bb2b82b
+    hackage: shake-plus-extended-0.1.2.0
 - completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
