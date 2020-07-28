@@ -93,32 +93,6 @@ instance HasLogFunc SimpleSPlus where
 instance HasLocalOut SimpleSPlus where
   localOutL = lens localOut undefined
 
-newtype BlogNav = BlogNav ()
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-newtype RecentPosts = RecentPosts ()
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-instance NFData (Html ()) where
-  rnf a = seq a ()
-
-type instance RuleResult BlogNav = Html ()
-
-type instance RuleResult RecentPosts = [Record Stage1Post]
-
-data PostsFilter = AllPosts | ByTag Tag | ByYearMonth YearMonth
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-newtype IndexRoot = IndexRoot PostsFilter
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-type instance RuleResult IndexRoot = Text
-
-newtype IndexPages = IndexPages PostsFilter
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-type instance RuleResult IndexPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
-
 rules :: ShakePlus SimpleSPlus ()
 rules = do
 
@@ -153,15 +127,13 @@ rules = do
 
   addOracleCache $ \(IndexPages x) -> indexPages x
 
-  addOracleCache $ \(BlogNav ()) -> myBlogNav <$> postIx' ()
-
-  addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
-
   let correspondingMD   = withMdExtension . (sourceFolder </>)
 
       getDoc   = correspondingMD >=> readStage1Doc
 
-      docNav   = myDocNav <$> mapM getDoc tableOfContents
+  addOracleCache $ \(BlogNav ())     -> myBlogNav <$> postIx' ()
+  addOracleCache $ \(DocNav ())      -> myDocNav  <$> mapM getDoc tableOfContents
+  addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
 
   "index.html" /%> \(dir, fp) -> do
     v   <- readRawSingle =<< correspondingMD fp
@@ -178,7 +150,7 @@ rules = do
 
   sequence_ $ tableOfContents =>> \xs ->
     (toFilePath . extract $ xs) /%> \(dir, fp) -> do
-      nav  <- docNav
+      nav  <- askOracle $ DocNav ()
       subs <- mapM getDoc (fmap extract . unwrap $ xs)
       v    <- getDoc fp
       let (v' :: TDoc) = Val $ nav :*: subs :*: enrichPage v

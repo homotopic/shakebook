@@ -66,7 +66,14 @@ module Shakebook.Conventions (
 , Stage1Post
 , RawDoc
 , Stage1Doc
-, PostSet
+
+  -- * Oracles
+, BlogNav(..)
+, DocNav(..)
+, IndexRoot(..)
+, IndexPages(..)
+, RecentPosts(..)
+, PostsFilter(..)
 
   -- * Formatting
 , basicMDJsonFormatRecord
@@ -134,32 +141,6 @@ type FTeaser        = "teaser"       :-> Text
 type FTitle         = "title"        :-> Text
 type FToc           = "toc"          :-> Html ()
 type FUrl           = "url"          :-> Text
-
-
-instance Binary (Record '[])
-
-instance (Binary a, Binary (Record xs), x ~ (s :-> a)) => Binary (Record (x : xs)) where
-  put (x :*: xs) = put x >> put xs
-  get = liftA2 (:*:) get get
-
-instance NFData (Record xs) where
-  rnf x = seq x ()
-
-instance Hashable (Record '[]) where
-  hashWithSalt n RNil = n `hashWithSalt` ()
-
-instance (Hashable a, Hashable (Record xs), x ~ (s :-> a)) => Hashable (Record (x : xs)) where
-  hashWithSalt n (x :*: xs) = n `hashWithSalt` x `hashWithSalt` xs
-
-instance Hashable a => Hashable (s :-> a) where
-  hashWithSalt n x = hashWithSalt n $ getVal x
-
-instance Binary a => Binary (s :-> a) where
-  put = put . getVal
-  get = fmap (runIdentity . val) get
-
-instance NFData (s :-> a) where
-  rnf x = seq x ()
 
 
 -- | View the "image" field of a JSON value.
@@ -404,7 +385,37 @@ instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
                       (Ix.ixFun (pure . Posted . viewPosted))
                       (Ix.ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
 
-type PostSet x = Ix.IxSet '[Tag, Posted, YearMonth] (Record x)
+newtype BlogNav = BlogNav ()
+  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+
+type instance RuleResult BlogNav = Html ()
+
+newtype DocNav = DocNav ()
+  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+
+type instance RuleResult DocNav = Html ()
+
+newtype RecentPosts = RecentPosts ()
+  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+
+type instance RuleResult RecentPosts = [Record Stage1Post]
+
+data PostsFilter = AllPosts | ByTag Tag | ByYearMonth YearMonth
+  deriving (Eq, Show, Generic)
+
+instance NFData   PostsFilter
+instance Hashable PostsFilter
+instance Binary   PostsFilter
+
+newtype IndexRoot = IndexRoot PostsFilter
+  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+
+type instance RuleResult IndexRoot = Text
+
+newtype IndexPages = IndexPages PostsFilter
+  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+
+type instance RuleResult IndexPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
 
 type TMain      = "templates/index.html" :-> Record MainPage
 type TDoc       = "templates/docs.html"  :-> Record FinalDoc

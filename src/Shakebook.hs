@@ -34,6 +34,7 @@ import Control.Comonad.Zipper.Extra
 import Data.Aeson
 import Development.Shake.Plus
 import Shakebook.Aeson
+import Shakebook.Composite()
 import Shakebook.Conduit
 import Shakebook.Conventions
 import Shakebook.Defaults

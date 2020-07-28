@@ -14,3 +14,6 @@ instance Hashable (Html ()) where
 
 instance Eq (Html ()) where
   a == b = renderText a == renderText b
+
+instance NFData (Html ()) where
+  rnf a = seq a ()
