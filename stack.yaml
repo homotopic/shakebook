@@ -1,4 +1,4 @@
-resolver: lts-16.5
+resolver: nightly-2020-07-28
 packages:
 - .
 extra-deps:
@@ -6,11 +6,17 @@ extra-deps:
 - binary-instances-1.0.0.1
 - ixset-typed-binary-instance-0.1.0.0
 - ixset-typed-hashable-instance-0.1.0.1
-- composite-aeson-0.7.2.0
-- composite-base-0.7.2.0
+- git: https://github.com/ConferOpenSource/composite
+  commit: 699be59c1922d475823d2c0d6240d558f4d1e4fe
+  subdirs:
+  - composite-aeson
+  - composite-base
 - comonad-extras-4.0.1
+- hslua-1.1.2
 - ixset-typed-conversions-0.1.0.0
 - lucid-cdn-0.1.1.0
+- jira-wiki-markup-1.3.2
+- pandoc-2.10
 - path-binary-instance-0.1.0.0
 - path-extensions-0.1.1.0
 - path-like-0.2.0.1
@@ -23,7 +29,6 @@ extra-deps:
 - text-time-0.2.0
 - vinyl-0.13.0
 - zipper-extra-0.1.3.0
-allow-newer: true
 nix:
   enable: false
   packages: [zlib]
