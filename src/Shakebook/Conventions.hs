@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 {- |
    Module     : Shakebook.Conventions
@@ -35,16 +36,32 @@ module Shakebook.Conventions (
 , FUrl
 , FPageNo
 
-  -- * Lenses
-, viewContent
-, viewImage
-, viewModified
-, viewPageNo
-, viewPosted
-, viewSrcPath
-, viewTags
-, viewTitle
-, viewUrl
+
+, fCdnImports
+, fContent
+, fDescription
+, fHighlighting
+, fItems
+, fPageLinks
+, fPosted
+, fImage
+, fModified
+, fNext
+, fRecentPosts
+, fPrettyDate
+, fPrevious
+, fSiteTitle
+, fSocial
+, fSrcPath
+, fSubsections
+, fTags
+, fTagLinks
+, fTeaser
+, fTitle
+, fToc
+, fUrl
+, fPageNo
+, fId
 
   -- * Generations
 , genBlogNav
@@ -100,6 +117,7 @@ module Shakebook.Conventions (
 import           Composite.Aeson
 import Data.Binary.Instances.Time()
 import           Composite.Record
+import Composite.TH
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Data.Hashable.Time
@@ -116,68 +134,40 @@ import           Shakebook.Lucid()
 import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
 
-type FCdnImports    = "cdn-imports"  :-> Html ()
-type FContent       = "content"      :-> Text
-type FDescription   = "description"  :-> Text
-type FHighlighting  = "highlighting" :-> Style
-type FImage         = "image"        :-> Maybe Text
-type FId            = "id"           :-> Text
-type FModified      = "modified"     :-> UTCTime
-type FNext          = "next"         :-> Html ()
-type FPageNo        = "pageno"       :-> Int
-type FPageLinks     = "page-links"   :-> [Record Link]
-type FPrettyDate    = "pretty-date"  :-> UTCTime
-type FPrevious      = "previous"     :-> Html ()
-type FPosted        = "posted"       :-> UTCTime
-type FItems x       = "items"        :-> [Record x]
-type FRecentPosts x = "recent-posts" :-> [Record x]
-type FSiteTitle     = "site-title"   :-> Text
-type FSrcPath       = "src-path"     :-> Path Rel File
-type FSocial        = "social"       :-> [Record Link]
-type FSubsections x = "subsections"  :-> [Record x]
-type FTags          = "tags"         :-> [Text]
-type FTagLinks      = "tag-links"    :-> [Record Link]
-type FTeaser        = "teaser"       :-> Text
-type FTitle         = "title"        :-> Text
-type FToc           = "toc"          :-> Html ()
-type FUrl           = "url"          :-> Text
+withLensesAndProxies [d|
+  type FId            = "id"           :-> Text
+  type FUrl           = "url"          :-> Text
+  |]
 
+type Link = '[FId, FUrl]
 
--- | View the "image" field of a JSON value.
-viewContent :: RElem FContent xs => Record xs -> Text
-viewContent = view (rlens (Proxy @FContent))
+withLensesAndProxies [d|
+  type FCdnImports    = "cdn-imports"  :-> Html ()
+  type FContent       = "content"      :-> Text
+  type FDescription   = "description"  :-> Text
+  type FHighlighting  = "highlighting" :-> Style
+  type FImage         = "image"        :-> Maybe Text
 
--- | View the "image" field of a JSON value.
-viewImage :: RElem FImage xs => Record xs -> Maybe Text
-viewImage = view (rlens (Proxy @FImage))
+  type FModified      = "modified"     :-> UTCTime
+  type FNext          = "next"         :-> Html ()
+  type FPageNo        = "pageno"       :-> Int
+  type FPageLinks     = "page-links"   :-> [Record Link]
+  type FPrettyDate    = "pretty-date"  :-> UTCTime
+  type FPrevious      = "previous"     :-> Html ()
+  type FPosted        = "posted"       :-> UTCTime
+  type FItems x       = "items"        :-> [Record x]
+  type FRecentPosts x = "recent-posts" :-> [Record x]
+  type FSiteTitle     = "site-title"   :-> Text
+  type FSrcPath       = "src-path"     :-> Path Rel File
+  type FSocial        = "social"       :-> [Record Link]
+  type FSubsections x = "subsections"  :-> [Record x]
+  type FTags          = "tags"         :-> [Text]
+  type FTagLinks      = "tag-links"    :-> [Record Link]
+  type FTeaser        = "teaser"       :-> Text
+  type FTitle         = "title"        :-> Text
+  type FToc           = "toc"          :-> Html ()
 
--- | View the "modified" field of a JSON value.
-viewModified :: RElem FModified xs => Record xs -> UTCTime
-viewModified = view (rlens (Proxy @FModified))
-
--- | View the "pageno" field of a JSON Value as a UTCTime.
-viewPageNo :: RElem FPageNo xs => Record xs -> Int
-viewPageNo = view (rlens (Proxy @FPageNo))
-
--- | View the "date" field of a JSON Value as a UTCTime.
-viewPosted :: RElem FPosted xs => Record xs -> UTCTime
-viewPosted = view (rlens (Proxy @FPosted))
-
--- | View the "tags" field of a JSON Value as a list.
-viewSrcPath :: RElem FSrcPath xs => Record xs -> Path Rel File
-viewSrcPath = view (rlens (Proxy @FSrcPath))
-
--- | View the "tags" field of a JSON Value as a list.
-viewTags :: RElem FTags xs => Record xs -> [Text]
-viewTags = view (rlens (Proxy @FTags))
-
--- | View the "title" field of a JSON Value.
-viewTitle :: RElem FTitle xs => Record xs -> Text
-viewTitle = view (rlens (Proxy @FTitle))
-
--- | View the "url" field of a Record.
-viewUrl :: RElem FUrl xs => Record xs -> Text
-viewUrl = view (rlens (Proxy @FUrl))
+  |]
 
 -- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag Text
@@ -212,33 +202,33 @@ genBlogNav a b f g xs =
       ul_ $ forM_ (groupDescBy xs) $ \(YearMonth (y, m), xs') -> do
         let t' = fromYearMonthPair (y, m)
         li_ $ a_ [href_ $ g t'] (toHtml $ f t')
-        ul_ $ forM (sortOn (Down . viewPosted) xs') $ \x ->
-          li_ $ a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
+        ul_ $ forM (sortOn (Down . view fPosted) xs') $ \x ->
+          li_ $ a_ [href_ $ view fUrl x] (toHtml $ view fTitle x)
 
 -- | Create a toc navbar object for a docs section, with layers "toc1", "toc2" and "toc3".
 genDocNav :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
 genDocNav (x :< xs) = ul_ $ li_ $ do
-      a_ [href_ $ viewUrl x] (toHtml $ viewTitle x)
+      a_ [href_ $ view fUrl x] (toHtml $ view fTitle x)
       forM_ xs genDocNav
 
 asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
 asSitemapUrl baseUrl x = SitemapUrl {
-   sitemapLocation = baseUrl <> viewUrl x
- , sitemapLastModified = Just (viewPosted x)
+   sitemapLocation = baseUrl <> view fUrl x
+ , sitemapLastModified = Just (view fPosted x)
  , sitemapChangeFrequency = Nothing
  , sitemapPriority = Nothing
 }
 
 -- | Convert a Post to an Atom Entry
 asAtomEntry :: (RElem FContent xs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs) => Record xs -> Atom.Entry
-asAtomEntry x = (Atom.nullEntry (viewUrl x)
-                  (Atom.TextString $ viewTitle x)
-                  (T.pack $ formatTime defaultTimeLocale (iso8601DateFormat Nothing) $ viewPosted x)) {
-                    Atom.entryContent = Just $ Atom.TextContent (viewContent x)
+asAtomEntry x = (Atom.nullEntry (view fUrl x)
+                  (Atom.TextString $ view fTitle x)
+                  (T.pack $ formatTime defaultTimeLocale (iso8601DateFormat Nothing) $ view fPosted x)) {
+                    Atom.entryContent = Just $ Atom.TextContent (view fContent x)
                   }
 
 addDerivedUrl :: (MonadThrow m, RElem FSrcPath xs) => (Path Rel File -> m Text) -> Record xs -> m (Record (FUrl : xs))
-addDerivedUrl f xs = f (viewSrcPath xs) >>= \x -> return $ x :*: xs
+addDerivedUrl f xs = f (view fSrcPath xs) >>= \x -> return $ x :*: xs
 
 --- Stage 0 Types
 
@@ -292,7 +282,6 @@ rawSingleJsonFormat = recordJsonFormat rawSingleJsonFormatRecord
 --- Stage 1 Types
 
 -- Simple link object, used in a list for tags and social links.
-type Link = '[FId, FUrl]
 
 linkJsonFormatRecord :: JsonFormatRecord e Link
 linkJsonFormatRecord = field textJsonFormat :& field textJsonFormat :& RNil
@@ -381,9 +370,9 @@ mainPageJsonFormat :: JsonFormat e (Record MainPage)
 mainPageJsonFormat = recordJsonFormat mainPageJsonFormatRecord
 
 instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
-  indices = Ix.ixList (Ix.ixFun (fmap Tag . viewTags))
-                      (Ix.ixFun (pure . Posted . viewPosted))
-                      (Ix.ixFun (pure . YearMonth . toYearMonthPair . viewPosted))
+  indices = Ix.ixList (Ix.ixFun (fmap Tag . view fTags))
+                      (Ix.ixFun (pure . Posted . view fPosted))
+                      (Ix.ixFun (pure . YearMonth . toYearMonthPair . view fPosted))
 
 newtype BlogNav = BlogNav ()
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)

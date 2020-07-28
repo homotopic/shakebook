@@ -5,6 +5,27 @@
 
 packages:
 - completed:
+    hackage: composite-aeson-0.7.3.0@sha256:fe15e0b93d40bfaaa17ad65cf168b18f7ec15c850b8269b653565965be0b0a6c,3785
+    pantry-tree:
+      size: 1402
+      sha256: d32a7d3275fd157e33ba2e18052122cd0ef2a8fb132a6bb5e4cf4fb1ddb331d4
+  original:
+    hackage: composite-aeson-0.7.3.0
+- completed:
+    hackage: composite-base-0.7.3.0@sha256:5c0ca73989790ca4d8247cb42ec1c5399b85b307b581383fd3b148e0da2df3e8,2896
+    pantry-tree:
+      size: 604
+      sha256: ef7ae8c3ea8a0708bbee1b8aded6cde6cc4c887648be081a765b70110823f220
+  original:
+    hackage: composite-base-0.7.3.0
+- completed:
+    hackage: hslua-1.1.2@sha256:6c231b2af447430d1ed04f065d40bb6882ece93cc7f32f4051dc99deb69beeae,9694
+    pantry-tree:
+      size: 6820
+      sha256: 62e61f6d08191159a070dcbaa20284a581835de620105a254dbee1c7ddfabd9d
+  original:
+    hackage: hslua-1.1.2
+- completed:
     hackage: ixset-typed-binary-instance-0.1.0.0@sha256:34b9cb1b501ede194b5c94477d0d4cbf4fd16f2ad3c83d67f41b10b048ba011f,989
     pantry-tree:
       size: 292
@@ -18,39 +39,6 @@ packages:
       sha256: 98508fc243c1fd4698938da773de7bc28bb90bf4053fca123d25e25ba95e4e27
   original:
     hackage: ixset-typed-hashable-instance-0.1.0.1
-- completed:
-    subdir: composite-aeson
-    name: composite-aeson
-    version: 0.7.2.0
-    git: https://github.com/ConferOpenSource/composite
-    pantry-tree:
-      size: 1507
-      sha256: 8298ecda06dc7633056a01eb5fe21a80adf685323cfa131def1a48cc0af51f5e
-    commit: 699be59c1922d475823d2c0d6240d558f4d1e4fe
-  original:
-    subdir: composite-aeson
-    git: https://github.com/ConferOpenSource/composite
-    commit: 699be59c1922d475823d2c0d6240d558f4d1e4fe
-- completed:
-    subdir: composite-base
-    name: composite-base
-    version: 0.7.2.0
-    git: https://github.com/ConferOpenSource/composite
-    pantry-tree:
-      size: 708
-      sha256: b700985b4e89d5123d3c89dca37b587f6e32d05d62f8c39acc46700722c1249e
-    commit: 699be59c1922d475823d2c0d6240d558f4d1e4fe
-  original:
-    subdir: composite-base
-    git: https://github.com/ConferOpenSource/composite
-    commit: 699be59c1922d475823d2c0d6240d558f4d1e4fe
-- completed:
-    hackage: hslua-1.1.2@sha256:6c231b2af447430d1ed04f065d40bb6882ece93cc7f32f4051dc99deb69beeae,9694
-    pantry-tree:
-      size: 6820
-      sha256: 62e61f6d08191159a070dcbaa20284a581835de620105a254dbee1c7ddfabd9d
-  original:
-    hackage: hslua-1.1.2
 - completed:
     hackage: jira-wiki-markup-1.3.2@sha256:b5f0901208a0ee07aff60f5356aeb851b7aa7950c75a18a15fd34247a35886d8,3819
     pantry-tree:

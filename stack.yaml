@@ -2,14 +2,11 @@ resolver: nightly-2020-07-28
 packages:
 - .
 extra-deps:
+- composite-aeson-0.7.3.0
+- composite-base-0.7.3.0
+- hslua-1.1.2
 - ixset-typed-binary-instance-0.1.0.0
 - ixset-typed-hashable-instance-0.1.0.1
-- git: https://github.com/ConferOpenSource/composite
-  commit: 699be59c1922d475823d2c0d6240d558f4d1e4fe
-  subdirs:
-  - composite-aeson
-  - composite-base
-- hslua-1.1.2
 - jira-wiki-markup-1.3.2
 - pandoc-2.10
 - path-binary-instance-0.1.0.0

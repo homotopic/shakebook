@@ -65,13 +65,13 @@ addUrl :: (MonadThrow m, RElem FSrcPath xs) => Record xs -> m (Record (FUrl : xs
 addUrl = addDerivedUrl (fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder)
 
 addTagLinks :: RElem FTags xs => Record xs -> Record (FTagLinks : xs)
-addTagLinks xs = (fmap (\x -> x :*: ("/posts/tags/" <> x) :*: RNil) . viewTags $ xs ) :*: xs
+addTagLinks xs = (fmap (\x -> x :*: ("/posts/tags/" <> x) :*: RNil) . view fTags $ xs ) :*: xs
 
 addTeaser :: RElem FContent xs => Record xs -> Record (FTeaser : xs)
-addTeaser xs = head (T.splitOn "<!-- more -->" (viewContent xs)) :*: xs
+addTeaser xs = head (T.splitOn "<!-- more -->" (view fContent xs)) :*: xs
 
 addPrettyDate :: RElem FPosted xs => Record xs -> Record (FPrettyDate : xs)
-addPrettyDate xs = viewPosted xs :*: xs
+addPrettyDate xs = view fPosted xs :*: xs
 
 stage1Post :: (MonadAction m, MonadThrow m) => Record RawPost -> m (Record Stage1Post)
 stage1Post = addUrl >=> return . addPrettyDate . addTagLinks . addTeaser
@@ -143,7 +143,7 @@ rules = do
 
   "posts/*.html" /%> \(dir, fp) -> do
     src <- correspondingMD fp
-    xs  <- postIx' () >>= Ix.toZipperDesc (Proxy @Posted) >>= seekOnThrow viewSrcPath src
+    xs  <- postIx' () >>= Ix.toZipperDesc (Proxy @Posted) >>= seekOnThrow (view fSrcPath) src
     nav <- askOracle $ BlogNav ()
     let (v :: TPost) = Val $ nav :*: enrichPage (extract xs)
     buildPageAction' sourceFolder v finalPostJsonFormat $ dir </> fp
@@ -159,8 +159,8 @@ rules = do
   let buildPostIndex title query pageno out = do
         nav <- askOracle $ BlogNav ()
         xs  <- askOracle query
-        xs' <- zipper' $ sortOn (Down . viewPageNo) xs
-        let links = fmap (\x ->  T.pack (show (viewPageNo x)) :*: viewUrl x :*: RNil) (unzipper xs')
+        xs' <- zipper' $ sortOn (Down . view fPageNo) xs
+        let links = fmap (\x ->  T.pack (show (view fPageNo x)) :*: view fUrl x :*: RNil) (unzipper xs')
         let (v :: TPostIndex) = Val $ enrichPage (links :*: nav :*: title :*: extract (seek (pageno - 1) xs'))
         buildPageAction' sourceFolder v postIndexPageJsonFormat out
 
@@ -216,7 +216,7 @@ rules = do
   let phonyIndex x = do
         k  <- askOracle $ IndexRoot x
         ps <- askOracle $ IndexPages x
-        xs <- mapM fromGroundedUrlD $ k : (viewUrl <$> ps)
+        xs <- mapM fromGroundedUrlD $ k : (view fUrl <$> ps)
         needIn outputFolder $ fmap (</> $(mkRelFile "index.html")) xs
 
   phony "post-index" $ do
