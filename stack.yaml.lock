@@ -103,12 +103,16 @@ packages:
   original:
     hackage: shake-plus-0.3.0.0
 - completed:
-    hackage: shake-plus-extended-0.1.2.0@sha256:66ebaf89ec4a371f80bd144fd65dcbe0ad5f5fb3ba8e8c67ec12ec72003747c9,1855
+    name: shake-plus-extended
+    version: 0.1.2.0
+    git: https://gitlab.com/shake-plus/shake-plus-extended
     pantry-tree:
-      size: 687
-      sha256: 1236b055cc08c08057a4198ae5e13886d369f72c03e6119a9507da4f4a28daf0
+      size: 901
+      sha256: 1eef479bf03caf0c74d4aba421254a968f4b540f62dbe421b65b55d310eba398
+    commit: f7d0886665cf04d32278f55c5e8ae66115083098
   original:
-    hackage: shake-plus-extended-0.1.2.0
+    git: https://gitlab.com/shake-plus/shake-plus-extended
+    commit: f7d0886665cf04d32278f55c5e8ae66115083098
 - completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:

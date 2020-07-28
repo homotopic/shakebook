@@ -108,8 +108,6 @@ import qualified Shakebook.Feed           as Atom
 import           Shakebook.Lucid()
 import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
-import Data.Binary
-import Path.Binary
 
 type FCdnImports    = "cdn-imports"  :-> Html ()
 type FContent       = "content"      :-> Text
@@ -143,10 +141,6 @@ instance Binary (Record '[])
 instance (Binary a, Binary (Record xs), x ~ (s :-> a)) => Binary (Record (x : xs)) where
   put (x :*: xs) = put x >> put xs
   get = liftA2 (:*:) get get
-
---instance Binary (Record Link)
-
---instance Binary (Record Stage1Post)
 
 instance NFData (Record xs) where
   rnf x = seq x ()

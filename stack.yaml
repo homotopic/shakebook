@@ -16,7 +16,9 @@ extra-deps:
 - path-like-0.2.0.1
 - path-0.8.0
 - shake-plus-0.3.0.0
-- shake-plus-extended-0.1.2.0
+  #- shake-plus-extended-0.1.2.0
+- git: https://gitlab.com/shake-plus/shake-plus-extended
+  commit: f7d0886665cf04d32278f55c5e8ae66115083098
 - slick-1.0.1.1
 - text-time-0.2.0
 - vinyl-0.13.0

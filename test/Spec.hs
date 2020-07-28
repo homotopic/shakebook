@@ -128,12 +128,12 @@ type instance RuleResult YearMonthRoot = Text
 newtype PostPages = PostPages ()
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult PostPages = [(Record (FUrl : FItems Stage1Post : FPageNo : '[]))]
+type instance RuleResult PostPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
 
 newtype TagPages = TagPages Tag
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult TagPages = [(Record (FUrl : FItems Stage1Post : FPageNo : '[]))]
+type instance RuleResult TagPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
 
 newtype YearMonthPages = YearMonthPages YearMonth
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
@@ -164,7 +164,7 @@ rules = do
         r <- askOracle q
         k <- Ix.toDescList (Proxy @Posted) <$> ps
         p <- paginate' postsPerPage k
-        return $ unzipper $ extend (\x -> r <> "pages/" <> (T.pack $ show $ pos x + 1) :*: extract x :*: pos x + 1:*: RNil) p
+        return $ unzipper $ extend (\x -> r <> "pages/" <> T.pack (show $ pos x + 1) :*: extract x :*: pos x + 1:*: RNil) p
 
   addOracleCache $ \(PostPages ())      -> indexPages (PostsRoot ()) (postIx' ())
   addOracleCache $ \(TagPages x)        -> indexPages (TagRoot x) ((Ix.@+ [x]) <$> postIx' ())
@@ -203,10 +203,10 @@ rules = do
 
   let buildPostIndex title query pageno out = do
         nav <- askOracle $ BlogNav ()
-        xs  <- askOracle $ query
+        xs  <- askOracle query
         xs' <- zipper' $ sortOn (Down . viewPageNo) xs
         let links = fmap (\x ->  T.pack (show (viewPageNo x)) :*: viewUrl x :*: RNil) (unzipper xs')
-        let (v :: TPostIndex) = Val $ enrichPage (links :*: nav :*: title :*: (extract $ seek (pageno - 1) xs'))
+        let (v :: TPostIndex) = Val $ enrichPage (links :*: nav :*: title :*: extract (seek (pageno - 1) xs'))
         buildPageAction' sourceFolder v postIndexPageJsonFormat out
 
   "posts/pages/*/index.html" /%> \(dir, fp) -> do
