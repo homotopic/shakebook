@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass            #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
 
@@ -98,47 +99,25 @@ newtype BlogNav = BlogNav ()
 newtype RecentPosts = RecentPosts ()
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-newtype PostZipper = PostZipper ()
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
 instance NFData (Html ()) where
   rnf a = seq a ()
 
 type instance RuleResult BlogNav = Html ()
 
-type instance RuleResult Tag = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
-
 type instance RuleResult RecentPosts = [Record Stage1Post]
 
-newtype PostsRoot = PostsRoot ()
+data PostsFilter = AllPosts | ByTag Tag | ByYearMonth YearMonth
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult PostsRoot = Text
-
-newtype TagRoot = TagRoot Tag
+newtype IndexRoot = IndexRoot PostsFilter
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult TagRoot = Text
+type instance RuleResult IndexRoot = Text
 
-newtype YearMonthRoot = YearMonthRoot YearMonth
+newtype IndexPages = IndexPages PostsFilter
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult YearMonthRoot = Text
-
-newtype PostPages = PostPages ()
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-type instance RuleResult PostPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
-
-newtype TagPages = TagPages Tag
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-type instance RuleResult TagPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
-
-newtype YearMonthPages = YearMonthPages YearMonth
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-type instance RuleResult YearMonthPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
+type instance RuleResult IndexPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
 
 rules :: ShakePlus SimpleSPlus ()
 rules = do
@@ -156,19 +135,23 @@ rules = do
 
   postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
 
-  addOracle $ \(PostsRoot ())                      -> return "/posts/"
-  addOracle $ \(TagRoot (Tag t))                   -> askOracle (PostsRoot ()) >>= \x -> return (x <> "tags/" <> t <> "/")
-  addOracle $ \(YearMonthRoot (YearMonth (y,m))) -> askOracle (PostsRoot ()) >>= \x -> return (x <> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
+  addOracle $ \(IndexRoot x) -> case x of
+                     AllPosts                       -> return "/posts/"
+                     ByTag (Tag t)                  -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "tags/" <> t <> "/")
+                     ByYearMonth (YearMonth (y, m)) -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
 
-  let indexPages q ps = do
-        r <- askOracle q
-        k <- Ix.toDescList (Proxy @Posted) <$> ps
+  let indexFilter x = case x of
+                        AllPosts      -> id
+                        ByTag t       -> (Ix.@+ [t])
+                        ByYearMonth t -> (Ix.@+ [t])
+
+  let indexPages x = do
+        r <- askOracle $ IndexRoot x
+        k <- Ix.toDescList (Proxy @Posted) . indexFilter x <$> postIx' ()
         p <- paginate' postsPerPage k
         return $ unzipper $ extend (\x -> r <> "pages/" <> T.pack (show $ pos x + 1) :*: extract x :*: pos x + 1:*: RNil) p
 
-  addOracleCache $ \(PostPages ())      -> indexPages (PostsRoot ()) (postIx' ())
-  addOracleCache $ \(TagPages x)        -> indexPages (TagRoot x) ((Ix.@+ [x]) <$> postIx' ())
-  addOracleCache $ \(YearMonthPages x)  -> indexPages (YearMonthRoot x) ((Ix.@+ [x]) <$> postIx' ())
+  addOracleCache $ \(IndexPages x) -> indexPages x
 
   addOracleCache $ \(BlogNav ()) -> myBlogNav <$> postIx' ()
 
@@ -211,20 +194,20 @@ rules = do
 
   "posts/pages/*/index.html" /%> \(dir, fp) -> do
     let n = read . (!! 2) $ splitPath fp
-    buildPostIndex "Posts" (PostPages ()) n $ dir </> fp
+    buildPostIndex "Posts" (IndexPages AllPosts) n $ dir </> fp
 
   "posts/tags/*/pages/*/index.html" /%> \(dir, fp) -> do
     let fp' = splitPath fp
     let t = T.pack $ fp' !! 2
     let n = read   $ fp' !! 4
-    buildPostIndex ("Posts tagged " <> t) (TagPages (Tag t)) n $ dir </> fp
+    buildPostIndex ("Posts tagged " <> t) (IndexPages (ByTag (Tag t))) n $ dir </> fp
 
   "posts/months/*/pages/*/index.html" /%> \(dir, fp) -> do
     let out' = splitPath fp
     let t  = parseISODateTime $ T.pack $ out' !! 2
     let t' = YearMonth $ toYearMonthPair t
     let n  = read $ out' !! 4
-    buildPostIndex ("Posts from " <> defaultPrettyMonthFormat t) (YearMonthPages t') n $ dir </> fp
+    buildPostIndex ("Posts from " <> defaultPrettyMonthFormat t) (IndexPages $ ByYearMonth t') n $ dir </> fp
 
   "posts/index.html" /%> \(dir, fp) ->
     copyFileChanged (dir </> $(mkRelFile "posts/pages/1/index.html")) (dir </> fp)
@@ -258,17 +241,17 @@ rules = do
 
   phony "posts"   $ simplePipeline withHtmlExtension ["posts/*.md"]
 
-  let phonyIndex x y = do
-        k  <- askOracle x
-        ps <- askOracle y
+  let phonyIndex x = do
+        k  <- askOracle $ IndexRoot x
+        ps <- askOracle $ IndexPages x
         xs <- mapM fromGroundedUrlD $ k : (viewUrl <$> ps)
         needIn outputFolder $ fmap (</> $(mkRelFile "index.html")) xs
 
   phony "post-index" $ do
-     phonyIndex (PostsRoot ()) (PostPages ())
+     phonyIndex AllPosts
      xs <- postIx' ()
-     forM_ (Ix.indexKeys xs) $ \t -> phonyIndex (TagRoot t) (TagPages t)
-     forM_ (Ix.indexKeys xs) $ \t -> phonyIndex (YearMonthRoot t) (YearMonthPages t)
+     forM_ (Ix.indexKeys xs) $ \t -> phonyIndex $ ByTag t
+     forM_ (Ix.indexKeys xs) $ \t -> phonyIndex $ ByYearMonth t
 
   phony "clean" $ do
     logInfo $ "Cleaning files in " <> displayShow outputFolder
