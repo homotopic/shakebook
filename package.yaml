@@ -102,9 +102,7 @@ dependencies:
 - hashable-time
 - http-conduit
 - ixset-typed >= 0.5
-- ixset-typed-binary-instance
 - ixset-typed-conversions
-- ixset-typed-hashable-instance
 - lens
 - lens-aeson
 - lucid
@@ -115,7 +113,6 @@ dependencies:
 - pandoc
 - pandoc-types
 - path
-- path-binary-instance
 - path-extensions >= 0.1.0.1
 - shake-plus >= 0.3.0.0
 - shake-plus-extended >= 0.1.2.0

@@ -2,8 +2,6 @@ resolver: nightly-2020-07-28
 packages:
 - .
 extra-deps:
-- aeson-with-0.1.1.1
-- binary-instances-1.0.0.1
 - ixset-typed-binary-instance-0.1.0.0
 - ixset-typed-hashable-instance-0.1.0.1
 - git: https://github.com/ConferOpenSource/composite
@@ -11,24 +9,15 @@ extra-deps:
   subdirs:
   - composite-aeson
   - composite-base
-- comonad-extras-4.0.1
 - hslua-1.1.2
-- ixset-typed-conversions-0.1.0.0
-- lucid-cdn-0.1.1.0
 - jira-wiki-markup-1.3.2
 - pandoc-2.10
 - path-binary-instance-0.1.0.0
-- path-extensions-0.1.1.0
-- path-like-0.2.0.1
-- path-0.8.0
-- shake-plus-0.3.0.0
-  #- shake-plus-extended-0.1.2.0
 - git: https://gitlab.com/shake-plus/shake-plus-extended
   commit: f7d0886665cf04d32278f55c5e8ae66115083098
 - slick-1.0.1.1
 - text-time-0.2.0
 - vinyl-0.13.0
-- zipper-extra-0.1.3.0
 nix:
   enable: false
   packages: [zlib]
