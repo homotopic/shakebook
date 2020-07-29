@@ -22,21 +22,23 @@ parseValue' f v = do
   let a = parseValue (fromJsonWithFormat f) v
   either (throwM . AesonParseException) return a
 
+data WriteOnlyJsonField = WriteOnlyJsonField
+  deriving Show
 
 lucidJsonFormat :: JsonFormat e (Html ())
-lucidJsonFormat = JsonFormat $ JsonProfunctor (String . LT.toStrict . renderText) (throwError $ InvalidJSON "foo")
+lucidJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . LT.toStrict . renderText) (throwCustomError WriteOnlyJsonField)
 
 styleJsonFormat :: JsonFormat e Style
-styleJsonFormat = JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) (throwError $ InvalidJSON "foo")
+styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) (throwCustomError $ WriteOnlyJsonField)
 
 relFileJsonFormat :: JsonFormat e (Path Rel File)
 relFileJsonFormat = aesonJsonFormat
 
-instance DefaultJsonFormat (Html ()) where
-  defaultJsonFormat = lucidJsonFormat
+relDirJsonFormat :: JsonFormat e (Path Rel Dir)
+relDirJsonFormat = aesonJsonFormat
 
-instance DefaultJsonFormat Style where
-  defaultJsonFormat = styleJsonFormat
+absFileJsonFormat :: JsonFormat e (Path Abs File)
+absFileJsonFormat = aesonJsonFormat
 
-instance DefaultJsonFormat (Path Rel File) where
-  defaultJsonFormat = relFileJsonFormat
+absDirJsonFormat :: JsonFormat e (Path Abs Dir)
+absDirJsonFormat = aesonJsonFormat
