@@ -171,18 +171,8 @@ rules = do
     let n  = read $ out' !! 4
     buildPostIndex ("Posts from " <> defaultPrettyMonthFormat t) (IndexPages $ ByYearMonth t') n $ dir </> fp
 
-  "posts/index.html" /%> \(dir, fp) ->
-    copyFileChanged (dir </> $(mkRelFile "posts/pages/1/index.html")) (dir </> fp)
-
-  "posts/tags/*/index.html" /%> \(dir, fp) -> do
-    let t = (!! 2) $ splitPath fp
-    i <- parseRelFile $ "posts/tags/" <> t <> "/pages/1/index.html"
-    copyFileChanged (dir </> i) (dir </> fp)
-
-  "posts/months/*/index.html" /%> \(dir, fp) -> do
-    let t = (!! 2) $ splitPath fp
-    i <- parseRelFile $ "posts/months/" <> t <> "/pages/1/index.html"
-    copyFileChanged (dir </> i) (dir </> fp)
+  ["posts/index.html", "posts/tags/*/index.html", "posts/months/*/index.html"] /|%> \(dir, fp) -> do
+    copyFileChanged (dir </> parent fp </> $(mkRelFile "pages/1/index.html")) (dir </> fp)
 
   ["css//*", "js//*", "webfonts//*", "images//*"] /|%> \(dir, fp) ->
     copyFileChanged (sourceFolder </> fp) (dir </> fp)
