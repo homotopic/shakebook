@@ -3,9 +3,9 @@
 {-# LANGUAGE TemplateHaskell           #-}
 
 import           Composite.Record
-import Data.Hashable.Time
-import qualified Data.IxSet.Typed             as Ix
-import qualified Data.IxSet.Typed.Conversions as Ix
+import           Data.Hashable.Time
+import qualified Data.IxSet.Typed                as Ix
+import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
 import           Data.Text.Time
 import           Development.Shake.Plus.Extended
@@ -15,9 +15,9 @@ import           RIO
 import           RIO.List
 import           RIO.List.Partial
 import           RIO.Partial
-import qualified RIO.Text                     as T
-import qualified RIO.Text.Partial             as T
-import           Shakebook                    hiding ((:->))
+import qualified RIO.Text                        as T
+import qualified RIO.Text.Partial                as T
+import           Shakebook                       hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
 import           Test.Tasty.Golden
@@ -83,7 +83,7 @@ enrichPage :: Record x -> Record (Enriched x)
 enrichPage x = mySocial :*: defaultCdnImports :*: defaultHighlighting :*: siteTitle :*: x
 
 data SimpleSPlus = SimpleSPlus {
-  logFunc :: LogFunc
+  logFunc  :: LogFunc
 , localOut :: Path Rel Dir
 }
 
@@ -128,8 +128,7 @@ rules = do
   addOracleCache $ \(IndexPages x) -> indexPages x
 
   let correspondingMD   = withMdExtension . (sourceFolder </>)
-
-      getDoc   = correspondingMD >=> readStage1Doc
+      getDoc            = correspondingMD >=> readStage1Doc
 
   addOracleCache $ \(BlogNav ())     -> myBlogNav <$> postIx' ()
   addOracleCache $ \(DocNav ())      -> myDocNav  <$> mapM getDoc tableOfContents

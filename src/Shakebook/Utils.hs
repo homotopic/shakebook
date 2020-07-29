@@ -1,8 +1,8 @@
 module Shakebook.Utils where
 
-import RIO
-import Path
-import Data.List.Split
+import           Data.List.Split
+import           Path
+import           RIO
 
 (</$>) :: Functor f => Path b Dir -> f (Path Rel t) -> f (Path b t)
 (</$>) d = fmap (d </>)

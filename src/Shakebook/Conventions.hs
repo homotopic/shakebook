@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
 {- |
    Module     : Shakebook.Conventions
@@ -115,22 +115,22 @@ module Shakebook.Conventions (
 ) where
 
 import           Composite.Aeson
-import Data.Binary.Instances.Time()
 import           Composite.Record
-import Composite.TH
+import           Composite.TH
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
+import           Data.Binary.Instances.Time ()
 import           Data.Hashable.Time
-import           Data.IxSet.Typed         as Ix
-import           Development.Shake.Plus   hiding ((:->))
+import           Data.IxSet.Typed           as Ix
+import           Development.Shake.Plus     hiding ((:->))
 import           Lucid
 import           RIO
 import           RIO.List
-import qualified RIO.Text                 as T
+import qualified RIO.Text                   as T
 import           RIO.Time
 import           Shakebook.Aeson
-import qualified Shakebook.Feed           as Atom
-import           Shakebook.Lucid()
+import qualified Shakebook.Feed             as Atom
+import           Shakebook.Lucid            ()
 import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
 

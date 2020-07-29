@@ -1,9 +1,9 @@
 module Shakebook.Lucid where
 
-import Data.Binary
-import Development.Shake.Plus
-import Lucid
-import RIO
+import           Data.Binary
+import           Development.Shake.Plus
+import           Lucid
+import           RIO
 
 instance Binary (Html ()) where
   put = put . renderText

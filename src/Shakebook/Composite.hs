@@ -1,9 +1,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Shakebook.Composite where
 
-import Development.Shake.Plus hiding ((:->))
-import RIO
-import Composite.Record
+import           Composite.Record
+import           Development.Shake.Plus hiding ((:->))
+import           RIO
 
 instance Hashable a => Hashable (s :-> a) where
   hashWithSalt n x = hashWithSalt n $ getVal x

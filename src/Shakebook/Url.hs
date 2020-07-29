@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Url where
 
-import RIO
+import           Path
+import           RIO
 import qualified RIO.Text as T
-import Path
 
 toGroundedUrl :: Path Rel b -> Text
 toGroundedUrl = T.pack . toFilePath . ($(mkAbsDir "/") </>)

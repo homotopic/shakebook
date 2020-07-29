@@ -29,7 +29,7 @@ lucidJsonFormat :: JsonFormat e (Html ())
 lucidJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . LT.toStrict . renderText) (throwCustomError WriteOnlyJsonField)
 
 styleJsonFormat :: JsonFormat e Style
-styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) (throwCustomError $ WriteOnlyJsonField)
+styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) (throwCustomError WriteOnlyJsonField)
 
 relFileJsonFormat :: JsonFormat e (Path Rel File)
 relFileJsonFormat = aesonJsonFormat
