@@ -64,17 +64,8 @@ myDocNav = genDocNav
 addUrl :: (MonadThrow m, RElem FSrcPath xs) => Record xs -> m (Record (FUrl : xs))
 addUrl = addDerivedUrl (fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder)
 
-addTagLinks :: RElem FTags xs => Record xs -> Record (FTagLinks : xs)
-addTagLinks xs = (fmap (\x -> x :*: ("/posts/tags/" <> x) :*: RNil) . view fTags $ xs ) :*: xs
-
-addTeaser :: RElem FContent xs => Record xs -> Record (FTeaser : xs)
-addTeaser xs = head (T.splitOn "<!-- more -->" (view fContent xs)) :*: xs
-
-addPrettyDate :: RElem FPosted xs => Record xs -> Record (FPrettyDate : xs)
-addPrettyDate xs = view fPosted xs :*: xs
-
 stage1Post :: (MonadAction m, MonadThrow m) => Record RawPost -> m (Record Stage1Post)
-stage1Post = addUrl >=> return . addPrettyDate . addTagLinks . addTeaser
+stage1Post = addUrl >=> return . addTeaser >=> addTagLinks >=> return . addPrettyDate
 
 stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
 stage1Doc = addUrl

@@ -69,6 +69,9 @@ module Shakebook.Conventions (
 , addDerivedUrl
 , asSitemapUrl
 , asAtomEntry
+, addTagLinks
+, addPrettyDate
+, addTeaser
 
   -- * Indexing
 , Link
@@ -126,7 +129,9 @@ import           Development.Shake.Plus     hiding ((:->))
 import           Lucid
 import           RIO
 import           RIO.List
+import           RIO.List.Partial
 import qualified RIO.Text                   as T
+import qualified RIO.Text.Partial           as T
 import           RIO.Time
 import           Shakebook.Aeson
 import qualified Shakebook.Feed             as Atom
@@ -368,6 +373,20 @@ mainPageJsonFormatRecord = field (listJsonFormat stage1PostJsonFormat)
 
 mainPageJsonFormat :: JsonFormat e (Record MainPage)
 mainPageJsonFormat = recordJsonFormat mainPageJsonFormatRecord
+
+addTagLinks :: (MonadAction m, RElem FTags xs) => Record xs -> m (Record (FTagLinks : xs))
+addTagLinks xs = do
+  ks <- forM (view fTags xs) $ \x -> do
+          u <- askOracle . IndexRoot . ByTag . Tag $ x
+          return (x :*: u :*: RNil)
+  return $ ks :*: xs
+
+addTeaser :: RElem FContent xs => Record xs -> Record (FTeaser : xs)
+addTeaser xs = head (T.splitOn "<!-- more -->" (view fContent xs)) :*: xs
+
+addPrettyDate :: RElem FPosted xs => Record xs -> Record (FPrettyDate : xs)
+addPrettyDate xs = view fPosted xs :*: xs
+
 
 instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
   indices = Ix.ixList (Ix.ixFun (fmap Tag . view fTags))
