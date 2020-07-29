@@ -1,9 +1,6 @@
-{-# LANGUAGE DeriveAnyClass            #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
 
 import           Composite.Record
-import           Data.Hashable.Time
 import qualified Data.IxSet.Typed                as Ix
 import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
@@ -16,7 +13,6 @@ import           RIO.List
 import           RIO.List.Partial
 import           RIO.Partial
 import qualified RIO.Text                        as T
-import qualified RIO.Text.Partial                as T
 import           Shakebook                       hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
