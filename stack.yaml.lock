@@ -26,20 +26,6 @@ packages:
   original:
     hackage: hslua-1.1.2
 - completed:
-    hackage: ixset-typed-binary-instance-0.1.0.0@sha256:34b9cb1b501ede194b5c94477d0d4cbf4fd16f2ad3c83d67f41b10b048ba011f,989
-    pantry-tree:
-      size: 292
-      sha256: 1f9b947919b4da3b0648b7623c3406366ac58d8d9819d5d77df2ab4ec0cf538b
-  original:
-    hackage: ixset-typed-binary-instance-0.1.0.0
-- completed:
-    hackage: ixset-typed-hashable-instance-0.1.0.1@sha256:b48d3559b53afcfb349db52046e3717031c496c381627a0eea53052f2467d803,996
-    pantry-tree:
-      size: 296
-      sha256: 98508fc243c1fd4698938da773de7bc28bb90bf4053fca123d25e25ba95e4e27
-  original:
-    hackage: ixset-typed-hashable-instance-0.1.0.1
-- completed:
     hackage: jira-wiki-markup-1.3.2@sha256:b5f0901208a0ee07aff60f5356aeb851b7aa7950c75a18a15fd34247a35886d8,3819
     pantry-tree:
       size: 1180
@@ -53,24 +39,6 @@ packages:
       sha256: bd2837083be670e471abd6a3bc3df31c2695444c9095daba34987ca8557aece9
   original:
     hackage: pandoc-2.10
-- completed:
-    hackage: path-binary-instance-0.1.0.0@sha256:0d9f36ab19f7f4ef6e9d25fba10fe6876010f69ce26e5c98fd45c24e4b365300,751
-    pantry-tree:
-      size: 273
-      sha256: f6d35558a6e2b26748d907c35af5d9660dc0083acfcf3a802a6168bfe41bda8e
-  original:
-    hackage: path-binary-instance-0.1.0.0
-- completed:
-    name: shake-plus-extended
-    version: 0.1.2.0
-    git: https://gitlab.com/shake-plus/shake-plus-extended
-    pantry-tree:
-      size: 901
-      sha256: 1eef479bf03caf0c74d4aba421254a968f4b540f62dbe421b65b55d310eba398
-    commit: f7d0886665cf04d32278f55c5e8ae66115083098
-  original:
-    git: https://gitlab.com/shake-plus/shake-plus-extended
-    commit: f7d0886665cf04d32278f55c5e8ae66115083098
 - completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
@@ -94,7 +62,7 @@ packages:
     hackage: vinyl-0.13.0
 snapshots:
 - completed:
-    size: 515438
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/7/28.yaml
-    sha256: 1d909ef78c0c29d9ddf82ff1720339425276f43437875233572c507a10557c62
-  original: nightly-2020-07-28
+    size: 518259
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/7/29.yaml
+    sha256: 2bc1221273190488293f2a8377cfbea272697070d68b62c6fa6f4f5a98c4f8af
+  original: nightly-2020-07-29

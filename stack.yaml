@@ -1,17 +1,12 @@
-resolver: nightly-2020-07-28
+resolver: nightly-2020-07-29
 packages:
 - .
 extra-deps:
 - composite-aeson-0.7.3.0
 - composite-base-0.7.3.0
 - hslua-1.1.2
-- ixset-typed-binary-instance-0.1.0.0
-- ixset-typed-hashable-instance-0.1.0.1
 - jira-wiki-markup-1.3.2
 - pandoc-2.10
-- path-binary-instance-0.1.0.0
-- git: https://gitlab.com/shake-plus/shake-plus-extended
-  commit: f7d0886665cf04d32278f55c5e8ae66115083098
 - slick-1.0.1.1
 - text-time-0.2.0
 - vinyl-0.13.0
