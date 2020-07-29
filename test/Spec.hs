@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import           Composite.Record
 import qualified Data.IxSet.Typed                as Ix
@@ -69,18 +69,7 @@ stage1Doc = addUrl
 enrichPage :: Record x -> Record (Enriched x)
 enrichPage x = mySocial :*: defaultCdnImports :*: defaultHighlighting :*: siteTitle :*: x
 
-data SimpleSPlus = SimpleSPlus {
-  logFunc  :: LogFunc
-, localOut :: Path Rel Dir
-}
-
-instance HasLogFunc SimpleSPlus where
-  logFuncL = lens logFunc undefined
-
-instance HasLocalOut SimpleSPlus where
-  localOutL = lens localOut undefined
-
-rules :: ShakePlus SimpleSPlus ()
+rules :: ShakePlus SimpleSPlusEnv ()
 rules = do
 
   readMD <- newCache $ \x -> do
@@ -207,20 +196,15 @@ rules = do
 
   phony "sitemap" $ needIn outputFolder [$(mkRelFile "sitemap.xml")]
 
+  phony "all" $ need ["index", "posts", "post-index", "docs", "statics", "sitemap"]
+
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
-  map ( \x -> goldenVsFile x x
-     (replace "golden" "public" x)
-     (return ())) xs
-  where replace fr to' = intercalate to' . splitOn fr
+  map (\x -> goldenVsFile x x (replace "golden" "public" x) (return ())) xs where
+    replace fr to' = intercalate to' . splitOn fr
 
 main :: IO ()
 main = do
-   xs <- findByExtension [".html", ".xml"] "test/golden"
-   logOptions' <- logOptionsHandle stdout True
-   (lf, dlf) <- newLogFunc (setLogMinLevel LevelInfo logOptions')
-   let env = SimpleSPlus lf outputFolder
-   shake shakeOptions $ want ["clean"] >> runShakePlus env rules
-   shake shakeOptions $ want ["index", "docs", "posts", "post-index", "sitemap"] >> runShakePlus env rules
-   defaultMain $ tests xs
-   dlf
+   runSimpleShakePlus outputFolder $ want ["clean"] >> rules
+   runSimpleShakePlus outputFolder $ want ["all"]   >> rules
+   findByExtension [".html", ".xml"] "test/golden" >>= defaultMain . tests
