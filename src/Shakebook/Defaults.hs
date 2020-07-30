@@ -52,7 +52,7 @@ defaultLatexWriterOptions = def { writerTableOfContents = True
 defaultVideoReplacement :: Text -> Text -> Inline
 defaultVideoReplacement baseUrl x = Str $ "[Video available at [" <> baseUrl <> "/" <> x <> "]"
 
-defaultCdnImports :: Monad m => HtmlT m ()
+defaultCdnImports :: Html ()
 defaultCdnImports = do
   bootstrapCSS_5_0_0_alpha1
   bootstrapJS_5_0_0_alpha1

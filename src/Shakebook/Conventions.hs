@@ -95,6 +95,8 @@ module Shakebook.Conventions (
 , RecentPosts(..)
 , PostsFilter(..)
 , indexFilter
+, defaultIndexRoots
+, defaultIndexPages
 
   -- * Formatting
 , basicMDJsonFormatRecord
@@ -135,10 +137,11 @@ import qualified RIO.Text                   as T
 import qualified RIO.Text.Partial           as T
 import           RIO.Time
 import           Shakebook.Aeson
+import           Shakebook.Defaults
 import qualified Shakebook.Feed             as Atom
-import           Shakebook.Lucid            ()
 import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
+import Control.Comonad.Zipper.Extra
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
@@ -148,18 +151,18 @@ withLensesAndProxies [d|
 type Link = '[FId, FUrl]
 
 withLensesAndProxies [d|
-  type FCdnImports    = "cdn-imports"  :-> Html ()
+  type FCdnImports    = "cdn-imports"  :-> Text
   type FContent       = "content"      :-> Text
   type FDescription   = "description"  :-> Text
   type FHighlighting  = "highlighting" :-> Style
   type FImage         = "image"        :-> Maybe Text
 
   type FModified      = "modified"     :-> UTCTime
-  type FNext          = "next"         :-> Html ()
+  type FNext          = "next"         :-> Text
   type FPageNo        = "pageno"       :-> Int
   type FPageLinks     = "page-links"   :-> [Record Link]
   type FPrettyDate    = "pretty-date"  :-> UTCTime
-  type FPrevious      = "previous"     :-> Html ()
+  type FPrevious      = "previous"     :-> Text
   type FPosted        = "posted"       :-> UTCTime
   type FItems x       = "items"        :-> [Record x]
   type FRecentPosts x = "recent-posts" :-> [Record x]
@@ -171,7 +174,7 @@ withLensesAndProxies [d|
   type FTagLinks      = "tag-links"    :-> [Record Link]
   type FTeaser        = "teaser"       :-> Text
   type FTitle         = "title"        :-> Text
-  type FToc           = "toc"          :-> Html ()
+  type FToc           = "toc"          :-> Text
 
   |]
 
@@ -194,20 +197,19 @@ fromYearMonthPair :: (Integer, Int) -> UTCTime
 fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
-genBlogNav :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
+genBlogNav :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs, MonadAction m)
            => Text -- ^ "Top level title, e.g "Blog"
-           -> Text -- ^ Root page, e.g "/posts"
            -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
-           -> (UTCTime -> Text) -- ^ Formatting function to convert a UTCTime to a URL link
            -> IxSet ixs (Record xs)
-           -> Html ()
-genBlogNav a b f g xs =
+           -> HtmlT m ()
+genBlogNav a f xs = do
   ul_ $
     li_ $ do
+      b <- lift $ askOracle $ IndexRoot AllPosts
       a_ [href_ b] (toHtml a)
-      ul_ $ forM_ (groupDescBy xs) $ \(YearMonth (y, m), xs') -> do
-        let t' = fromYearMonthPair (y, m)
-        li_ $ a_ [href_ $ g t'] (toHtml $ f t')
+      ul_ $ forM_ (groupDescBy xs) $ \(YearMonth(y, m), xs') -> do
+        k <- lift $ askOracle $ IndexRoot $ ByYearMonth $ YearMonth (y, m)
+        li_ $ a_ [href_ k] (toHtml . f $ fromYearMonthPair (y, m))
         ul_ $ forM (sortOn (Down . view fPosted) xs') $ \x ->
           li_ $ a_ [href_ $ view fUrl x] (toHtml $ view fTitle x)
 
@@ -326,7 +328,7 @@ type Enriched x = FSocial : FCdnImports : FHighlighting : FSiteTitle : x
 
 enrichedXJsonFormatRecord :: JsonFormatRecord e x -> JsonFormatRecord e (Enriched x)
 enrichedXJsonFormatRecord x = field (listJsonFormat linkJsonFormat)
-                           :& field lucidJsonFormat
+                           :& field textJsonFormat
                            :& field styleJsonFormat
                            :& field defaultJsonFormat
                            :& x
@@ -334,7 +336,7 @@ enrichedXJsonFormatRecord x = field (listJsonFormat linkJsonFormat)
 type FinalDoc = FToc : FSubsections Stage1Doc : Enriched Stage1Doc
 
 finalDocJsonFormatRecord :: JsonFormatRecord e FinalDoc
-finalDocJsonFormatRecord = field lucidJsonFormat
+finalDocJsonFormatRecord = field textJsonFormat
                         :& field (listJsonFormat stage1DocJsonFormat)
                         :& enrichedXJsonFormatRecord stage1DocJsonFormatRecord
 
@@ -344,7 +346,7 @@ finalDocJsonFormat = recordJsonFormat finalDocJsonFormatRecord
 type FinalPost = FToc : Enriched Stage1Post
 
 finalPostJsonFormatRecord :: JsonFormatRecord e FinalPost
-finalPostJsonFormatRecord = field lucidJsonFormat
+finalPostJsonFormatRecord = field textJsonFormat
                          :& enrichedXJsonFormatRecord stage1PostJsonFormatRecord
 
 finalPostJsonFormat :: JsonFormat e (Record FinalPost)
@@ -354,7 +356,7 @@ type IndexPage x = Enriched (FPageLinks : FToc : FTitle : FUrl : FItems x : FPag
 
 indexPageJsonFormatRecord :: JsonFormat e (Record x) -> JsonFormatRecord e (IndexPage x)
 indexPageJsonFormatRecord x = enrichedXJsonFormatRecord $ field (listJsonFormat linkJsonFormat)
-                                                       :& field lucidJsonFormat
+                                                       :& field textJsonFormat
                                                        :& field textJsonFormat
                                                        :& field textJsonFormat
                                                        :& field (listJsonFormat x)
@@ -397,12 +399,12 @@ instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
 newtype BlogNav = BlogNav ()
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult BlogNav = Html ()
+type instance RuleResult BlogNav = Text
 
 newtype DocNav = DocNav ()
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult DocNav = Html ()
+type instance RuleResult DocNav = Text
 
 newtype RecentPosts = RecentPosts ()
   deriving (Eq, Show, Generic, Binary, Hashable, NFData)
@@ -439,3 +441,16 @@ indexFilter x = case x of
                   AllPosts      -> id
                   ByTag t       -> (Ix.@+ [t])
                   ByYearMonth t -> (Ix.@+ [t])
+
+defaultIndexRoots :: MonadAction m => IndexRoot -> m Text
+defaultIndexRoots (IndexRoot x) = case x of
+     AllPosts                       -> return "/posts/"
+     ByTag (Tag t)                  -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "tags/" <> t <> "/")
+     ByYearMonth (YearMonth (y, m)) -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
+
+defaultIndexPages :: (MonadAction m, MonadThrow m, Indexable xs (Record Stage1Post), IsIndexOf YearMonth xs, IsIndexOf Tag xs, IsIndexOf Posted xs) => IxSet xs (Record Stage1Post) -> Int -> IndexPages -> m [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
+defaultIndexPages postIx postsPerPage (IndexPages x) = do
+        r <- askOracle $ IndexRoot x
+        let k = Ix.toDescList (Proxy @Posted) . indexFilter x $ postIx
+        p <- paginate' postsPerPage k
+        return $ unzipper $ extend (\x -> r <> "pages/" <> T.pack (show $ pos x + 1) :*: extract x :*: pos x + 1:*: RNil) p

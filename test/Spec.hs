@@ -7,12 +7,14 @@ import           Data.List.Split
 import           Data.Text.Time
 import           Development.Shake.Plus.Extended
 import           Lucid
+import           Lucid.Base
 import           Path.Extensions
 import           RIO
 import           RIO.List
 import           RIO.List.Partial
 import           RIO.Partial
 import qualified RIO.Text                        as T
+import qualified RIO.Text.Lazy                   as LT
 import           Shakebook                       hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
@@ -49,14 +51,6 @@ mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
            ,"youtube" :*: "http://youtube.com/blanky-site-nowhere" :*: RNil
            ,"gitlab"  :*: "http://gitlab.com/blanky-site-nowhere" :*: RNil]
 
-myBlogNav :: (Ix.IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs)
-          => Ix.IxSet ixs (Record xs)
-          -> Html ()
-myBlogNav = genBlogNav "Blog" "/posts/" defaultPrettyMonthFormat defaultMonthUrlFragment
-
-myDocNav :: (RElem FUrl xs, RElem FTitle xs) => Cofree [] (Record xs) -> Html ()
-myDocNav = genDocNav
-
 addUrl :: (MonadThrow m, RElem FSrcPath xs) => Record xs -> m (Record (FUrl : xs))
 addUrl = addDerivedUrl (fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder)
 
@@ -67,7 +61,7 @@ stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
 stage1Doc = addUrl
 
 enrichPage :: Record x -> Record (Enriched x)
-enrichPage x = mySocial :*: defaultCdnImports :*: defaultHighlighting :*: siteTitle :*: x
+enrichPage x = mySocial :*: (LT.toStrict . renderText $ defaultCdnImports) :*: defaultHighlighting :*: siteTitle :*: x
 
 rules :: ShakePlus SimpleSPlusEnv ()
 rules = do
@@ -85,22 +79,14 @@ rules = do
 
   postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
 
-  addOracle $ \(IndexRoot x) -> case x of
-                     AllPosts                       -> return "/posts/"
-                     ByTag (Tag t)                  -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "tags/" <> t <> "/")
-                     ByYearMonth (YearMonth (y, m)) -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
-
-  addOracleCache $ \(IndexPages x) -> do
-        r <- askOracle $ IndexRoot x
-        k <- Ix.toDescList (Proxy @Posted) . indexFilter x <$> postIx' ()
-        p <- paginate' postsPerPage k
-        return $ unzipper $ extend (\x -> r <> "pages/" <> T.pack (show $ pos x + 1) :*: extract x :*: pos x + 1:*: RNil) p
+  addOracle        defaultIndexRoots
+  addOracleCache $ (postIx' () >>=) . defaultIndexPages x postsPerPage
 
   let correspondingMD   = withMdExtension . (sourceFolder </>)
       getDoc            = correspondingMD >=> readStage1Doc
 
-  addOracleCache $ \(BlogNav ())     -> myBlogNav <$> postIx' ()
-  addOracleCache $ \(DocNav ())      -> myDocNav  <$> mapM getDoc tableOfContents
+  addOracleCache $ \(BlogNav ())     -> LT.toStrict . renderText <$> ((commuteHtmlT . genBlogNav "Blog" defaultPrettyMonthFormat) =<< postIx' ())
+  addOracleCache $ \(DocNav ())      -> LT.toStrict . renderText . genDocNav  <$> mapM getDoc tableOfContents
   addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
 
   "index.html" /%> \(dir, fp) -> do

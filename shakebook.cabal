@@ -28,7 +28,6 @@ library
       Shakebook.Conventions
       Shakebook.Defaults
       Shakebook.Feed
-      Shakebook.Lucid
       Shakebook.Mustache
       Shakebook.Pandoc
       Shakebook.Sitemap
