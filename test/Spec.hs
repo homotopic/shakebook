@@ -90,18 +90,11 @@ rules = do
                      ByTag (Tag t)                  -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "tags/" <> t <> "/")
                      ByYearMonth (YearMonth (y, m)) -> askOracle (IndexRoot AllPosts) >>= \x -> return (x <> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
 
-  let indexFilter x = case x of
-                        AllPosts      -> id
-                        ByTag t       -> (Ix.@+ [t])
-                        ByYearMonth t -> (Ix.@+ [t])
-
-  let indexPages x = do
+  addOracleCache $ \(IndexPages x) -> do
         r <- askOracle $ IndexRoot x
         k <- Ix.toDescList (Proxy @Posted) . indexFilter x <$> postIx' ()
         p <- paginate' postsPerPage k
         return $ unzipper $ extend (\x -> r <> "pages/" <> T.pack (show $ pos x + 1) :*: extract x :*: pos x + 1:*: RNil) p
-
-  addOracleCache $ \(IndexPages x) -> indexPages x
 
   let correspondingMD   = withMdExtension . (sourceFolder </>)
       getDoc            = correspondingMD >=> readStage1Doc

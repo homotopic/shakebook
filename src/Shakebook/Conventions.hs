@@ -94,6 +94,7 @@ module Shakebook.Conventions (
 , IndexPages(..)
 , RecentPosts(..)
 , PostsFilter(..)
+, indexFilter
 
   -- * Formatting
 , basicMDJsonFormatRecord
@@ -429,3 +430,12 @@ type TMain      = "templates/index.html" :-> Record MainPage
 type TDoc       = "templates/docs.html"  :-> Record FinalDoc
 type TPost      = "templates/post.html"  :-> Record FinalPost
 type TPostIndex = "templates/post-list.html" :-> Record PostIndexPage
+
+indexFilter :: (Indexable ixs a, IsIndexOf Tag ixs,
+                    IsIndexOf YearMonth ixs) =>
+                    PostsFilter -> IxSet ixs a -> IxSet ixs a
+
+indexFilter x = case x of
+                  AllPosts      -> id
+                  ByTag t       -> (Ix.@+ [t])
+                  ByYearMonth t -> (Ix.@+ [t])
