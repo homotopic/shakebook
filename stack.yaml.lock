@@ -40,13 +40,6 @@ packages:
   original:
     hackage: pandoc-2.10
 - completed:
-    hackage: shake-plus-extended-0.3.0.0@sha256:ad3e6bb2993a8a0e5eae10d61a6803a822153ffa427093e52964737170513865,1908
-    pantry-tree:
-      size: 558
-      sha256: 8692cbf71db90fbf66c895b07e1c2c2ae0d2174fec4af7e81cfe6006603a3c20
-  original:
-    hackage: shake-plus-extended-0.3.0.0
-- completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
       size: 601
@@ -69,7 +62,7 @@ packages:
     hackage: vinyl-0.13.0
 snapshots:
 - completed:
-    size: 518259
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/7/29.yaml
-    sha256: 2bc1221273190488293f2a8377cfbea272697070d68b62c6fa6f4f5a98c4f8af
-  original: nightly-2020-07-29
+    size: 518258
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/7/30.yaml
+    sha256: 3ee781bdbf2504ecdff35ba16d8a1571abccae1002cf85760ae7cd32cd5c4691
+  original: nightly-2020-07-30
