@@ -80,7 +80,7 @@ rules = do
   postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
 
   addOracle        defaultIndexRoots
-  addOracleCache $ (postIx' () >>=) . defaultIndexPages x postsPerPage
+  addOracleCache $ \y -> postIx' () >>= \x -> defaultIndexPages x postsPerPage y
 
   let correspondingMD   = withMdExtension . (sourceFolder </>)
       getDoc            = correspondingMD >=> readStage1Doc
