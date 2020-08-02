@@ -1,4 +1,4 @@
-resolver: nightly-2020-07-30
+resolver: nightly-2020-08-01
 packages:
 - .
 extra-deps:
@@ -9,7 +9,7 @@ extra-deps:
 - pandoc-2.10
 - slick-1.0.1.1
 - text-time-0.2.0
-- vinyl-0.13.0
+allow-newer: true
 nix:
   enable: false
   packages: [zlib]
