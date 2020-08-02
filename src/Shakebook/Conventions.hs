@@ -445,8 +445,8 @@ indexFilter x = case x of
 defaultIndexRoots :: MonadAction m => IndexRoot -> m Text
 defaultIndexRoots (IndexRoot x) = case x of
      AllPosts                       -> return "/posts/"
-     ByTag (Tag t)                  -> askOracle (IndexRoot AllPosts) >>= return . (<> "tags/" <> t <> "/")
-     ByYearMonth (YearMonth (y, m)) -> askOracle (IndexRoot AllPosts) >>= return . (<> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/")
+     ByTag (Tag t)                  -> (<> "tags/" <> t <> "/") <$> askOracle (IndexRoot AllPosts)
+     ByYearMonth (YearMonth (y, m)) -> (<> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/") <$> askOracle (IndexRoot AllPosts)
 
 defaultIndexPages :: (MonadAction m, MonadThrow m, Indexable xs (Record Stage1Post), IsIndexOf YearMonth xs, IsIndexOf Tag xs, IsIndexOf Posted xs) => IxSet xs (Record Stage1Post) -> Int -> IndexPages -> m [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
 defaultIndexPages postIx postsPerPage (IndexPages x) = do

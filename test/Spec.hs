@@ -79,15 +79,15 @@ rules = do
 
   postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
 
-  addOracle        defaultIndexRoots
-  addOracleCache $ \y -> postIx' () >>= \x -> defaultIndexPages x postsPerPage y
+  void $ addOracle        defaultIndexRoots
+  void $ addOracleCache $ \y -> postIx' () >>= \x -> defaultIndexPages x postsPerPage y
 
   let correspondingMD   = withMdExtension . (sourceFolder </>)
       getDoc            = correspondingMD >=> readStage1Doc
 
-  addOracleCache $ \(BlogNav ())     -> LT.toStrict . renderText <$> ((commuteHtmlT . genBlogNav "Blog" defaultPrettyMonthFormat) =<< postIx' ())
-  addOracleCache $ \(DocNav ())      -> LT.toStrict . renderText . genDocNav  <$> mapM getDoc tableOfContents
-  addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
+  void $ addOracleCache $ \(BlogNav ())     -> LT.toStrict . renderText <$> ((commuteHtmlT . genBlogNav "Blog" defaultPrettyMonthFormat) =<< postIx' ())
+  void $ addOracleCache $ \(DocNav ())      -> LT.toStrict . renderText . genDocNav  <$> mapM getDoc tableOfContents
+  void $ addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
 
   "index.html" /%> \(dir, fp) -> do
     v   <- readRawSingle =<< correspondingMD fp
