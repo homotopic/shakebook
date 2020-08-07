@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
 {- |
@@ -180,15 +182,18 @@ withLensesAndProxies [d|
 
 -- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag Text
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData, Generic)
+  deriving stock   (Show, Eq, Ord, Data, Typeable, Generic)
+  deriving newtype (Hashable, Binary, NFData)
 
 -- | Posted index for a `Post` for use with `IxSet`.
 newtype Posted = Posted UTCTime
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Generic, NFData)
+  deriving stock   (Show, Eq, Ord, Data, Typeable, Generic)
+  deriving newtype (Hashable, Binary, NFData)
 
 -- | YearMonth (yyyy, mm) index for a `Post` for use with `IxSet`.
 newtype YearMonth = YearMonth (Integer, Int)
-  deriving (Show, Eq, Ord, Data, Typeable, Hashable, Binary, NFData, Generic)
+  deriving stock   (Show, Eq, Ord, Data, Typeable, Generic)
+  deriving newtype (Hashable, Binary, NFData)
 
 toYearMonthPair :: UTCTime -> (Integer, Int)
 toYearMonthPair = (\(a, b, _) -> (a, b)) . toGregorian . utctDay
@@ -396,37 +401,34 @@ instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
                       (Ix.ixFun (pure . Posted . view fPosted))
                       (Ix.ixFun (pure . YearMonth . toYearMonthPair . view fPosted))
 
-newtype BlogNav = BlogNav ()
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+newtype BlogNav a = BlogNav a
+  deriving newtype (Eq, Show, Generic, NFData, Hashable, Binary)
 
-type instance RuleResult BlogNav = Text
+type instance RuleResult (BlogNav a) = Text
 
-newtype DocNav = DocNav ()
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+newtype DocNav a = DocNav a
+  deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult DocNav = Text
+type instance RuleResult (DocNav a) = Text
 
-newtype RecentPosts = RecentPosts ()
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+newtype RecentPosts a = RecentPosts a
+  deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult RecentPosts = [Record Stage1Post]
+type instance RuleResult (RecentPosts ()) = [Record Stage1Post]
 
 data PostsFilter = AllPosts | ByTag Tag | ByYearMonth YearMonth
-  deriving (Eq, Show, Generic)
+  deriving stock    (Eq, Show, Generic)
+  deriving anyclass (NFData, Hashable, Binary)
 
-instance NFData   PostsFilter
-instance Hashable PostsFilter
-instance Binary   PostsFilter
+newtype IndexRoot a = IndexRoot a
+  deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
 
-newtype IndexRoot = IndexRoot PostsFilter
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
+type instance RuleResult (IndexRoot a) = Text
 
-type instance RuleResult IndexRoot = Text
+newtype IndexPages a = IndexPages a
+  deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
 
-newtype IndexPages = IndexPages PostsFilter
-  deriving (Eq, Show, Generic, Binary, Hashable, NFData)
-
-type instance RuleResult IndexPages = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
+type instance RuleResult (IndexPages a) = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
 
 type TMain      = "templates/index.html" :-> Record MainPage
 type TDoc       = "templates/docs.html"  :-> Record FinalDoc
@@ -442,13 +444,22 @@ indexFilter x = case x of
                   ByTag t       -> (Ix.@+ [t])
                   ByYearMonth t -> (Ix.@+ [t])
 
-defaultIndexRoots :: MonadAction m => IndexRoot -> m Text
+defaultIndexRoots :: MonadAction m => IndexRoot PostsFilter -> m Text
 defaultIndexRoots (IndexRoot x) = case x of
      AllPosts                       -> return "/posts/"
      ByTag (Tag t)                  -> (<> "tags/" <> t <> "/") <$> askOracle (IndexRoot AllPosts)
      ByYearMonth (YearMonth (y, m)) -> (<> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/") <$> askOracle (IndexRoot AllPosts)
 
-defaultIndexPages :: (MonadAction m, MonadThrow m, Indexable xs (Record Stage1Post), IsIndexOf YearMonth xs, IsIndexOf Tag xs, IsIndexOf Posted xs) => IxSet xs (Record Stage1Post) -> Int -> IndexPages -> m [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
+defaultIndexPages :: (MonadAction m,
+                      MonadThrow m,
+                      Indexable xs (Record Stage1Post),
+                      IsIndexOf YearMonth xs,
+                      IsIndexOf Tag xs,
+                      IsIndexOf Posted xs)
+                  => IxSet xs (Record Stage1Post)
+                  -> Int
+                  -> IndexPages PostsFilter
+                  -> m [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
 defaultIndexPages postIx postsPerPage (IndexPages x) = do
         r <- askOracle $ IndexRoot x
         let k = Ix.toDescList (Proxy @Posted) . indexFilter x $ postIx
