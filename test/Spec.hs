@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+import Composite.Aeson
 import           Composite.Record
 import qualified Data.IxSet.Typed                as Ix
 import qualified Data.IxSet.Typed.Conversions    as Ix
@@ -19,6 +21,10 @@ import           Shakebook                       hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
 import           Test.Tasty.Golden
+import Data.LanguageCodes
+import qualified RIO.Char as C
+import Skylighting.Types
+import qualified RIO.HashMap as HM
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -61,7 +67,38 @@ stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
 stage1Doc = addUrl
 
 enrichPage :: Record x -> Record (Enriched x)
-enrichPage x = mySocial :*: (LT.toStrict . renderText $ defaultCdnImports) :*: defaultHighlighting :*: siteTitle :*: x
+enrichPage x = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: x
+
+newtype IndexHtml = IndexHtml (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+newtype PostHtml  = PostHtml (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+newtype DocHtml  = DocHtml (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+data PostIndexHtml = PostIndexHtml Text PostsFilter Int (Path Rel Dir, Path Rel File)
+  deriving stock    (Eq, Show, Generic)
+  deriving anyclass (NFData, Binary, Hashable)
+
+type instance RuleResult IndexHtml = Record MainPage
+type instance RuleResult PostHtml  = Record FinalPost
+type instance RuleResult DocHtml = Record FinalDoc
+type instance RuleResult PostIndexHtml = Record PostIndexPage
+
+type instance RuleResult DocSubsections = [Record Stage1Doc]
+
+fromCofree :: (Eq a, Hashable a) => Cofree [] a -> HashMap a [a]
+fromCofree = HM.fromList . foldr ((<>) . pure) [] . extend (\(x :< xs) -> (x, fmap extract xs))
+
+newtype DocSubsections = DocSubsections (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+newtype DocSubsectionMap a = DocSubsectionMap a
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+type instance RuleResult (DocSubsectionMap a) = HashMap (Path Rel File) [Path Rel File]
 
 rules :: ShakePlus SimpleSPlusEnv ()
 rules = do
@@ -79,61 +116,69 @@ rules = do
 
   postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
 
-  void $ addOracle        defaultIndexRoots
-  void $ addOracleCache $ \y -> postIx' () >>= \x -> defaultIndexPages x postsPerPage y
+  addOracle        defaultIndexRoots
+  addOracleCache $ \y -> postIx' () >>= \x -> defaultIndexPages x postsPerPage y
 
   let correspondingMD   = withMdExtension . (sourceFolder </>)
       getDoc            = correspondingMD >=> readStage1Doc
 
-  void $ addOracleCache $ \(BlogNav ())     -> LT.toStrict . renderText <$> ((commuteHtmlT . genBlogNav "Blog" defaultPrettyMonthFormat) =<< postIx' ())
-  void $ addOracleCache $ \(DocNav ())      -> LT.toStrict . renderText . genDocNav  <$> mapM getDoc tableOfContents
-  void $ addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
+  addOracleCache $ \(BlogNav ())     -> postIx' () >>= fmap toHtmlFragment . genBlogNav "Blog" defaultPrettyMonthFormat
+  addOracleCache $ \(DocNav ())      -> toHtmlFragment . genDocNav <$> mapM getDoc tableOfContents
+  addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
+  addOracleCache $ \(IndexHtml (d, o)) -> do
+                             v  <- readRawSingle =<< correspondingMD o
+                             xs <- askOracle $ RecentPosts ()
+                             return $ xs :*: enrichPage v
 
-  "index.html" /%> \(dir, fp) -> do
-    v   <- readRawSingle =<< correspondingMD fp
-    xs  <- askOracle $ RecentPosts ()
-    let (v' :: TMain) = Val $ xs :*: enrichPage v
-    buildPageAction' sourceFolder v' mainPageJsonFormat $ dir </> fp
+  addOracleCache $ \(DocSubsectionMap ()) -> return $ fromCofree tableOfContents
+  addOracleCache $ \(DocSubsections (d, o)) -> askOracle (DocSubsectionMap ()) >>= mapM getDoc . fromJust . HM.lookup o
 
-  "posts/*.html" /%> \(dir, fp) -> do
-    src <- correspondingMD fp
-    xs  <- postIx' () >>= Ix.toZipperDesc (Proxy @Posted) >>= seekOnThrow (view fSrcPath) src
-    nav <- askOracle $ BlogNav ()
-    let (v :: TPost) = Val $ nav :*: enrichPage (extract xs)
-    buildPageAction' sourceFolder v finalPostJsonFormat $ dir </> fp
+  addOracleCache $ \(DocHtml (d, o)) -> do
+                             v  <- getDoc o
+                             xs <- askOracle $ DocSubsections (d, o)
+                             k  <- askOracle $ DocNav ()
+                             return $ k :*: xs :*: enrichPage v
 
-  sequence_ $ tableOfContents =>> \xs ->
-    (toFilePath . extract $ xs) /%> \(dir, fp) -> do
-      nav  <- askOracle $ DocNav ()
-      subs <- mapM getDoc (fmap extract . unwrap $ xs)
-      v    <- getDoc fp
-      let (v' :: TDoc) = Val $ nav :*: subs :*: enrichPage v
-      buildPageAction' sourceFolder v' finalDocJsonFormat $ dir </> fp
+  addOracleCache $ \(PostHtml (d, o)) -> do
+                      src <- correspondingMD o
+                      xs  <- postIx' () >>= Ix.toZipperDesc (Proxy @Posted) >>= seekOnThrow (view fSrcPath) src
+                      nav <- askOracle $ BlogNav ()
+                      return $ nav :*: enrichPage (extract xs)
 
-  let buildPostIndex title query pageno out = do
-        nav <- askOracle $ BlogNav ()
-        xs  <- askOracle query
-        xs' <- zipper' $ sortOn (Down . view fPageNo) xs
-        let links = fmap (\x ->  T.pack (show (view fPageNo x)) :*: view fUrl x :*: RNil) (unzipper xs')
-        let (v :: TPostIndex) = Val $ enrichPage (links :*: nav :*: title :*: extract (seek (pageno - 1) xs'))
-        buildPageAction' sourceFolder v postIndexPageJsonFormat out
+  addOracleCache $ \(PostIndexHtml title query pageno (d, o)) -> do
+                       nav <- askOracle $ BlogNav ()
+                       xs  <- askOracle $ IndexPages query
+                       xs' <- zipper' $ sortOn (Down . view fPageNo) xs
+                       let links = fmap (\x ->  T.pack (show (view fPageNo x)) :*: view fUrl x :*: RNil) (unzipper xs')
+                       return $ enrichPage (links :*: nav :*: title :*: extract (seek (pageno - 1) xs'))
+
+  let buildPage x t f (d, o) = do
+       v <- askOracle $ x (d, o)
+       buildPageAction (sourceFolder </> t) (toJsonWithFormat f v) (d </> o)
+
+  "index.html"  /%> buildPage IndexHtml $(mkRelFile "templates/index.html") mainPageJsonFormat
+
+  "posts/*.html" /%> buildPage PostHtml $(mkRelFile "templates/post.html") finalPostJsonFormat
+
+  sequence_ $ tableOfContents =>> \xs -> (toFilePath $ extract xs) /%>
+    buildPage DocHtml $(mkRelFile "templates/docs.html") finalDocJsonFormat
 
   "posts/pages/*/index.html" /%> \(dir, fp) -> do
     let n = read . (!! 2) $ splitPath fp
-    buildPostIndex "Posts" (IndexPages AllPosts) n $ dir </> fp
+    buildPage (PostIndexHtml "Posts" AllPosts n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
 
   "posts/tags/*/pages/*/index.html" /%> \(dir, fp) -> do
-    let fp' = splitPath fp
-    let t = T.pack $ fp' !! 2
-    let n = read   $ fp' !! 4
-    buildPostIndex ("Posts tagged " <> t) (IndexPages (ByTag (Tag t))) n $ dir </> fp
+    let xs = splitPath fp
+    let t  = T.pack $ xs !! 2
+    let n  = read $ xs !! 4
+    buildPage (PostIndexHtml ("Posts tagged " <> t) (ByTag $ Tag t) n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
 
   "posts/months/*/pages/*/index.html" /%> \(dir, fp) -> do
-    let out' = splitPath fp
-    let t  = parseISODateTime $ T.pack $ out' !! 2
+    let xs = splitPath fp
+    let t  = parseISODateTime $ T.pack $ xs !! 2
     let t' = YearMonth $ toYearMonthPair t
-    let n  = read $ out' !! 4
-    buildPostIndex ("Posts from " <> defaultPrettyMonthFormat t) (IndexPages $ ByYearMonth t') n $ dir </> fp
+    let n  = read $ xs !! 4
+    buildPage (PostIndexHtml ("Posts from " <> defaultPrettyMonthFormat t) (ByYearMonth t') n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
 
   ["posts/index.html", "posts/tags/*/index.html", "posts/months/*/index.html"] /|%> \(dir, fp) -> do
     copyFileChanged (dir </> parent fp </> $(mkRelFile "pages/1/index.html")) (dir </> fp)
@@ -142,9 +187,8 @@ rules = do
     copyFileChanged (sourceFolder </> fp) (dir </> fp)
 
   "sitemap.xml" /%> \(dir, fp) -> do
-    xs <- postIx' ()
-    let xs' = Ix.toDescList (Proxy @Posted) xs
-    buildSitemap (asSitemapUrl baseUrl <$> xs') $ dir </> fp
+    xs <- Ix.toDescList (Proxy @Posted) <$> postIx' ()
+    buildSitemap (asSitemapUrl baseUrl <$> xs) $ dir </> fp
 
   let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
       verbatimPipeline = simplePipeline return

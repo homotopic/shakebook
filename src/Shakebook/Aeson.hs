@@ -4,12 +4,9 @@ import           Composite.Aeson
 import           Control.Monad.Except
 import           Data.Aeson
 import           Data.Aeson.BetterErrors
-import           Lucid
 import           Path
 import           RIO
-import qualified RIO.Text                 as T
-import qualified RIO.Text.Lazy            as LT
-import           Text.Pandoc.Highlighting
+import Shakebook.Lucid
 
 newtype AesonParseException a = AesonParseException a
   deriving (Eq, Show, Ord)
@@ -25,11 +22,11 @@ parseValue' f v = do
 data WriteOnlyJsonField = WriteOnlyJsonField
   deriving Show
 
-lucidJsonFormat :: JsonFormat e (Html ())
-lucidJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . LT.toStrict . renderText) (throwCustomError WriteOnlyJsonField)
+htmlJsonFormat :: JsonFormat e HtmlFragment
+htmlJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . unHtmlFragment) (throwCustomError WriteOnlyJsonField)
 
-styleJsonFormat :: JsonFormat e Style
-styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . T.pack . styleToCss) (throwCustomError WriteOnlyJsonField)
+styleJsonFormat :: JsonFormat e StyleFragment
+styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . unStyleFragment) (throwCustomError WriteOnlyJsonField)
 
 relFileJsonFormat :: JsonFormat e (Path Rel File)
 relFileJsonFormat = aesonJsonFormat

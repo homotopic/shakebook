@@ -20,6 +20,7 @@ module Shakebook (
 , module Shakebook.Conventions
 , module Shakebook.Defaults
 , module Shakebook.Feed
+, module Shakebook.Lucid
 , module Shakebook.Mustache
 , module Shakebook.Pandoc
 , module Shakebook.Sitemap
@@ -39,6 +40,7 @@ import Shakebook.Conduit
 import Shakebook.Conventions
 import Shakebook.Defaults
 import Shakebook.Feed hiding (Link)
+import Shakebook.Lucid
 import Shakebook.Mustache
 import Shakebook.Pandoc
 import Shakebook.Sitemap

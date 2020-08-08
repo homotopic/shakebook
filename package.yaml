@@ -31,6 +31,7 @@ default-extensions:
 - DeriveFunctor
 - DeriveGeneric
 - DeriveTraversable
+- DerivingVia
 - DoAndIfThenElse
 - EmptyDataDecls
 - ExistentialQuantification
@@ -101,6 +102,7 @@ dependencies:
 - free
 - hashable-time
 - http-conduit
+- iso639
 - ixset-typed >= 0.5
 - ixset-typed-conversions
 - lens
@@ -122,3 +124,4 @@ dependencies:
 - text-time
 - vinyl
 - zipper-extra >= 0.1.3.0
+- skylighting

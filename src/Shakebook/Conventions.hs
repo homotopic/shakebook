@@ -113,12 +113,12 @@ module Shakebook.Conventions (
 , indexPageJsonFormatRecord
 , postIndexPageJsonFormat
 , finalDocJsonFormat
+, MainPage
+, FinalPost
+, FinalDoc
+, PostIndexPage
 
   -- * Templates
-, TMain
-, TDoc
-, TPost
-, TPostIndex
 , Enriched
 ) where
 
@@ -132,6 +132,7 @@ import           Data.Hashable.Time
 import           Data.IxSet.Typed           as Ix
 import           Development.Shake.Plus     hiding ((:->))
 import           Lucid
+import Lucid.Base
 import           RIO
 import           RIO.List
 import           RIO.List.Partial
@@ -141,6 +142,7 @@ import           RIO.Time
 import           Shakebook.Aeson
 import           Shakebook.Defaults
 import qualified Shakebook.Feed             as Atom
+import Shakebook.Lucid
 import           Shakebook.Sitemap
 import           Text.Pandoc.Highlighting
 import Control.Comonad.Zipper.Extra
@@ -153,18 +155,18 @@ withLensesAndProxies [d|
 type Link = '[FId, FUrl]
 
 withLensesAndProxies [d|
-  type FCdnImports    = "cdn-imports"  :-> Text
+  type FCdnImports    = "cdn-imports"  :-> HtmlFragment
   type FContent       = "content"      :-> Text
   type FDescription   = "description"  :-> Text
-  type FHighlighting  = "highlighting" :-> Style
+  type FHighlighting  = "highlighting" :-> StyleFragment
   type FImage         = "image"        :-> Maybe Text
 
   type FModified      = "modified"     :-> UTCTime
-  type FNext          = "next"         :-> Text
+  type FNext          = "next"         :-> HtmlFragment
   type FPageNo        = "pageno"       :-> Int
   type FPageLinks     = "page-links"   :-> [Record Link]
   type FPrettyDate    = "pretty-date"  :-> UTCTime
-  type FPrevious      = "previous"     :-> Text
+  type FPrevious      = "previous"     :-> HtmlFragment
   type FPosted        = "posted"       :-> UTCTime
   type FItems x       = "items"        :-> [Record x]
   type FRecentPosts x = "recent-posts" :-> [Record x]
@@ -176,7 +178,7 @@ withLensesAndProxies [d|
   type FTagLinks      = "tag-links"    :-> [Record Link]
   type FTeaser        = "teaser"       :-> Text
   type FTitle         = "title"        :-> Text
-  type FToc           = "toc"          :-> Text
+  type FToc           = "toc"          :-> HtmlFragment
 
   |]
 
@@ -206,8 +208,8 @@ genBlogNav :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem F
            => Text -- ^ "Top level title, e.g "Blog"
            -> (UTCTime -> Text) -- ^ Formatting function to a UTCTime to a title.
            -> IxSet ixs (Record xs)
-           -> HtmlT m ()
-genBlogNav a f xs = do
+           -> m (Html ())
+genBlogNav a f xs = commuteHtmlT $ do
   ul_ $
     li_ $ do
       b <- lift $ askOracle $ IndexRoot AllPosts
@@ -333,7 +335,7 @@ type Enriched x = FSocial : FCdnImports : FHighlighting : FSiteTitle : x
 
 enrichedXJsonFormatRecord :: JsonFormatRecord e x -> JsonFormatRecord e (Enriched x)
 enrichedXJsonFormatRecord x = field (listJsonFormat linkJsonFormat)
-                           :& field textJsonFormat
+                           :& field htmlJsonFormat
                            :& field styleJsonFormat
                            :& field defaultJsonFormat
                            :& x
@@ -341,7 +343,7 @@ enrichedXJsonFormatRecord x = field (listJsonFormat linkJsonFormat)
 type FinalDoc = FToc : FSubsections Stage1Doc : Enriched Stage1Doc
 
 finalDocJsonFormatRecord :: JsonFormatRecord e FinalDoc
-finalDocJsonFormatRecord = field textJsonFormat
+finalDocJsonFormatRecord = field htmlJsonFormat
                         :& field (listJsonFormat stage1DocJsonFormat)
                         :& enrichedXJsonFormatRecord stage1DocJsonFormatRecord
 
@@ -351,7 +353,7 @@ finalDocJsonFormat = recordJsonFormat finalDocJsonFormatRecord
 type FinalPost = FToc : Enriched Stage1Post
 
 finalPostJsonFormatRecord :: JsonFormatRecord e FinalPost
-finalPostJsonFormatRecord = field textJsonFormat
+finalPostJsonFormatRecord = field htmlJsonFormat
                          :& enrichedXJsonFormatRecord stage1PostJsonFormatRecord
 
 finalPostJsonFormat :: JsonFormat e (Record FinalPost)
@@ -361,7 +363,7 @@ type IndexPage x = Enriched (FPageLinks : FToc : FTitle : FUrl : FItems x : FPag
 
 indexPageJsonFormatRecord :: JsonFormat e (Record x) -> JsonFormatRecord e (IndexPage x)
 indexPageJsonFormatRecord x = enrichedXJsonFormatRecord $ field (listJsonFormat linkJsonFormat)
-                                                       :& field textJsonFormat
+                                                       :& field htmlJsonFormat
                                                        :& field textJsonFormat
                                                        :& field textJsonFormat
                                                        :& field (listJsonFormat x)
@@ -404,12 +406,12 @@ instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
 newtype BlogNav a = BlogNav a
   deriving newtype (Eq, Show, Generic, NFData, Hashable, Binary)
 
-type instance RuleResult (BlogNav a) = Text
+type instance RuleResult (BlogNav a) = HtmlFragment
 
 newtype DocNav a = DocNav a
   deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
 
-type instance RuleResult (DocNav a) = Text
+type instance RuleResult (DocNav a) = HtmlFragment
 
 newtype RecentPosts a = RecentPosts a
   deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
@@ -429,11 +431,6 @@ newtype IndexPages a = IndexPages a
   deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
 
 type instance RuleResult (IndexPages a) = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
-
-type TMain      = "templates/index.html" :-> Record MainPage
-type TDoc       = "templates/docs.html"  :-> Record FinalDoc
-type TPost      = "templates/post.html"  :-> Record FinalPost
-type TPostIndex = "templates/post-list.html" :-> Record PostIndexPage
 
 indexFilter :: (Indexable ixs a, IsIndexOf Tag ixs,
                     IsIndexOf YearMonth ixs) =>
