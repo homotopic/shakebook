@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -118,6 +118,13 @@ module Shakebook.Conventions (
 , FinalDoc
 , PostIndexPage
 
+, IndexHtml(..)
+, DocSubsectionMap(..)
+, DocSubsections(..)
+, DocHtml(..)
+, PostHtml(..)
+, PostIndexHtml(..)
+
   -- * Templates
 , Enriched
 ) where
@@ -131,6 +138,7 @@ import           Data.Binary.Instances.Time ()
 import           Data.Hashable.Time
 import           Data.IxSet.Typed           as Ix
 import           Development.Shake.Plus     hiding ((:->))
+import           Development.Shake.Plus.Extended
 import           Lucid
 import Lucid.Base
 import           RIO
@@ -431,6 +439,34 @@ newtype IndexPages a = IndexPages a
   deriving newtype (Eq, Show, Generic, Binary, Hashable, NFData)
 
 type instance RuleResult (IndexPages a) = [Record (FUrl : FItems Stage1Post : FPageNo : '[])]
+
+newtype IndexHtml = IndexHtml (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+newtype PostHtml  = PostHtml (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+newtype DocHtml  = DocHtml (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+data PostIndexHtml = PostIndexHtml Text PostsFilter Int
+  deriving stock    (Eq, Show, Generic)
+  deriving anyclass (NFData, Binary, Hashable)
+
+type instance RuleResult IndexHtml = Record MainPage
+type instance RuleResult PostHtml  = Record FinalPost
+type instance RuleResult DocHtml = Record FinalDoc
+type instance RuleResult PostIndexHtml = Record PostIndexPage
+
+type instance RuleResult DocSubsections = [Record Stage1Doc]
+
+newtype DocSubsections = DocSubsections (Path Rel Dir, Path Rel File)
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+newtype DocSubsectionMap a = DocSubsectionMap a
+  deriving (Eq, Show, Generic, NFData, Binary, Hashable)
+
+type instance RuleResult (DocSubsectionMap a) = HashMap (Path Rel File) [Path Rel File]
 
 indexFilter :: (Indexable ixs a, IsIndexOf Tag ixs,
                     IsIndexOf YearMonth ixs) =>
