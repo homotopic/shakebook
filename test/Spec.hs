@@ -107,14 +107,14 @@ rules = do
   addOracleCache $ \(PostHtml (d, o)) -> do
                       xs  <- postIx' () >>= Ix.toZipperDesc (Proxy @Posted) >>= seekOnThrow (view fSrcPath) (d </> o)
                       nav <- askOracle $ BlogNav ()
-                      return $ nav :*: enrichment <+> (extract xs)
+                      return $ nav :*: enrichment <+> extract xs
 
   addOracleCache $ \(PostIndexHtml title query pageno) -> do
                        nav <- askOracle $ BlogNav ()
                        xs  <- askOracle $ IndexPages query
                        xs' <- zipper' $ sortOn (Down . view fPageNo) xs
                        let links = fmap (\x ->  T.pack (show (view fPageNo x)) :*: view fUrl x :*: RNil) (unzipper xs')
-                       return $ enrichment <+> (links :*: nav :*: title :*: extract (seek (pageno - 1) xs'))
+                       return $ enrichment <+> links :*: nav :*: title :*: extract (seek (pageno - 1) xs')
 
   let buildPage x t f (d, o) = do
        v <- askOracle x
