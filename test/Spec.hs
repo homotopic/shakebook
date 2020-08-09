@@ -3,6 +3,7 @@
 
 import Composite.Aeson
 import           Composite.Record
+import Data.Vinyl hiding (RElem)
 import qualified Data.IxSet.Typed                as Ix
 import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
@@ -59,8 +60,8 @@ stage1Post = addUrl >=> return . addTeaser >=> addTagLinks >=> return . addPrett
 stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
 stage1Doc = addUrl
 
-enrichPage :: Record x -> Record (Enriched x)
-enrichPage x = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: x
+enrichment :: Record Enrichment
+enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
 
 rules :: ShakePlus SimpleSPlusEnv ()
 rules = do
@@ -90,7 +91,7 @@ rules = do
   addOracleCache $ \(IndexHtml (d, o)) -> do
                       v  <- readRawSingle $ d </> o
                       xs <- askOracle $ RecentPosts ()
-                      return $ xs :*: enrichPage v
+                      return $ xs :*: enrichment <+> v
 
   addOracleCache $ \(DocSubsectionMap ()) -> return $ fromCofree tableOfContents
 
@@ -101,19 +102,19 @@ rules = do
                       v  <- readStage1Doc $ d </> o
                       xs <- askOracle $ DocSubsections (d, o)
                       k  <- askOracle $ DocNav ()
-                      return $ k :*: xs :*: enrichPage v
+                      return $ k :*: xs :*: enrichment <+> v
 
   addOracleCache $ \(PostHtml (d, o)) -> do
                       xs  <- postIx' () >>= Ix.toZipperDesc (Proxy @Posted) >>= seekOnThrow (view fSrcPath) (d </> o)
                       nav <- askOracle $ BlogNav ()
-                      return $ nav :*: enrichPage (extract xs)
+                      return $ nav :*: enrichment <+> (extract xs)
 
   addOracleCache $ \(PostIndexHtml title query pageno) -> do
                        nav <- askOracle $ BlogNav ()
                        xs  <- askOracle $ IndexPages query
                        xs' <- zipper' $ sortOn (Down . view fPageNo) xs
                        let links = fmap (\x ->  T.pack (show (view fPageNo x)) :*: view fUrl x :*: RNil) (unzipper xs')
-                       return $ enrichPage (links :*: nav :*: title :*: extract (seek (pageno - 1) xs'))
+                       return $ enrichment <+> (links :*: nav :*: title :*: extract (seek (pageno - 1) xs'))
 
   let buildPage x t f (d, o) = do
        v <- askOracle x

@@ -88,6 +88,7 @@ module Shakebook.Conventions (
 , Stage1Post
 , RawDoc
 , Stage1Doc
+, Enrichment
 
   -- * Oracles
 , BlogNav(..)
@@ -132,6 +133,8 @@ module Shakebook.Conventions (
 import           Composite.Aeson
 import           Composite.Record
 import           Composite.TH
+import Data.Vinyl hiding (RElem)
+import Data.Vinyl.TypeLevel
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Data.Binary.Instances.Time ()
@@ -339,7 +342,9 @@ stage1DocJsonFormat = recordJsonFormat stage1DocJsonFormatRecord
 --- Stage 2 Types
 
 -- Enrichment provides fields most pages display or can otherwise be safely ignored such as highlighting, json imports and social links.
-type Enriched x = FSocial : FCdnImports : FHighlighting : FSiteTitle : x
+type Enrichment = FSocial : FCdnImports : FHighlighting : FSiteTitle : '[]
+
+type Enriched x = Enrichment ++ x
 
 enrichedXJsonFormatRecord :: JsonFormatRecord e x -> JsonFormatRecord e (Enriched x)
 enrichedXJsonFormatRecord x = field (listJsonFormat linkJsonFormat)

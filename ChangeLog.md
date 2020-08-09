@@ -1,5 +1,16 @@
 # Changelog for Shakebook
 
+## (v0.12.0.0)
+
+* Standardize top level strategy for supplying template values as follows:
+  * Pick an oracle that returns a composite.
+  * Pick a template.
+  * Pick a formatting strategy.
+
+## (v0.11.0.0)
+
+* Introduce [composite-aeson](https://hackage.haskell.org/package/composite-aeson) for supplying and formatting template values.
+
 ## (v0.10.0.0)
 
 * Add [lucid](https://hackage.haskell.org/package/lucid).
