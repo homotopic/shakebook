@@ -138,15 +138,14 @@ rules = do
   "posts/tags/*/pages/*/index.html" /%> \(dir, fp) -> do
     let xs = splitPath fp
     let t  = T.pack $ xs !! 2
-    let n  = read $ xs !! 4
+    let n  = read   $ xs !! 4
     buildPage (PostIndexHtml ("Posts tagged " <> t) (ByTag $ Tag t) n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
 
   "posts/months/*/pages/*/index.html" /%> \(dir, fp) -> do
     let xs = splitPath fp
     let t  = parseISODateTime $ T.pack $ xs !! 2
-    let t' = YearMonth $ toYearMonthPair t
     let n  = read $ xs !! 4
-    buildPage (PostIndexHtml ("Posts from " <> defaultPrettyMonthFormat t) (ByYearMonth t') n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
+    buildPage (PostIndexHtml ("Posts from " <> defaultPrettyMonthFormat t) (ByYearMonth $ toYearMonth t) n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
 
   ["posts/index.html", "posts/tags/*/index.html", "posts/months/*/index.html"] /|%> \(dir, fp) -> do
     copyFileChanged (dir </> parent fp </> $(mkRelFile "pages/1/index.html")) (dir </> fp)

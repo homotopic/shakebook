@@ -80,8 +80,8 @@ module Shakebook.Conventions (
 , Tag(..)
 , Posted(..)
 , YearMonth(..)
-, fromYearMonthPair
-, toYearMonthPair
+, fromYearMonth
+, toYearMonth
 
   -- * Stages
 , RawPost
@@ -205,11 +205,11 @@ newtype YearMonth = YearMonth (Integer, Int)
   deriving stock   (Show, Eq, Ord, Data, Typeable, Generic)
   deriving newtype (Hashable, Binary, NFData)
 
-toYearMonthPair :: UTCTime -> (Integer, Int)
-toYearMonthPair = (\(a, b, _) -> (a, b)) . toGregorian . utctDay
+toYearMonth :: UTCTime -> YearMonth
+toYearMonth = (\(a, b, _) -> YearMonth (a, b)) . toGregorian . utctDay
 
-fromYearMonthPair :: (Integer, Int) -> UTCTime
-fromYearMonthPair (y,m) = UTCTime (fromGregorian y m 1) 0
+fromYearMonth :: YearMonth -> UTCTime
+fromYearMonth (YearMonth (y,m)) = UTCTime (fromGregorian y m 1) 0
 
 -- | Create a blog navbar object for a posts section, with layers "toc1", "toc2", and "toc3".
 genBlogNav :: (IsIndexOf YearMonth ixs, RElem FPosted xs, RElem FUrl xs, RElem FTitle xs, MonadAction m)
@@ -222,9 +222,9 @@ genBlogNav a f xs = commuteHtmlT $ do
     li_ $ do
       b <- lift $ askOracle $ IndexRoot AllPosts
       a_ [href_ b] (toHtml a)
-      ul_ $ forM_ (groupDescBy xs) $ \(YearMonth(y, m), xs') -> do
-        k <- lift $ askOracle $ IndexRoot $ ByYearMonth $ YearMonth (y, m)
-        li_ $ a_ [href_ k] (toHtml . f $ fromYearMonthPair (y, m))
+      ul_ $ forM_ (groupDescBy xs) $ \(ym, xs') -> do
+        k <- lift $ askOracle $ IndexRoot $ ByYearMonth ym
+        li_ $ a_ [href_ k] (toHtml . f $ fromYearMonth ym)
         ul_ $ forM (sortOn (Down . view fPosted) xs') $ \x ->
           li_ $ a_ [href_ $ view fUrl x] (toHtml $ view fTitle x)
 
@@ -409,7 +409,7 @@ addPrettyDate xs = view fPosted xs :*: xs
 instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
   indices = Ix.ixList (Ix.ixFun (fmap Tag . view fTags))
                       (Ix.ixFun (pure . Posted . view fPosted))
-                      (Ix.ixFun (pure . YearMonth . toYearMonthPair . view fPosted))
+                      (Ix.ixFun (pure . toYearMonth . view fPosted))
 
 newtype BlogNav a = BlogNav a
   deriving newtype (Eq, Show, Generic, NFData, Hashable, Binary)
@@ -471,7 +471,6 @@ type instance RuleResult (DocSubsectionMap a) = HashMap (Path Rel File) [Path Re
 indexFilter :: (Indexable ixs a, IsIndexOf Tag ixs,
                     IsIndexOf YearMonth ixs) =>
                     PostsFilter -> IxSet ixs a -> IxSet ixs a
-
 indexFilter x = case x of
                   AllPosts      -> id
                   ByTag t       -> (Ix.@+ [t])
@@ -479,9 +478,9 @@ indexFilter x = case x of
 
 defaultIndexRoots :: MonadAction m => IndexRoot PostsFilter -> m Text
 defaultIndexRoots (IndexRoot x) = case x of
-     AllPosts                       -> return "/posts/"
-     ByTag (Tag t)                  -> (<> "tags/" <> t <> "/") <$> askOracle (IndexRoot AllPosts)
-     ByYearMonth (YearMonth (y, m)) -> (<> "months/" <> defaultMonthUrlFormat (fromYearMonthPair (y, m)) <> "/") <$> askOracle (IndexRoot AllPosts)
+     AllPosts       -> return "/posts/"
+     ByTag (Tag t)  -> (<> "tags/" <> t <> "/") <$> askOracle (IndexRoot AllPosts)
+     ByYearMonth ym -> (<> "months/" <> defaultMonthUrlFormat (fromYearMonth ym) <> "/") <$> askOracle (IndexRoot AllPosts)
 
 defaultIndexPages :: (MonadAction m,
                       MonadThrow m,
