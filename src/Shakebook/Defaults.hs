@@ -29,9 +29,6 @@ defaultPrettyMonthFormat = T.pack . formatTime defaultTimeLocale "%B, %Y"
 defaultPrettyTimeFormat :: UTCTime -> Text
 defaultPrettyTimeFormat = T.pack . formatTime defaultTimeLocale "%A, %B %d, %Y"
 
-defaultMonthUrlFragment :: UTCTime -> Text
-defaultMonthUrlFragment t = "/posts/months/" <> defaultMonthUrlFormat t
-
 defaultHighlighting :: Style
 defaultHighlighting = pygments
 

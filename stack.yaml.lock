@@ -5,19 +5,70 @@
 
 packages:
 - completed:
-    hackage: composite-aeson-0.7.3.0@sha256:fe15e0b93d40bfaaa17ad65cf168b18f7ec15c850b8269b653565965be0b0a6c,3785
+    subdir: composite-aeson
+    name: composite-aeson
+    version: 0.7.2.0
+    git: https://github.com/locallycompact/composite
     pantry-tree:
-      size: 1402
-      sha256: d32a7d3275fd157e33ba2e18052122cd0ef2a8fb132a6bb5e4cf4fb1ddb331d4
+      size: 1507
+      sha256: 8298ecda06dc7633056a01eb5fe21a80adf685323cfa131def1a48cc0af51f5e
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
   original:
-    hackage: composite-aeson-0.7.3.0
+    subdir: composite-aeson
+    git: https://github.com/locallycompact/composite
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
 - completed:
-    hackage: composite-base-0.7.3.0@sha256:5c0ca73989790ca4d8247cb42ec1c5399b85b307b581383fd3b148e0da2df3e8,2896
+    subdir: composite-base
+    name: composite-base
+    version: 0.7.2.0
+    git: https://github.com/locallycompact/composite
     pantry-tree:
-      size: 604
-      sha256: ef7ae8c3ea8a0708bbee1b8aded6cde6cc4c887648be081a765b70110823f220
+      size: 708
+      sha256: c768a4c9faa9298934134c7ce1d403e350d721e9bb6faa59b63dc2b63aa8c5d9
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
   original:
-    hackage: composite-base-0.7.3.0
+    subdir: composite-base
+    git: https://github.com/locallycompact/composite
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+- completed:
+    subdir: composite-aeson-path
+    name: composite-aeson-path
+    version: 0.7.3.0
+    git: https://github.com/locallycompact/composite
+    pantry-tree:
+      size: 288
+      sha256: bc8a7674a808de5922c27a35c5ac796122038e658156c2c6811dc27553a513b2
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+  original:
+    subdir: composite-aeson-path
+    git: https://github.com/locallycompact/composite
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+- completed:
+    subdir: composite-binary-instance
+    name: composite-binary-instance
+    version: 0.7.3.0
+    git: https://github.com/locallycompact/composite
+    pantry-tree:
+      size: 296
+      sha256: 9bdb07cb21ae3d31311451ba76e2e8230eb80ae4da38e54462d361f741740424
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+  original:
+    subdir: composite-binary-instance
+    git: https://github.com/locallycompact/composite
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+- completed:
+    subdir: composite-hashable-instance
+    name: composite-hashable-instance
+    version: 0.7.3.0
+    git: https://github.com/locallycompact/composite
+    pantry-tree:
+      size: 300
+      sha256: 97d3ae6fb5e6e931c0e78bb965c5badd700ed0f39c15a272e089f30f914f771a
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+  original:
+    subdir: composite-hashable-instance
+    git: https://github.com/locallycompact/composite
+    commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
 - completed:
     hackage: hslua-1.1.2@sha256:6c231b2af447430d1ed04f065d40bb6882ece93cc7f32f4051dc99deb69beeae,9694
     pantry-tree:
@@ -55,7 +106,7 @@ packages:
     hackage: text-time-0.2.0
 snapshots:
 - completed:
-    size: 522655
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/1.yaml
-    sha256: fd0afe3e32e0745f2ccdc1271b618456dbddaee4daf5cb69526a3a102a6bbcaa
-  original: nightly-2020-08-01
+    size: 520867
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/14.yaml
+    sha256: 55402c1524b249053913fd87d60062c7c0e816d353e3d842df4cc032432aa0d4
+  original: nightly-2020-08-14

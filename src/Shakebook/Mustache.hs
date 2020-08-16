@@ -39,8 +39,5 @@ buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
-buildPageAction' :: (MonadAction m, MonadThrow m, KnownSymbol s) => Path Rel Dir -> (s :-> xs) -> JsonFormat e xs -> Path b File -> m ()
-buildPageAction' d xs f o = do
-              let (t, v) = valWithName xs
-              t' <- parseRelFile $ T.unpack t
-              buildPageAction (d </> t') (toJsonWithFormat f v) o
+buildPageAction' :: (MonadAction m, MonadThrow m) => Path b File -> JsonFormat e a -> a -> Path b File -> m ()
+buildPageAction' t f v o = buildPageAction t (toJsonWithFormat f v) o

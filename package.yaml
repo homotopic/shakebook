@@ -95,6 +95,9 @@ dependencies:
 - binary-instances
 - composite-aeson >= 0.7.3.0
 - composite-base >= 0.7.3.0
+- composite-aeson-path
+- composite-binary-instance
+- composite-hashable-instance
 - comonad
 - comonad-extras
 - doctemplates
@@ -116,6 +119,7 @@ dependencies:
 - pandoc-types
 - path
 - path-extensions >= 0.1.0.1
+- shake
 - shake-plus >= 0.3.0.0
 - shake-plus-extended >= 0.2.0.0
 - sitemap-gen

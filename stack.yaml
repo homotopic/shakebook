@@ -1,9 +1,15 @@
-resolver: nightly-2020-08-01
+resolver: nightly-2020-08-14
 packages:
 - .
 extra-deps:
-- composite-aeson-0.7.3.0
-- composite-base-0.7.3.0
+- git: https://github.com/locallycompact/composite
+  commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+  subdirs:
+  - composite-aeson
+  - composite-base
+  - composite-aeson-path
+  - composite-binary-instance
+  - composite-hashable-instance
 - hslua-1.1.2
 - jira-wiki-markup-1.3.2
 - pandoc-2.10

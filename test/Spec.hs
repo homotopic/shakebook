@@ -4,21 +4,28 @@
 import Composite.Aeson
 import           Composite.Record
 import Data.Vinyl hiding (RElem)
+import Data.Vinyl.TypeLevel
 import qualified Data.IxSet.Typed                as Ix
 import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
-import           Data.Text.Time
 import           Development.Shake.Plus.Extended
+import           Development.Shake.Plus.Forward
+import Data.Vinyl.Curry
 import           Path.Extensions
 import           RIO
 import           RIO.List
+import Lucid
 import           RIO.List.Partial
-import           RIO.Partial
 import qualified RIO.Text                        as T
+import qualified RIO.Text.Partial as T
 import           Shakebook                       hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
 import           Test.Tasty.Golden
+import Composite.Record.Binary()
+import Composite.Record.Hashable()
+import Development.Shake (ShakeValue)
+import Lucid.Base
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -51,143 +58,190 @@ mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
            ,"youtube" :*: "http://youtube.com/blanky-site-nowhere" :*: RNil
            ,"gitlab"  :*: "http://gitlab.com/blanky-site-nowhere" :*: RNil]
 
-addUrl :: (MonadThrow m, RElem FSrcPath xs) => Record xs -> m (Record (FUrl : xs))
-addUrl = addDerivedUrl (fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder)
 
-stage1Post :: (MonadAction m, MonadThrow m) => Record RawPost -> m (Record Stage1Post)
-stage1Post = addUrl >=> return . addTeaser >=> addTagLinks >=> return . addPrettyDate
+type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
+
+deriveUrl :: MonadThrow m => Path Rel File -> m Text
+deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder
+
+stage1Post :: (MonadAction m, MonadThrow m) => (Tag -> m Text) -> Record RawPost -> m (Record Stage1Post)
+stage1Post f x = do
+  u <- deriveUrl $ view fSrcPath x
+  k <- mapM (deriveTagLink f . Tag) $ view fTags x
+  return $ view fPosted x :*: k :*: deriveTeaser (view fContent x) :*: u :*: x
+
+deriveTeaser :: Text -> Text
+deriveTeaser = head . T.splitOn "<!-- more -->"
+
+deriveTagLink :: Monad m => (Tag -> m Text) -> Tag -> m (Record Link)
+deriveTagLink f x = rtraverseToSnd (f . Tag) (unTag x)
 
 stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
-stage1Doc = addUrl
+stage1Doc = rtraverseToPush (deriveUrl . view fSrcPath)
 
 enrichment :: Record Enrichment
 enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
 
-rules :: ShakePlus SimpleSPlusEnv ()
-rules = do
+type MonadSlick r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
 
-  readMD <- newCache $ \x -> do
-    logInfo $ "Loading " <> displayShow (toFilePath x)
-    loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x
 
-  readRawSingle <- newCache $ readMD >=> parseValue' rawSingleJsonFormat
-  readRawPost   <- newCache $ readMD >=> parseValue' rawPostJsonFormat
-  readRawDoc    <- newCache $ readMD >=> parseValue' rawDocJsonFormat
+type Enrichment = FSocial : FCdnImports : FHighlighting : FSiteTitle : '[]
 
-  readStage1Post <- newCache $ readRawPost >=> stage1Post
-  readStage1Doc  <- newCache $ readRawDoc  >=> stage1Doc
+buildEnrichedPage :: (MonadAction m, MonadThrow m, RMap x, RecordToJsonObject x, RecordFromJson x)
+                  => Path b File
+                  -> JsonFormatRecord e x
+                  -> Record x
+                  -> Path b File
+                  -> m ()
+buildEnrichedPage t f x o = buildPageAction' t (recordJsonFormat $ enrichedXJsonFormatRecord f) (enrichment <+> x) o
 
-  postIx' <- newCache $ \() -> batchLoadIndex' (Proxy @[Tag, Posted, YearMonth]) readStage1Post sourceFolder ["posts/*.md"]
+-- | given a list of posts this will build a table of contents
+buildIndex :: MonadSlick r m => Record MainPage -> Path Rel File -> m ()
+buildIndex = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/index.html")) mainPageJsonFormatRecord
 
-  addOracle        defaultIndexRoots
-  addOracleCache $ \y -> postIx' () >>= \x -> defaultIndexPages x postsPerPage y
+buildPost :: MonadSlick r m => Record FinalPost -> Path Rel File -> m ()
+buildPost = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/post.html")) finalPostJsonFormatRecord
 
-  addOracleCache $ \(BlogNav ())     -> postIx' () >>= fmap toHtmlFragment . genBlogNav "Blog" defaultPrettyMonthFormat
+buildDoc :: MonadSlick r m => Record FinalDoc -> Path Rel File -> m ()
+buildDoc = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/docs.html")) finalDocJsonFormatRecord
 
-  addOracleCache $ \(DocNav ())      -> toHtmlFragment . genDocNav <$> mapM (readStage1Doc . (sourceFolder </>)) tableOfContents
+buildPostIndex :: MonadSlick r m => Record (IndexPage Stage1Post) -> Path Rel File -> m ()
+buildPostIndex = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/post-list.html")) postIndexPageJsonFormatRecord
 
-  addOracleCache $ \(RecentPosts ()) -> take numRecentPosts . Ix.toDescList (Proxy @Posted) <$> postIx' ()
 
-  addOracleCache $ \(IndexHtml (d, o)) -> do
-                      v  <- readRawSingle $ d </> o
-                      xs <- askOracle $ RecentPosts ()
-                      return $ xs :*: enrichment <+> v
+docsRules :: MonadSlick r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
+docsRules dir toc = do
+  as <- mapM (loadRawDoc >=> stage1Doc) (fmap (sourceFolder </>) toc)
+  nav <- docNavFragment as
+  sequence_ $ as =>> \(x :< xs) -> do
+    out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)
+    let v = nav :*: (fmap extract $ xs) :*: x
+    buildDoc v (outputFolder </> out)
 
-  addOracleCache $ \(DocSubsectionMap ()) -> return $ fromCofree tableOfContents
+-- | Find and build all posts
 
-  addOracleCache $ \(DocSubsections (d, o)) ->
-                      askOracle (DocSubsectionMap ()) >>= lookupOrThrow o >>= mapM (readStage1Doc . (d </>))
+loadMarkdownWith :: (ShakeValue a, MonadSlick r m) => JsonFormat Void a -> Path Rel File -> m a
+loadMarkdownWith f x = cacheAction ("build" :: Text, x) $ do
+  logInfo $ "Loading " <> displayShow (toFilePath x)
+  loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x >>= parseValue' f
 
-  addOracleCache $ \(DocHtml (d, o)) -> do
-                      v  <- readStage1Doc $ d </> o
-                      xs <- askOracle $ DocSubsections (d, o)
-                      k  <- askOracle $ DocNav ()
-                      return $ k :*: xs :*: enrichment <+> v
+loadRawPost :: MonadSlick r m => Path Rel File -> m (Record RawPost)
+loadRawPost = loadMarkdownWith rawPostJsonFormat
 
-  addOracleCache $ \(PostHtml (d, o)) -> do
-                      xs  <- postIx' () >>= Ix.toZipperDesc (Proxy @Posted) >>= seekOnThrow (view fSrcPath) (d </> o)
-                      nav <- askOracle $ BlogNav ()
-                      return $ nav :*: enrichment <+> extract xs
+loadRawSingle :: MonadSlick r m => Path Rel File -> m (Record RawSingle)
+loadRawSingle = loadMarkdownWith rawSingleJsonFormat
 
-  addOracleCache $ \(PostIndexHtml title query pageno) -> do
-                       nav <- askOracle $ BlogNav ()
-                       xs  <- askOracle $ IndexPages query
-                       xs' <- zipper' $ sortOn (Down . view fPageNo) xs
-                       let links = fmap (\x ->  T.pack (show (view fPageNo x)) :*: view fUrl x :*: RNil) (unzipper xs')
-                       return $ enrichment <+> links :*: nav :*: title :*: extract (seek (pageno - 1) xs')
+loadRawDoc :: MonadSlick r m => Path Rel File -> m (Record RawDoc)
+loadRawDoc = loadMarkdownWith rawDocJsonFormat
 
-  let buildPage x t f (d, o) = do
-       v <- askOracle x
-       buildPageAction (sourceFolder </> t) (toJsonWithFormat f v) (d </> o)
+postIndex :: MonadSlick r m => Path Rel Dir -> [FilePattern] -> m PostSet
+postIndex = batchLoadIndex (loadRawPost >=> stage1Post tagRoot)
 
-  "index.html"  /%> \(dir, fp) -> do
-    fp' <- withMdExtension fp
-    buildPage (IndexHtml (sourceFolder, fp')) $(mkRelFile "templates/index.html") mainPageJsonFormat (dir, fp)
+recentPosts :: Int -> PostSet -> [Record Stage1Post]
+recentPosts x y = take x (Ix.toDescList (Proxy @Posted) y)
 
-  "posts/*.html" /%> \(dir, fp) -> do
-    fp' <- withMdExtension fp
-    buildPage (PostHtml (sourceFolder, fp')) $(mkRelFile "templates/post.html") finalPostJsonFormat (dir, fp)
+postsDir  = $(mkRelDir "posts/")
+docsDir  = $(mkRelDir "docs/")
+tagsDir   = postsDir </> $(mkRelDir "tags/")
+monthsDir = postsDir </> $(mkRelDir "months/")
 
-  "docs//*.html" /%> \(dir, fp) -> do
-    fp' <- withMdExtension fp
-    buildPage (DocHtml (sourceFolder, fp')) $(mkRelFile "templates/docs.html") finalDocJsonFormat (dir, fp)
+postsRoot :: Text
+postsRoot  = toGroundedUrl postsDir
 
-  "posts/pages/*/index.html" /%> \(dir, fp) -> do
-    let n = read . (!! 2) $ splitPath fp
-    buildPage (PostIndexHtml "Posts" AllPosts n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
+tagRoot :: MonadThrow m => Tag -> m Text
+tagRoot= return . toGroundedUrl . (tagsDir </>) <=< parseRelDir . T.unpack . unTag
 
-  "posts/tags/*/pages/*/index.html" /%> \(dir, fp) -> do
-    let xs = splitPath fp
-    let t  = T.pack $ xs !! 2
-    let n  = read   $ xs !! 4
-    buildPage (PostIndexHtml ("Posts tagged " <> t) (ByTag $ Tag t) n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
+monthRoot :: MonadThrow m => YearMonth -> m Text
+monthRoot = return . toGroundedUrl . (monthsDir </>) <=< parseRelDir . T.unpack . defaultMonthUrlFormat . fromYearMonth
 
-  "posts/months/*/pages/*/index.html" /%> \(dir, fp) -> do
-    let xs = splitPath fp
-    let t  = parseISODateTime $ T.pack $ xs !! 2
-    let n  = read $ xs !! 4
-    buildPage (PostIndexHtml ("Posts from " <> defaultPrettyMonthFormat t) (ByYearMonth $ toYearMonth t) n) $(mkRelFile "templates/post-list.html") postIndexPageJsonFormat (dir, fp)
+postSetLinks :: MonadThrow m => (YearMonth -> m Text) -> (YearMonth -> m Text) -> PostSet -> m [Cofree [] (Record Link)]
+postSetLinks f g xs = forM (Ix.groupDescBy xs) $ \(ym, zs) -> do
+  a <- rfanoutM g f ym
+  let zs' = sortOn (Down . view fPosted) zs
+  let bs = map ((:< []) . rfanout (view fTitle) (view fUrl)) zs'
+  return $ a :< bs
 
-  ["posts/index.html", "posts/tags/*/index.html", "posts/months/*/index.html"] /|%> \(dir, fp) -> do
-    copyFileChanged (dir </> parent fp </> $(mkRelFile "pages/1/index.html")) (dir </> fp)
+type Enriched x = Enrichment ++ x
 
-  ["css//*", "js//*", "webfonts//*", "images//*"] /|%> \(dir, fp) ->
-    copyFileChanged (sourceFolder </> fp) (dir </> fp)
+enrichedXJsonFormatRecord :: JsonFormatRecord e x -> JsonFormatRecord e (Enriched x)
+enrichedXJsonFormatRecord x = field (listJsonFormat linkJsonFormat)
+                           :& field htmlJsonFormat
+                           :& field styleJsonFormat
+                           :& field defaultJsonFormat
+                           :& x
 
-  "sitemap.xml" /%> \(dir, fp) -> do
-    xs <- Ix.toDescList (Proxy @Posted) <$> postIx' ()
-    buildSitemap (asSitemapUrl baseUrl <$> xs) $ dir </> fp
 
-  let simplePipeline f = getDirectoryFiles sourceFolder >=> mapM f >=> needIn outputFolder
-      verbatimPipeline = simplePipeline return
+mainPageExtras :: PostSet -> Record (FRecentPosts Stage1Post : '[])
+mainPageExtras xs = recentPosts numRecentPosts xs :*: RNil
 
-  phony "statics" $ verbatimPipeline ["css//*", "js//*", "webfonts//*", "images//*"]
+mainPageRules :: MonadSlick r m => m ()
+mainPageRules = do
+  postIx <- postIndex sourceFolder ["posts/*.md"]
+  x <- loadRawSingle $ sourceFolder </> $(mkRelFile "index.md")
+  let x' = mainPageExtras postIx <+> x
+  buildIndex x' $ outputFolder </> $(mkRelFile "index.html")
 
-  phony "index"   $ needIn outputFolder [$(mkRelFile "index.html")]
+renderBlogNav :: MonadThrow m => PostSet -> HtmlT m ()
+renderBlogNav x = ul_ $ li_ $ do
+  renderLink "Blog" "/posts/"
+  xs <- lift (postSetLinks monthRoot (return . defaultPrettyMonthFormat . fromYearMonth) x)
+  ul_ $ forM_ xs $ li_ . renderCofree (runcurryX renderLink)
 
-  phony "docs"    $ mapM withHtmlExtension tableOfContents >>= needIn outputFolder
+renderDocNav :: Monad m => Cofree [] (Record Stage1Doc) -> HtmlT m ()
+renderDocNav xs = ul_ $ li_ $ renderCofree (liftA2 renderLink (view fTitle) (view fUrl)) xs
 
-  phony "posts"   $ simplePipeline withHtmlExtension ["posts/*.md"]
+blogNavFragment :: MonadThrow m => PostSet -> m HtmlFragment
+blogNavFragment = fmap toHtmlFragment . commuteHtmlT . renderBlogNav
 
-  let phonyIndex x = do
-        k  <- askOracle $ IndexRoot x
-        ps <- askOracle $ IndexPages x
-        xs <- mapM fromGroundedUrlD $ k : (view fUrl <$> ps)
-        needIn outputFolder $ fmap (</> $(mkRelFile "index.html")) xs
+docNavFragment :: MonadThrow m => Cofree [] (Record Stage1Doc) -> m HtmlFragment
+docNavFragment = fmap toHtmlFragment . commuteHtmlT . renderDocNav
 
-  phony "post-index" $ do
-     phonyIndex AllPosts
-     xs <- postIx' ()
-     forM_ (Ix.indexKeys xs) $ \t -> phonyIndex $ ByTag t
-     forM_ (Ix.indexKeys xs) $ \t -> phonyIndex $ ByYearMonth t
+indexPages :: MonadThrow m => PostSet -> Text -> m (Zipper [] (Record (FUrl : FItems Stage1Post : FPageNo : '[])))
+indexPages postIx f = do
+  let k = Ix.toDescList (Proxy @Posted) postIx
+  p <- paginate' postsPerPage k
+  return $ p =>> \a -> f <> "pages/" <> T.pack (show $ pos a + 1) :*: extract a :*: pos a + 1 :*: RNil
 
-  phony "clean" $ do
-    logInfo $ "Cleaning files in " <> displayShow outputFolder
-    removeFilesAfter outputFolder ["//*"]
+pageLinkFragment :: (RElem FPageNo xs, RElem FUrl xs, MonadThrow m) => Zipper [] (Record xs) -> m HtmlFragment
+pageLinkFragment = toHtmlFragmentM . renderZipperWithin (liftA2 renderLink (T.pack . show . view fPageNo) (view fUrl)) 3
 
-  phony "sitemap" $ needIn outputFolder [$(mkRelFile "sitemap.xml")]
+postRules :: MonadSlick r m => Path Rel Dir -> [FilePattern] -> m ()
+postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
+  postsIx <- postIndex dir fp
+  nav     <- blogNavFragment postsIx
+  let postsZ = Ix.toDescList (Proxy @Posted) postsIx
+  forM_ postsZ $ \x -> do
+    out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)
+    let x' = nav :*: x
+    buildPost x' (outputFolder </> out)
+  xs <- indexPages postsIx postsRoot
+  sequence_ $ xs =>> \xs' -> do
+    let x = extract xs'
+    out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
+    ps <- pageLinkFragment xs
+    let x' = ps :*: nav :*: "Posts" :*: x
+    buildPostIndex x' (outputFolder </> out)
+  forM_ (Ix.groupDescBy postsIx) \(Tag t, xs') -> do
+    ys <- indexPages (postsIx Ix.@+ [Tag t]) =<< tagRoot (Tag t)
+    sequence_ $ ys =>> \xs' -> do
+      let x = extract xs'
+      out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
+      ps <- pageLinkFragment xs'
+      let x' = ps :*: nav :*: "Posts tagged" <> t :*: x
+      buildPostIndex x' (outputFolder </> out)
+  forM_ (Ix.groupDescBy postsIx) \(ym, xs') -> do
+    ys <- indexPages (postsIx Ix.@+ [ym]) =<< monthRoot ym
+    sequence_ $ ys =>> \xs' -> do
+      let x = extract xs'
+      out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
+      ps <- pageLinkFragment xs'
+      let x' = ps :*: nav :*: "Posts from " <> (defaultPrettyMonthFormat $ fromYearMonth ym) :*: x
+      buildPostIndex x' (outputFolder </> out)
 
-  phony "all" $ need ["index", "posts", "post-index", "docs", "statics", "sitemap"]
+buildRules = do
+  mainPageRules
+  postRules sourceFolder ["posts/*.md"]
+  docsRules sourceFolder tableOfContents
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $
@@ -196,6 +250,9 @@ tests xs = testGroup "Rendering Tests" $
 
 main :: IO ()
 main = do
-   runSimpleShakePlus outputFolder $ want ["clean"] >> rules
-   runSimpleShakePlus outputFolder $ want ["all"]   >> rules
-   findByExtension [".html", ".xml"] "test/golden" >>= defaultMain . tests
+  lo <- logOptionsHandle stderr True
+  (lf, dlf) <- newLogFunc (setLogMinLevel LevelInfo lo)
+  let shOpts = shakeOptions { shakeLintInside = ["\\"]}
+  shakeArgsForward shOpts lf buildRules
+  findByExtension [".html", ".xml"] "test/golden" >>= defaultMain . tests
+  dlf

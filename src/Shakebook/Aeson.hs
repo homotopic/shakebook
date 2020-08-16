@@ -6,7 +6,9 @@ import           Data.Aeson
 import           Data.Aeson.BetterErrors
 import           Path
 import           RIO
+import Shakebook.Pandoc
 import Shakebook.Lucid
+import Text.Pandoc.Highlighting
 
 newtype AesonParseException a = AesonParseException a
   deriving (Eq, Show, Ord)
@@ -27,15 +29,3 @@ htmlJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (Str
 
 styleJsonFormat :: JsonFormat e StyleFragment
 styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . unStyleFragment) (throwCustomError WriteOnlyJsonField)
-
-relFileJsonFormat :: JsonFormat e (Path Rel File)
-relFileJsonFormat = aesonJsonFormat
-
-relDirJsonFormat :: JsonFormat e (Path Rel Dir)
-relDirJsonFormat = aesonJsonFormat
-
-absFileJsonFormat :: JsonFormat e (Path Abs File)
-absFileJsonFormat = aesonJsonFormat
-
-absDirJsonFormat :: JsonFormat e (Path Abs Dir)
-absDirJsonFormat = aesonJsonFormat
