@@ -9,102 +9,7 @@
 
 Conventions used in Shakebook projects, common lenses, generators, and indexing wrappers over Values.
 -}
-module Shakebook.Conventions (
-  -- * Fields
-  FCdnImports
-, FContent
-, FDescription
-, FHighlighting
-, FItems
-, FPageLinks
-, FPosted
-, FImage
-, FModified
-, FNext
-, FRecentPosts
-, FPrettyDate
-, FPrevious
-, FSiteTitle
-, FSocial
-, FSrcPath
-, FSubsections
-, FTags
-, FTagLinks
-, FTeaser
-, FTitle
-, FToc
-, FUrl
-, FPageNo
-, FId
-
-
-, fCdnImports
-, fContent
-, fDescription
-, fHighlighting
-, fItems
-, fPageLinks
-, fPosted
-, fImage
-, fModified
-, fNext
-, fRecentPosts
-, fPrettyDate
-, fPrevious
-, fSiteTitle
-, fSocial
-, fSrcPath
-, fSubsections
-, fTags
-, fTagLinks
-, fTeaser
-, fTitle
-, fToc
-, fUrl
-, fPageNo
-, fId
-
-  -- * Generations
-, asSitemapUrl
-, asAtomEntry
-
-  -- * Indexing
-, Link
-, Tag(..)
-, Posted(..)
-, YearMonth(..)
-, fromYearMonth
-, toYearMonth
-
-  -- * Stages
-, BasicMD
-, RawPost
-, Stage1Post
-, RawDoc
-, Stage1Doc
-, IndexPage
-
-  -- * Formatting
-, RawSingle
-, basicMDJsonFormatRecord
-, linkJsonFormat
-, rawDocJsonFormat
-, rawPostJsonFormat
-, rawSingleJsonFormat
-, stage1PostJsonFormat
-, stage1DocJsonFormat
-, finalPostJsonFormatRecord
-, mainPageJsonFormat
-, mainPageJsonFormatRecord
-, postIndexPageJsonFormatRecord
-, finalDocJsonFormatRecord
-, MainPage
-, FinalPost
-, FinalDoc
-, PostIndexPage
-
-  -- * Templates
-) where
+module Shakebook.Conventions where
 
 import           Composite.Aeson
 import           Composite.Record
@@ -123,6 +28,10 @@ import qualified Shakebook.Feed             as Atom
 import Shakebook.Lucid
 import           Shakebook.Sitemap
 import Composite.Aeson.Path
+import Data.TypeRepMap
+import GHC.Exts
+import Data.Typeable
+import Data.Vinyl hiding (RElem)
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
@@ -201,6 +110,41 @@ asAtomEntry x = (Atom.nullEntry (view fUrl x)
                     Atom.entryContent = Just $ Atom.TextContent (view fContent x)
                   }
 
+fModifiedField :: JsonField e FModified
+fModifiedField = field iso8601DateTimeJsonFormat
+
+fPrettyDateField :: JsonField e FPrettyDate
+fPrettyDateField = field (dateTimeJsonFormat defaultTimeLocale (regularDateTimeFormat "%A, %B %d, %Y" "yyyy-mm-dd" :| []))
+
+fIdField :: JsonField e FId
+fIdField = field textJsonFormat
+
+fUrlField :: JsonField e FUrl
+fUrlField = field textJsonFormat
+
+defaultFields :: TypeRepMap (JsonField e)
+defaultFields = GHC.Exts.fromList [ WrapTypeable fModifiedField
+                                  , WrapTypeable fPrettyDateField
+                                  , WrapTypeable fIdField
+                                  , WrapTypeable fUrlField]
+
+a :: (Typeable x, Show x, MonadThrow m) => TypeRepMap (JsonField e) -> Identity x -> m ((JsonField e) x)
+a fs (Identity x) = case Data.TypeRepMap.lookup fs of
+                      Just x -> return x
+                      Nothing -> throwM $ F $ "Could not find " <> show (typeOf x)
+
+rtraverse'
+  :: (AllHave '[Typeable, Show] rs, Applicative h)
+  => (forall x. (Typeable x, Show x) => f x -> h (g x))
+  -> Rec f rs
+  -> h (Rec g rs)
+rtraverse' _ RNil      = pure RNil
+rtraverse' f (x :& xs) = (:&) <$> f x <*> rtraverse' f xs
+
+b :: (AllHave '[Typeable, Show] x, MonadThrow m) => Rec Identity x -> m (Rec (JsonField e) x)
+b = rtraverse' (a defaultFields)
+
+newtype F = F String deriving (Show, Exception)
 --- Stage 0 Types
 
 -- "Basic Markdown" - These two fields are always populated by the markdown loader - the source path and the main body content.
