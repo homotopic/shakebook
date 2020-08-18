@@ -85,28 +85,27 @@ enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment d
 type MonadSlick r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
 
 
-type Enrichment = FSocial : FCdnImports : FHighlighting : FSiteTitle : '[]
+type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
 
-buildEnrichedPage :: (MonadAction m, MonadThrow m, RMap x, RecordToJsonObject x, RecordFromJson x)
+buildEnrichedPage :: (MonadAction m, MonadThrow m, RMap x, RecordToJsonObject x, RecordFromJson x, x <: StandardFields)
                   => Path b File
-                  -> JsonFormatRecord e x
                   -> Record x
                   -> Path b File
                   -> m ()
-buildEnrichedPage t f x o = buildPageAction' t (recordJsonFormat $ enrichedXJsonFormatRecord f) (enrichment <+> x) o
+buildEnrichedPage t x o = buildPageAction' t (recordJsonFormat (rcast allFields)) (enrichment <+> x) o
 
 -- | given a list of posts this will build a table of contents
 buildIndex :: MonadSlick r m => Record MainPage -> Path Rel File -> m ()
-buildIndex = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/index.html")) mainPageJsonFormatRecord
+buildIndex = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/index.html"))
 
 buildPost :: MonadSlick r m => Record FinalPost -> Path Rel File -> m ()
-buildPost = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/post.html")) finalPostJsonFormatRecord
+buildPost = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/post.html"))
 
 buildDoc :: MonadSlick r m => Record FinalDoc -> Path Rel File -> m ()
-buildDoc = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/docs.html")) finalDocJsonFormatRecord
+buildDoc = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/docs.html"))
 
 buildPostIndex :: MonadSlick r m => Record (IndexPage Stage1Post) -> Path Rel File -> m ()
-buildPostIndex = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/post-list.html")) postIndexPageJsonFormatRecord
+buildPostIndex = buildEnrichedPage (sourceFolder </> $(mkRelFile "templates/post-list.html"))
 
 
 docsRules :: MonadSlick r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
@@ -126,13 +125,13 @@ loadMarkdownWith f x = cacheAction ("build" :: Text, x) $ do
   loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x >>= parseValue' f
 
 loadRawPost :: MonadSlick r m => Path Rel File -> m (Record RawPost)
-loadRawPost = loadMarkdownWith rawPostJsonFormat
+loadRawPost = loadMarkdownWith (recordJsonFormat (rcast basicFields))
 
 loadRawSingle :: MonadSlick r m => Path Rel File -> m (Record RawSingle)
-loadRawSingle = loadMarkdownWith rawSingleJsonFormat
+loadRawSingle = loadMarkdownWith (recordJsonFormat (rcast basicFields))
 
 loadRawDoc :: MonadSlick r m => Path Rel File -> m (Record RawDoc)
-loadRawDoc = loadMarkdownWith rawDocJsonFormat
+loadRawDoc = loadMarkdownWith (recordJsonFormat (rcast basicFields))
 
 postIndex :: MonadSlick r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postIndex = batchLoadIndex (loadRawPost >=> stage1Post tagRoot)
@@ -162,14 +161,6 @@ postSetLinks f g xs = forM (Ix.groupDescBy xs) $ \(ym, zs) -> do
   return $ a :< bs
 
 type Enriched x = Enrichment ++ x
-
-enrichedXJsonFormatRecord :: JsonFormatRecord e x -> JsonFormatRecord e (Enriched x)
-enrichedXJsonFormatRecord x = field (listJsonFormat linkJsonFormat)
-                           :& field htmlJsonFormat
-                           :& field styleJsonFormat
-                           :& field defaultJsonFormat
-                           :& x
-
 
 mainPageExtras :: PostSet -> Record (FRecentPosts Stage1Post : '[])
 mainPageExtras xs = recentPosts numRecentPosts xs :*: RNil
