@@ -16,12 +16,9 @@ module Shakebook.Mustache (
 ) where
 
 import           Composite.Aeson
-import           Composite.Record
 import           Data.Aeson
 import           Development.Shake.Plus hiding ((:->))
-import           GHC.TypeLits           (KnownSymbol)
 import           RIO
-import qualified RIO.Text               as T
 import qualified Slick.Mustache
 import           Text.Mustache
 
@@ -39,5 +36,5 @@ buildPageAction template value out = do
   pageT <- compileTemplate' template
   writeFile' out $ substitute pageT value
 
-buildPageAction' :: (MonadAction m, MonadThrow m) => Path b File -> JsonFormat e a -> a -> Path b File -> m ()
+buildPageAction' :: MonadAction m => Path b File -> JsonFormat e a -> a -> Path b File -> m ()
 buildPageAction' t f v = buildPageAction t (toJsonWithFormat f v)

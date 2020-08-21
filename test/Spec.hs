@@ -80,7 +80,7 @@ enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment d
 type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
 
 
-myBuildPage :: (MonadAction m, MonadThrow m, RMap x, RecordToJsonObject x, RecordFromJson x, x <: StandardFields)
+myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x, x <: StandardFields)
             => Path Rel File -> Record x -> Path Rel File -> m ()
 myBuildPage t x = buildPageAction' (sourceFolder </> t) (recordJsonFormat (rcast allFields)) (enrichment <+> x)
 
