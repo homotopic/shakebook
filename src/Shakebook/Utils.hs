@@ -1,14 +1,14 @@
 module Shakebook.Utils where
 
+import           Composite.Record
+import           Control.Comonad
+import           Control.Comonad.Cofree
 import           Data.List.Split
+import           Data.Vinyl
+import           Data.Vinyl.TypeLevel
 import           Path
 import           RIO
-import qualified RIO.HashMap as HM
-import Control.Comonad
-import Control.Comonad.Cofree
-import Composite.Record
-import Data.Vinyl
-import Data.Vinyl.TypeLevel
+import qualified RIO.HashMap            as HM
 
 (</$>) :: Functor f => Path b Dir -> f (Path Rel t) -> f (Path b t)
 (</$>) d = fmap (d </>)
@@ -59,5 +59,6 @@ instance (Typeable a, Show a) => Exception (KeyNotFoundException a)
 
 lookupOrThrow :: (Eq a, Show a, Typeable a, Hashable a, MonadThrow m) => a -> HashMap a b -> m b
 lookupOrThrow k m = case HM.lookup k m of
-                          Just x -> return x
+                          Just x  -> return x
                           Nothing -> throwM $ KeyNotFoundException k
+

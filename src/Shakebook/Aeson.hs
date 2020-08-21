@@ -4,11 +4,8 @@ import           Composite.Aeson
 import           Control.Monad.Except
 import           Data.Aeson
 import           Data.Aeson.BetterErrors
-import           Path
 import           RIO
-import Shakebook.Pandoc
-import Shakebook.Lucid
-import Text.Pandoc.Highlighting
+import           Shakebook.Lucid
 
 newtype AesonParseException a = AesonParseException a
   deriving (Eq, Show, Ord)

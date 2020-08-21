@@ -12,8 +12,10 @@ module Shakebook.Defaults where
 import           Lucid
 import           Lucid.CDN
 import           RIO
+import           RIO.List.Partial
 import qualified RIO.Map                  as M
 import qualified RIO.Text                 as T
+import qualified RIO.Text.Partial         as T
 import           RIO.Time
 import           Text.DocTemplates
 import           Text.Pandoc.Definition
@@ -48,6 +50,9 @@ defaultLatexWriterOptions = def { writerTableOfContents = True
 
 defaultVideoReplacement :: Text -> Text -> Inline
 defaultVideoReplacement baseUrl x = Str $ "[Video available at [" <> baseUrl <> "/" <> x <> "]"
+
+defaultDeriveTeaser :: Text -> Text
+defaultDeriveTeaser = head . T.splitOn "<!-- more -->"
 
 defaultCdnImports :: Html ()
 defaultCdnImports = do

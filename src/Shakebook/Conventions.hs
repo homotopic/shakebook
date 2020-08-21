@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
 {- |
@@ -13,24 +13,23 @@ Conventions used in Shakebook projects, common lenses, generators, and indexing 
 module Shakebook.Conventions where
 
 import           Composite.Aeson
+import           Composite.Aeson.Path
 import           Composite.Record
 import           Composite.TH
-import           Control.Comonad.Cofree
 import           Control.Comonad.Store
 import           Data.Binary.Instances.Time ()
 import           Data.Hashable.Time
 import           Data.IxSet.Typed           as Ix
+import           Data.Vinyl                 hiding (RElem)
+import           Data.Vinyl.TypeLevel
 import           Development.Shake.Plus     hiding ((:->))
 import           RIO
 import qualified RIO.Text                   as T
 import           RIO.Time
 import           Shakebook.Aeson
 import qualified Shakebook.Feed             as Atom
-import Shakebook.Lucid
+import           Shakebook.Lucid
 import           Shakebook.Sitemap
-import Composite.Aeson.Path
-import Data.Vinyl hiding (RElem)
-import Data.Vinyl.TypeLevel
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
@@ -117,7 +116,10 @@ toYearMonth = (\(a, b, _) -> YearMonth (a, b)) . toGregorian . utctDay
 fromYearMonth :: YearMonth -> UTCTime
 fromYearMonth (YearMonth (y,m)) = UTCTime (fromGregorian y m 1) 0
 
-instance (Ord (Record xs), RElem FTags xs, RElem FPosted xs) => Ix.Indexable '[Tag, Posted, YearMonth] (Record xs) where
+
+type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
+
+instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
   indices = Ix.ixList (Ix.ixFun (fmap Tag . view fTags))
                       (Ix.ixFun (pure . Posted . view fPosted))
                       (Ix.ixFun (pure . toYearMonth . view fPosted))

@@ -70,19 +70,12 @@ packages:
     git: https://github.com/locallycompact/composite
     commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
 - completed:
-    hackage: hslua-1.1.2@sha256:6c231b2af447430d1ed04f065d40bb6882ece93cc7f32f4051dc99deb69beeae,9694
+    hackage: ixset-typed-conversions-0.1.1.0@sha256:674d71cd7a10a757fe4fdccb66b240172354f082828dc52d972bab144bfb23d2,1143
     pantry-tree:
-      size: 6820
-      sha256: 62e61f6d08191159a070dcbaa20284a581835de620105a254dbee1c7ddfabd9d
+      size: 296
+      sha256: a6ed5d397934dda038717a2060b03b43aa6c9da941db7c1c13802bc07d0d84f8
   original:
-    hackage: hslua-1.1.2
-- completed:
-    hackage: jira-wiki-markup-1.3.2@sha256:b5f0901208a0ee07aff60f5356aeb851b7aa7950c75a18a15fd34247a35886d8,3819
-    pantry-tree:
-      size: 1180
-      sha256: 90fa545210a211b8ec88b59f92fe2877ebf2f9e55e2ce2fba6103a3615bd0ab9
-  original:
-    hackage: jira-wiki-markup-1.3.2
+    hackage: ixset-typed-conversions-0.1.1.0
 - completed:
     hackage: pandoc-2.10@sha256:954cb8d8c8a49ff52372fa77ca8414052d6a31e1b99c0c9552fbe349e707ce5f,36760
     pantry-tree:
@@ -97,16 +90,9 @@ packages:
       sha256: dbea944bf224db953522e5c95142920aad976610e1d7434b7e71963670329ec3
   original:
     hackage: slick-1.0.1.1
-- completed:
-    hackage: text-time-0.2.0@sha256:ae94071e29a5265f60de19c054a5308cee54a849678fbb8ea8d9657510c87b4c,1757
-    pantry-tree:
-      size: 637
-      sha256: 086572dbcc5663ab43f658634dcb3b08cc595690fba0a92387eeb7aa72651d6f
-  original:
-    hackage: text-time-0.2.0
 snapshots:
 - completed:
-    size: 520867
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/14.yaml
-    sha256: 55402c1524b249053913fd87d60062c7c0e816d353e3d842df4cc032432aa0d4
-  original: nightly-2020-08-14
+    size: 521085
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/16.yaml
+    sha256: 5fcd1cb4052971dd7648622a7b881c30d6b98adc17d67e2b97e1c98b9fadd0d2
+  original: nightly-2020-08-16
