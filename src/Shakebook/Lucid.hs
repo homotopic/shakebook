@@ -22,7 +22,7 @@ toHtmlFragmentM :: Monad m => HtmlT m () -> m HtmlFragment
 toHtmlFragmentM = fmap toHtmlFragment . commuteHtmlT
 
 renderLink :: Monad m => Text -> Text -> HtmlT m ()
-renderLink x y = a_ [href_ $ y] (toHtml x)
+renderLink x y = a_ [href_ y] (toHtml x)
 
 renderCofree :: (Monad m) => (a -> HtmlT m ()) -> Cofree [] a -> HtmlT m ()
 renderCofree f (x :< []) = f x

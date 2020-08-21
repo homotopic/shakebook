@@ -82,7 +82,7 @@ type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThr
 
 myBuildPage :: (MonadAction m, MonadThrow m, RMap x, RecordToJsonObject x, RecordFromJson x, x <: StandardFields)
             => Path Rel File -> Record x -> Path Rel File -> m ()
-myBuildPage t x o = buildPageAction' (sourceFolder </> t) (recordJsonFormat (rcast allFields)) (enrichment <+> x) o
+myBuildPage t x = buildPageAction' (sourceFolder </> t) (recordJsonFormat (rcast allFields)) (enrichment <+> x)
 
 buildIndex :: MonadSB r m => Record MainPage -> Path Rel File -> m ()
 buildIndex = myBuildPage $(mkRelFile "templates/index.html")
@@ -102,7 +102,7 @@ docsRules dir toc = do
   nav <- toHtmlFragmentM $ renderDocNav as
   sequence_ $ as =>> \(x :< xs) -> do
     out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)
-    let v = nav :*: (fmap extract $ xs) :*: x
+    let v = nav :*: (extract <$> xs) :*: x
     buildDoc v (outputFolder </> out)
 
 loadMarkdownWith :: (ShakeValue a, MonadSB r m) => JsonFormat Void a -> Path Rel File -> m a
@@ -196,7 +196,7 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
   forM_ (Ix.indexKeys postsIx) \ym@(YearMonth _) ->
     monthRoot ym
       >>= indexPages (postsIx Ix.@+ [ym])
-        >>= postIndexRules ("Posts from " <> (defaultPrettyMonthFormat $ fromYearMonth ym)) nav
+        >>= postIndexRules ("Posts from " <> defaultPrettyMonthFormat (fromYearMonth ym)) nav
 
 buildRules = do
   mainPageRules

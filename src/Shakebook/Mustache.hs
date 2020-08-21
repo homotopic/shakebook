@@ -40,4 +40,4 @@ buildPageAction template value out = do
   writeFile' out $ substitute pageT value
 
 buildPageAction' :: (MonadAction m, MonadThrow m) => Path b File -> JsonFormat e a -> a -> Path b File -> m ()
-buildPageAction' t f v o = buildPageAction t (toJsonWithFormat f v) o
+buildPageAction' t f v = buildPageAction t (toJsonWithFormat f v)

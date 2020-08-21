@@ -197,10 +197,11 @@ type CompositeFields = FItems Stage1Post
                      : '[]
 
 compositeFields :: Rec (JsonField e) CompositeFields
-compositeFields = (field (listCastElemsFormat (extraFields <+> basicFields)))
-               :& (field (listCastElemsFormat (extraFields <+> basicFields)))
-               :& (field (listCastElemsFormat (extraFields <+> basicFields)))
-               :& RNil
+compositeFields = let x = extraFields <+> basicFields
+                  in (field (listCastElemsFormat x) :: JsonField e (FItems Stage1Post))
+                 :& (field (listCastElemsFormat x) :: JsonField e (FSubsections Stage1Doc))
+                 :& (field (listCastElemsFormat x) :: JsonField e (FRecentPosts Stage1Post))
+                 :& RNil
 
 type StandardFields = BasicFields ++ ExtraFields ++ CompositeFields
 

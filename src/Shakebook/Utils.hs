@@ -52,7 +52,7 @@ rfanoutM f g x = do
   z <- g x
   return $ y :*: z :*: RNil
 
-data KeyNotFoundException a = KeyNotFoundException a
+newtype KeyNotFoundException a = KeyNotFoundException a
   deriving (Eq, Ord, Show)
 
 instance (Typeable a, Show a) => Exception (KeyNotFoundException a)
