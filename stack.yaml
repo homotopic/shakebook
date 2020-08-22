@@ -1,17 +1,19 @@
-resolver: nightly-2020-08-16
+resolver: nightly-2020-08-22
 packages:
 - .
 extra-deps:
 - git: https://github.com/locallycompact/composite
-  commit: a3e11e5e8d97eb5b42b645c8e66905c9c1024e03
+  commit: 1983a82fd8de3f08d34639a6ea2f824305829c02
   subdirs:
   - composite-aeson
   - composite-base
   - composite-aeson-path
-  - composite-binary-instance
-  - composite-hashable-instance
-- ixset-typed-conversions-0.1.1.0
-- pandoc-2.10
+  - composite-binary
+  - composite-hashable
+- commonmark-0.1.0.2
+- commonmark-extensions-0.2.0.1
+- commonmark-pandoc-0.2.0.0
+- pandoc-2.10.1
 - slick-1.0.1.1
 allow-newer: true
 nix:

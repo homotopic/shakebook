@@ -97,8 +97,8 @@ dependencies:
 - composite-aeson >= 0.7.3.0
 - composite-base >= 0.7.3.0
 - composite-aeson-path
-- composite-binary-instance
-- composite-hashable-instance
+- composite-binary
+- composite-hashable
 - comonad
 - comonad-extras
 - doctemplates

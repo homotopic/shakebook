@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Composite.Aeson
@@ -65,9 +64,6 @@ stage1Post f x = do
   k <- mapM (deriveTagLink f . Tag) $ view fTags x
   return $ view fPosted x :*: k :*: defaultDeriveTeaser (view fContent x) :*: u :*: x
 
-deriveTagLink :: Monad m => (Tag -> m Text) -> Tag -> m (Record Link)
-deriveTagLink f x = rtraverseToSnd (f . Tag) (unTag x)
-
 stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
 stage1Doc = rtraverseToPush (deriveUrl . view fSrcPath)
 
@@ -76,9 +72,7 @@ type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
 enrichment :: Record Enrichment
 enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
 
-
 type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
-
 
 myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x, x <: StandardFields)
             => Path Rel File -> Record x -> Path Rel File -> m ()
@@ -170,14 +164,20 @@ indexPages postIx f = do
 renderPageLinks :: (RElem FPageNo xs, RElem FUrl xs, MonadThrow m) => Int -> Zipper [] (Record xs) -> HtmlT m ()
 renderPageLinks = renderZipperWithin (liftA2 renderLink (T.pack . show . view fPageNo) (view fUrl))
 
-postIndexRules :: MonadSB r m => Text -> HtmlFragment -> Zipper [] (Record [FUrl, FItems Stage1Post, FPageNo]) -> m ()
-postIndexRules title nav ys = do
+postIndexRules :: MonadSB r m => HtmlFragment -> Text -> PostSet -> Text -> m ()
+postIndexRules nav title postset root = do
+    ys <- indexPages postset root
     sequence_ $ ys =>> \xs' -> do
       let x = extract xs'
       out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
       ps <- toHtmlFragmentM $ renderPageLinks numPageNeighbours ys
       let x' = ps :*: nav :*: title :*: x
       buildPostIndex x' (outputFolder </> out)
+    let k = extract $ seek 0 ys
+    k' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl k)
+    s' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD root
+    copyFileChanged (outputFolder </> k') (outputFolder </> s')
+
 
 postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m ()
 postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
@@ -188,15 +188,11 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
     out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)
     let x' = nav :*: x
     buildPost x' (outputFolder </> out)
-  indexPages postsIx postsRoot >>= postIndexRules "Posts" nav
+  postIndexRules nav "Posts" postsIx postsRoot
   forM_ (Ix.indexKeys postsIx) $ \t@(Tag t') ->
-    tagRoot t
-      >>= indexPages (postsIx Ix.@+ [t])
-        >>= postIndexRules ("Posts tagged " <> t') nav
+    tagRoot t >>= postIndexRules nav ("Posts tagged " <> t') (postsIx Ix.@+ [t])
   forM_ (Ix.indexKeys postsIx) \ym@(YearMonth _) ->
-    monthRoot ym
-      >>= indexPages (postsIx Ix.@+ [ym])
-        >>= postIndexRules ("Posts from " <> defaultPrettyMonthFormat (fromYearMonth ym)) nav
+    monthRoot ym >>= postIndexRules nav ("Posts from " <> defaultPrettyMonthFormat (fromYearMonth ym)) (postsIx Ix.@+ [ym])
 
 buildRules = do
   mainPageRules

@@ -30,6 +30,7 @@ import           Shakebook.Aeson
 import qualified Shakebook.Feed             as Atom
 import           Shakebook.Lucid
 import           Shakebook.Sitemap
+import           Shakebook.Utils
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
@@ -116,6 +117,8 @@ toYearMonth = (\(a, b, _) -> YearMonth (a, b)) . toGregorian . utctDay
 fromYearMonth :: YearMonth -> UTCTime
 fromYearMonth (YearMonth (y,m)) = UTCTime (fromGregorian y m 1) 0
 
+deriveTagLink :: Monad m => (Tag -> m Text) -> Tag -> m (Record Link)
+deriveTagLink f x = rtraverseToSnd (f . Tag) (unTag x)
 
 type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
 
