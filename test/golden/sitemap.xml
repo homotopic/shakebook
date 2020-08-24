@@ -2,15 +2,9 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
 ><url
 ><loc
->http://blanky.test/posts/quuz.html</loc
+>http://blanky.test/posts/foo.html</loc
 ><lastmod
->2020-07-20T00:00:00+00:00</lastmod
-></url
-><url
-><loc
->http://blanky.test/posts/baz.html</loc
-><lastmod
->2020-06-28T00:00:00+00:00</lastmod
+>2020-04-28T00:00:00+00:00</lastmod
 ></url
 ><url
 ><loc
@@ -20,9 +14,15 @@
 ></url
 ><url
 ><loc
->http://blanky.test/posts/foo.html</loc
+>http://blanky.test/posts/baz.html</loc
 ><lastmod
->2020-04-28T00:00:00+00:00</lastmod
+>2020-06-28T00:00:00+00:00</lastmod
+></url
+><url
+><loc
+>http://blanky.test/posts/quuz.html</loc
+><lastmod
+>2020-07-20T00:00:00+00:00</lastmod
 ></url
 ></urlset
 >
