@@ -14,6 +14,7 @@ extra-deps:
 - commonmark-extensions-0.2.0.1
 - commonmark-pandoc-0.2.0.0
 - pandoc-2.10.1
+- shake-plus-0.3.3.0
 - slick-1.0.1.1
 allow-newer: true
 nix:

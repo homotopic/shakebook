@@ -7,12 +7,12 @@ import           Composite.Record.Hashable       ()
 import qualified Data.IxSet.Typed                as Ix
 import           Data.List.Split
 import           Data.Vinyl                      hiding (RElem)
-import           Development.Shake               (ShakeValue)
 import           Development.Shake.Plus.Extended
 import           Development.Shake.Plus.Forward
 import           Lucid
 import           Path.Extensions
 import           RIO
+import qualified RIO.ByteString.Lazy             as LBS
 import           RIO.List
 import qualified RIO.Text                        as T
 import           Shakebook                       hiding ((:->))
@@ -55,6 +55,22 @@ mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
            ,"gitlab"  :*: "http://gitlab.com/blanky-site-nowhere" :*: RNil]
 
 
+type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
+
+loadMarkdownWith :: (ShakeValue a, MonadSB r m) => JsonFormat Void a -> Path Rel File -> m a
+loadMarkdownWith f x = cacheAction ("loader" :: Text, x) $ do
+  logInfo $ "Loading " <> displayShow (toFilePath x)
+  loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x >>= parseValue' f
+
+loadRawPost :: MonadSB r m => Path Rel File -> m (Record RawPost)
+loadRawPost = loadMarkdownWith rawPostJsonFormat
+
+loadRawSingle :: MonadSB r m => Path Rel File -> m (Record RawSingle)
+loadRawSingle = loadMarkdownWith rawSingleJsonFormat
+
+loadRawDoc :: MonadSB r m => Path Rel File -> m (Record RawDoc)
+loadRawDoc = loadMarkdownWith rawDocJsonFormat
+
 deriveUrl :: MonadThrow m => Path Rel File -> m Text
 deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder
 
@@ -71,8 +87,6 @@ type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
 
 enrichment :: Record Enrichment
 enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
-
-type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
 
 myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x, x <: StandardFields)
             => Path Rel File -> Record x -> Path Rel File -> m ()
@@ -98,20 +112,6 @@ docsRules dir toc = do
     out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)
     let v = nav :*: (extract <$> xs) :*: x
     buildDoc v (outputFolder </> out)
-
-loadMarkdownWith :: (ShakeValue a, MonadSB r m) => JsonFormat Void a -> Path Rel File -> m a
-loadMarkdownWith f x = cacheAction ("build" :: Text, x) $ do
-  logInfo $ "Loading " <> displayShow (toFilePath x)
-  loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions x >>= parseValue' f
-
-loadRawPost :: MonadSB r m => Path Rel File -> m (Record RawPost)
-loadRawPost = loadMarkdownWith (recordJsonFormat (rcast basicFields))
-
-loadRawSingle :: MonadSB r m => Path Rel File -> m (Record RawSingle)
-loadRawSingle = loadMarkdownWith (recordJsonFormat (rcast basicFields))
-
-loadRawDoc :: MonadSB r m => Path Rel File -> m (Record RawDoc)
-loadRawDoc = loadMarkdownWith (recordJsonFormat (rcast basicFields))
 
 postIndex :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postIndex = batchLoadIndex (loadRawPost >=> stage1Post tagRoot)
@@ -151,18 +151,12 @@ renderMonthLink x = do
 renderBlogNav :: MonadThrow m => PostSet -> HtmlT m ()
 renderBlogNav x = ul_ $ li_ $ do
   renderLink "Blog" "/posts/"
-  renderIxSetGroupDescBy renderMonthLink (liftA2 renderLink (view fTitle) (view fUrl)) (Down . view fPosted) x
-
-renderDocNav :: (Monad m, RElem FTitle xs, RElem FUrl xs) => Cofree [] (Record xs) -> HtmlT m ()
-renderDocNav xs = ul_ $ li_ $ renderCofree (liftA2 renderLink (view fTitle) (view fUrl)) xs
+  renderIxSetGroupDescBy renderMonthLink renderTitleLink (Down . view fPosted) x
 
 indexPages :: MonadThrow m => PostSet -> Text -> m (Zipper [] (Record (FUrl : FItems Stage1Post : FPageNo : '[])))
 indexPages postIx f = do
   p <- paginate' postsPerPage $ Ix.toDescList (Proxy @Posted) postIx
   return $ p =>> \a -> f <> "pages/" <> T.pack (show $ pos a + 1) :*: extract a :*: pos a + 1 :*: RNil
-
-renderPageLinks :: (RElem FPageNo xs, RElem FUrl xs, MonadThrow m) => Int -> Zipper [] (Record xs) -> HtmlT m ()
-renderPageLinks = renderZipperWithin (liftA2 renderLink (T.pack . show . view fPageNo) (view fUrl))
 
 postIndexRules :: MonadSB r m => HtmlFragment -> Text -> PostSet -> Text -> m ()
 postIndexRules nav title postset root = do
@@ -179,7 +173,7 @@ postIndexRules nav title postset root = do
     copyFileChanged (outputFolder </> k') (outputFolder </> s')
 
 
-postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m ()
+postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
   postsIx <- postIndex dir fp
   nav     <- toHtmlFragmentM $ renderBlogNav postsIx
@@ -193,11 +187,17 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
     tagRoot t >>= postIndexRules nav ("Posts tagged " <> t') (postsIx Ix.@+ [t])
   forM_ (Ix.indexKeys postsIx) \ym@(YearMonth _) ->
     monthRoot ym >>= postIndexRules nav ("Posts from " <> defaultPrettyMonthFormat (fromYearMonth ym)) (postsIx Ix.@+ [ym])
+  return postsIx
+
+sitemapRules :: MonadSB r m => PostSet -> Path Rel File -> m ()
+sitemapRules xs out = cacheAction ("sitemap" :: T.Text, out) $
+  LBS.writeFile (toFilePath $ outputFolder </> out) $ renderSitemap $ Sitemap $ fmap (asSitemapUrl baseUrl) $ Ix.toList xs
 
 buildRules = do
   mainPageRules
-  postRules sourceFolder ["posts/*.md"]
+  xs <- postRules sourceFolder ["posts/*.md"]
   docsRules sourceFolder tableOfContents
+  sitemapRules xs $(mkRelFile "sitemap.xml")
 
 tests :: [FilePath] -> TestTree
 tests xs = testGroup "Rendering Tests" $

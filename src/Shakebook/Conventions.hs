@@ -3,8 +3,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {- |
    Module     : Shakebook.Conventions
-   Copyright  : Copyright (C) 2020 Daniel Firth
-   Maintainer : Daniel Firth <dan.firth@homotopic.tech
    License    : MIT
    Stability  : experimental
 
@@ -16,13 +14,16 @@ import           Composite.Aeson
 import           Composite.Aeson.Path
 import           Composite.Record
 import           Composite.TH
+import           Control.Comonad.Cofree
 import           Control.Comonad.Store
+import           Control.Comonad.Store.Zipper
 import           Data.Binary.Instances.Time ()
 import           Data.Hashable.Time
 import           Data.IxSet.Typed           as Ix
 import           Data.Vinyl                 hiding (RElem)
 import           Data.Vinyl.TypeLevel
 import           Development.Shake.Plus     hiding ((:->))
+import           Lucid
 import           RIO
 import qualified RIO.Text                   as T
 import           RIO.Time
@@ -143,6 +144,15 @@ asAtomEntry x = (Atom.nullEntry (view fUrl x)
                     Atom.entryContent = Just $ Atom.TextContent (view fContent x)
                   }
 
+renderTitleLink :: (Monad m, RElem FTitle xs, RElem FUrl xs) => Record xs -> HtmlT m ()
+renderTitleLink = liftA2 renderLink (view fTitle) (view fUrl)
+
+renderDocNav :: (Monad m, RElem FTitle xs, RElem FUrl xs) => Cofree [] (Record xs) -> HtmlT m ()
+renderDocNav xs = ul_ $ li_ $ renderCofree renderTitleLink xs
+
+renderPageLinks :: (RElem FPageNo xs, RElem FUrl xs, MonadThrow m) => Int -> Zipper [] (Record xs) -> HtmlT m ()
+renderPageLinks = renderZipperWithin (liftA2 renderLink (T.pack . show . view fPageNo) (view fUrl))
+
 type BasicFields = FContent
                  : FDescription
                  : FImage
@@ -210,3 +220,12 @@ type StandardFields = BasicFields ++ ExtraFields ++ CompositeFields
 
 allFields :: Rec (JsonField e) StandardFields
 allFields = basicFields <+> extraFields <+> compositeFields
+
+rawPostJsonFormat :: JsonFormat e (Record RawPost)
+rawPostJsonFormat = recordJsonFormat $ rcast basicFields
+
+rawDocJsonFormat :: JsonFormat e (Record RawDoc)
+rawDocJsonFormat = recordJsonFormat $ rcast basicFields
+
+rawSingleJsonFormat :: JsonFormat e (Record RawSingle)
+rawSingleJsonFormat = recordJsonFormat $ rcast basicFields

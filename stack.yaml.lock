@@ -98,6 +98,13 @@ packages:
   original:
     hackage: pandoc-2.10.1
 - completed:
+    hackage: shake-plus-0.3.3.0@sha256:934a4abc06a7b258d01c77e7bc8538660af9f754346de4a92019bf045f591d78,2172
+    pantry-tree:
+      size: 1202
+      sha256: 8304ace6cd1e27085536a71235c0aac861e87a1948f2babe384147e3df292c3e
+  original:
+    hackage: shake-plus-0.3.3.0
+- completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
       size: 601
