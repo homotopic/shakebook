@@ -229,3 +229,23 @@ rawDocJsonFormat = recordJsonFormat $ rcast basicFields
 
 rawSingleJsonFormat :: JsonFormat e (Record RawSingle)
 rawSingleJsonFormat = recordJsonFormat $ rcast basicFields
+
+type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
+
+enrichmentFields :: Rec (JsonField e) Enrichment
+enrichmentFields = rcast allFields
+
+mainPageJsonFields :: Rec (JsonField e) MainPage
+mainPageJsonFields = rcast allFields
+
+finalPostJsonFields :: Rec (JsonField e) FinalPost
+finalPostJsonFields = rcast allFields
+
+finalDocJsonFields :: Rec (JsonField e) FinalDoc
+finalDocJsonFields = rcast allFields
+
+postIndexPageJsonFields  :: Rec (JsonField e) PostIndexPage
+postIndexPageJsonFields = rcast allFields
+
+enrichedRecordJsonFormat :: (RMap a, RecordToJsonObject a, RecordFromJson a) => Rec (JsonField e) a -> JsonFormat e (Record (Enrichment ++ a))
+enrichedRecordJsonFormat = recordJsonFormat . (enrichmentFields <+>)

@@ -16,7 +16,6 @@ module Shakebook (
 , module Data.Aeson
 , module Development.Shake.Plus
 , module Shakebook.Aeson
-, module Shakebook.Conduit
 , module Shakebook.Conventions
 , module Shakebook.Defaults
 , module Shakebook.Feed
@@ -35,7 +34,6 @@ import Control.Comonad.Zipper.Extra
 import Data.Aeson
 import Development.Shake.Plus
 import Shakebook.Aeson
-import Shakebook.Conduit
 import Shakebook.Conventions
 import Shakebook.Defaults
 import Shakebook.Feed hiding (Link)

@@ -54,7 +54,6 @@ mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
            ,"youtube" :*: "http://youtube.com/blanky-site-nowhere" :*: RNil
            ,"gitlab"  :*: "http://gitlab.com/blanky-site-nowhere" :*: RNil]
 
-
 type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
 
 loadMarkdownWith :: (ShakeValue a, MonadSB r m) => JsonFormat Void a -> Path Rel File -> m a
@@ -83,26 +82,24 @@ stage1Post f x = do
 stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
 stage1Doc = rtraverseToPush (deriveUrl . view fSrcPath)
 
-type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
-
 enrichment :: Record Enrichment
 enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
 
-myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x, x <: StandardFields)
-            => Path Rel File -> Record x -> Path Rel File -> m ()
-myBuildPage t x = buildPageAction' (sourceFolder </> t) (recordJsonFormat (rcast allFields)) (enrichment <+> x)
+myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x)
+            => Path Rel File -> Rec (JsonField e) x -> Record x -> Path Rel File -> m ()
+myBuildPage t f x = buildPageAction' (sourceFolder </> t) (enrichedRecordJsonFormat f) (enrichment <+> x)
 
 buildIndex :: MonadSB r m => Record MainPage -> Path Rel File -> m ()
-buildIndex = myBuildPage $(mkRelFile "templates/index.html")
+buildIndex = myBuildPage $(mkRelFile "templates/index.html") mainPageJsonFields
 
 buildPost :: MonadSB r m => Record FinalPost -> Path Rel File -> m ()
-buildPost = myBuildPage $(mkRelFile "templates/post.html")
+buildPost = myBuildPage $(mkRelFile "templates/post.html") finalPostJsonFields
 
 buildDoc :: MonadSB r m => Record FinalDoc -> Path Rel File -> m ()
-buildDoc = myBuildPage $(mkRelFile "templates/docs.html")
+buildDoc = myBuildPage $(mkRelFile "templates/docs.html") finalDocJsonFields
 
 buildPostIndex :: MonadSB r m => Record (IndexPage Stage1Post) -> Path Rel File -> m ()
-buildPostIndex = myBuildPage $(mkRelFile "templates/post-list.html")
+buildPostIndex = myBuildPage $(mkRelFile "templates/post-list.html") postIndexPageJsonFields
 
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
 docsRules dir toc = do
