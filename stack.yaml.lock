@@ -105,6 +105,13 @@ packages:
   original:
     hackage: shake-plus-0.3.3.0
 - completed:
+    hackage: shake-plus-extended-0.4.0.0@sha256:3df6ad5eddc36752b59a90f40c47ac2561aba0415d239201deff1b70cd23553b,2008
+    pantry-tree:
+      size: 645
+      sha256: e4f891cd656742ccffab414557d5c3ec2a0ccdbd6e1fded2c88967a1c4270cc2
+  original:
+    hackage: shake-plus-extended-0.4.0.0
+- completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
       size: 601
@@ -113,7 +120,7 @@ packages:
     hackage: slick-1.0.1.1
 snapshots:
 - completed:
-    size: 521288
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/22.yaml
-    sha256: 6dd14e2061dde3a43a356afc7722fb6e4c7cb5986f8abc3d2fbdaad87594bd73
-  original: nightly-2020-08-22
+    size: 523217
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/25.yaml
+    sha256: f961ae64849199266c1c613cb5289b9da264ca1ffb14115dfb2ad73d8969bb01
+  original: nightly-2020-08-25

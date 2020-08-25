@@ -51,14 +51,3 @@ rfanoutM f g x = do
   y <- f x
   z <- g x
   return $ y :*: z :*: RNil
-
-newtype KeyNotFoundException a = KeyNotFoundException a
-  deriving (Eq, Ord, Show)
-
-instance (Typeable a, Show a) => Exception (KeyNotFoundException a)
-
-lookupOrThrow :: (Eq a, Show a, Typeable a, Hashable a, MonadThrow m) => a -> HashMap a b -> m b
-lookupOrThrow k m = case HM.lookup k m of
-                          Just x  -> return x
-                          Nothing -> throwM $ KeyNotFoundException k
-
