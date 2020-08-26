@@ -8,33 +8,17 @@
 Utilities from "Slick.Mustache" lifted to `MonadAction` and `FileLike`.
 -}
 
-module Shakebook.Mustache (
-  Text.Mustache.Template
-, buildPageAction
-, buildPageAction'
-, compileTemplate'
-) where
+module Shakebook.Mustache where
 
 import           Composite.Aeson
-import           Data.Aeson
+import Composite.Record
 import           Development.Shake.Plus hiding ((:->))
 import           RIO
-import qualified Slick.Mustache
+import qualified RIO.Text.Lazy as LT
 import           Text.Mustache
 
--- | Lifted version of `Slick.Mustache.compileTemplate'` with well-typed `Path`.
-compileTemplate' :: MonadAction m => Path b File -> m Template
-compileTemplate' = liftAction . Slick.Mustache.compileTemplate' . toFilePath
+renderMustache' :: Template -> JsonFormat e (Record a)-> Record a -> Text
+renderMustache' t f x = LT.toStrict $ renderMustache t (toJsonWithFormat f x)
 
--- | Build a single page straight from a template.
-buildPageAction :: MonadAction m
-                => Path b File -- ^ The HTML templatate.
-                -> Value -- ^ A JSON value.
-                -> Path b' File -- ^ The out filepath.
-                -> m ()
-buildPageAction template value out = do
-  pageT <- compileTemplate' template
-  writeFile' out $ substitute pageT value
-
-buildPageAction' :: MonadAction m => Path b File -> JsonFormat e a -> a -> Path b File -> m ()
-buildPageAction' t f v = buildPageAction t (toJsonWithFormat f v)
+compileMustacheDir' :: MonadIO m => PName -> Path b Dir -> m Template
+compileMustacheDir' x f = compileMustacheDir x (toFilePath f)

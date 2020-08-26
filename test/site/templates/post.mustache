@@ -1,31 +1,23 @@
 <html>
-  {{>test/site/templates/head.html}}
+  {{>head}}
   <body>
-    {{>test/site/templates/header.html}}
+    {{>header}}
     <div class="container-fluid td-outer">
       <div class="td-main">
         <div class="row flex-xl-nowrap">
-          {{>test/site/templates/sidebar.html}}
+          {{>sidebar}}
           <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
             <div class="td-content">
-              <h1>This post page is called {{{title}}}</h1>
-              {{#items}}
-              <h2>{{{title}}}</h2>
+              <h1>This post is called {{{title}}}</h1>
               <p>
               <small>Posted on {{{pretty-date}}} with tags:
                 {{#tag-links}}
                 <a href="{{{url}}}">{{{id}}}</a>
                 {{/tag-links}}
               </small>
-              <p>{{{teaser}}}</p>
-              <p><a href={{{url}}}>Read More</a></p>
-              </p>
-              {{/items}}
-
-            </div>
-            <div>
-              Pages:
-              {{{page-links}}}
+              <p>It was generated from the source {{{src-path}}}</p>
+              <p>For the url {{{url}}}</p>
+              <p>{{{content}}}</p>
             </div>
           </main>
         </div>

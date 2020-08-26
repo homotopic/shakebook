@@ -18,6 +18,7 @@ import qualified RIO.Text                        as T
 import           Shakebook                       hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
+import Text.Mustache (PName)
 import           Test.Tasty.Golden
 
 sourceFolder :: Path Rel Dir
@@ -86,20 +87,23 @@ enrichment :: Record Enrichment
 enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
 
 myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x)
-            => Path Rel File -> Rec (JsonField e) x -> Record x -> Path Rel File -> m ()
-myBuildPage t f x = buildPageAction' (sourceFolder </> t) (enrichedRecordJsonFormat f) (enrichment <+> x)
+            => PName -> Rec (JsonField e) x -> Record x -> Path Rel File -> m ()
+myBuildPage t f x out = do
+  k <- compileMustacheDir' t $(mkRelDir "test/site/templates")
+  let l' = renderMustache' k (enrichedRecordJsonFormat f) (enrichment <+> x)
+  writeFile' out l'
 
 buildIndex :: MonadSB r m => Record MainPage -> Path Rel File -> m ()
-buildIndex = myBuildPage $(mkRelFile "templates/index.html") mainPageJsonFields
+buildIndex = myBuildPage "index" mainPageJsonFields
 
 buildPost :: MonadSB r m => Record FinalPost -> Path Rel File -> m ()
-buildPost = myBuildPage $(mkRelFile "templates/post.html") finalPostJsonFields
+buildPost = myBuildPage "post" finalPostJsonFields
 
 buildDoc :: MonadSB r m => Record FinalDoc -> Path Rel File -> m ()
-buildDoc = myBuildPage $(mkRelFile "templates/docs.html") finalDocJsonFields
+buildDoc = myBuildPage "docs" finalDocJsonFields
 
 buildPostIndex :: MonadSB r m => Record (IndexPage Stage1Post) -> Path Rel File -> m ()
-buildPostIndex = myBuildPage $(mkRelFile "templates/post-list.html") postIndexPageJsonFields
+buildPostIndex = myBuildPage "post-list" postIndexPageJsonFields
 
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
 docsRules dir toc = do
