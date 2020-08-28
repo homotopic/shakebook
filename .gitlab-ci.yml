@@ -15,7 +15,7 @@ before_script:
 stages:
 - lint
 - build
-- test
+- cache
 
 lint:
   stage: lint
@@ -25,4 +25,9 @@ lint:
 build:
   stage: build
   script:
-  - nix-build -A shakebook
+  - nix-build -A shakebook -K
+
+cachix:
+  stage: cache
+  script:
+  - nix-store -qR --include-outputs $(nix-store -q --deriver $(nix-build -A shakebook -K)) | cachix push shakebook
