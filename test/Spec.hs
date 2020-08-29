@@ -18,7 +18,6 @@ import qualified RIO.Text                        as T
 import           Shakebook                       hiding ((:->))
 import           Shakebook.Utils
 import           Test.Tasty
-import Text.Mustache (PName)
 import           Test.Tasty.Golden
 
 sourceFolder :: Path Rel Dir
