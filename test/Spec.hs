@@ -2,8 +2,6 @@
 
 import           Composite.Aeson
 import           Composite.Record
-import           Composite.Record.Binary         ()
-import           Composite.Record.Hashable       ()
 import qualified Data.IxSet.Typed                as Ix
 import           Data.List.Split
 import           Data.Vinyl                      hiding (RElem)

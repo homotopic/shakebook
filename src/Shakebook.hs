@@ -27,6 +27,8 @@ module Shakebook (
 , module Text.Pandoc.Highlighting
 ) where
 
+import Composite.Record.Binary ()
+import Composite.Record.Hashable ()
 import Control.Comonad.Cofree
 import Control.Comonad.Store
 import Control.Comonad.Store.Zipper
