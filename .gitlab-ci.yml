@@ -14,18 +14,11 @@ before_script:
 - chmod 600 /root/.ssh/id_ed25519
 - echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" >> /root/.ssh/known_hosts
 
-
 stages:
 - build
-- cache
-
 
 build:
   stage: build
   script:
-    - nix-build -A shakebook -K --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark"
-
-cachix:
-  stage: cache
-  script:
-  - nix-store -qR --include-outputs $(nix-store -q --deriver $(nix-build -A shakebook -K)) | cachix push shakebook
+  - nix-build -A shakebook -K --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark"
+  - nix-store -qR --include-outputs $(nix-store -q --deriver $(nix-build -A shakebook -K -- builders "ssh;//eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark")) | cachix push shakebook
