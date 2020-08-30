@@ -15,9 +15,7 @@ stages:
 before_script:
 - pwd
 - echo "$NIXBUILD_SSH_KEY" > /root/nixbuild.key
-- echo "
-
-Host eu.nixbuild.net
+- echo "Host eu.nixbuild.net
   PubkeyAcceptedKeyTypes ssh-ed25519
   IdentityFile /root/nixbuild.key"
   >> /etc/ssh/ssh_config
