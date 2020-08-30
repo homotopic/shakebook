@@ -1,4 +1,4 @@
-image: lnl7/nix-docker:latest
+image: lnl7/nix:latest
 
 before_script:
 - export LC_ALL=C.UTF-8
