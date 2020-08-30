@@ -1,4 +1,4 @@
-image: lnl7/nix:latest
+image: nixos/nix:latest
 
 before_script:
 - export LC_ALL=C.UTF-8
@@ -11,6 +11,7 @@ before_script:
 - cachix use shakebook
 - echo "$NIXBUILD_SSH_KEY" > /root/.ssh/id_ed25519
 - chmod 600 /root/.ssh/id_ed25519
+- echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" >> /root/.ssh/known_hosts
 
 
 stages:
