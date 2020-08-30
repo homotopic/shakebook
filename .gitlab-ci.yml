@@ -4,28 +4,28 @@ before_script:
 - export LC_ALL=C.UTF-8
 - nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
 - nix-channel --update
-- nix-env -iA nixpkgs.stack
-- nix-env -iA nixpkgs.git
-- nix-env -iA nixpkgs.cacert
-- nix-env -iA nixpkgs.hlint
 - nix-env -iA nixpkgs.cachix
 - cachix use iohk
 - cachix use shakebook
 
 stages:
-- lint
 - build
 - cache
 
-lint:
-  stage: lint
-  script:
-  - hlint . --ignore-glob=test/Spec.hs
+before_script:
+- pwd
+- echo "$NIXBUILD_SSH_KEY" > /root/nixbuild.key
+- echo "
+
+Host eu.nixbuild.net
+  PubkeyAcceptedKeyTypes ssh-ed25519
+  IdentityFile /root/nixbuild.key"
+  >> /etc/ssh/ssh_config
 
 build:
   stage: build
   script:
-  - nix-build -A shakebook -K
+    - nix-build -A shakebook -K --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark"
 
 cachix:
   stage: cache
