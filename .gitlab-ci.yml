@@ -9,6 +9,7 @@ before_script:
 - nix-env -iA nixpkgs.openssh
 - cachix use iohk
 - cachix use shakebook
+- mkdir -p /root/.ssh
 - echo "$NIXBUILD_SSH_KEY" > /root/.ssh/id_ed25519
 - chmod 600 /root/.ssh/id_ed25519
 - echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" >> /root/.ssh/known_hosts
