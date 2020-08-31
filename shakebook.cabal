@@ -43,7 +43,6 @@ library
     , aeson-better-errors
     , aeson-with >=0.1.1.0
     , base >=4.7 && <5
-    , binary
     , binary-instances
     , comonad
     , comonad-extras
@@ -94,7 +93,6 @@ test-suite shakebook-test
     , aeson-better-errors
     , aeson-with >=0.1.1.0
     , base >=4.7 && <5
-    , binary
     , binary-instances
     , comonad
     , comonad-extras
