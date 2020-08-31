@@ -1,5 +1,5 @@
 name:                shakebook
-version:             0.12.0.0
+version:             0.13.0.0
 license:             MIT
 category:            Web
 author:              "Daniel Firth"
@@ -88,17 +88,16 @@ tests:
     - tasty-golden
 
 dependencies:
-- aeson
+- aeson >= 1.4.7.0 && < 1.6
 - aeson-better-errors
 - aeson-with >= 0.1.1.0
 - base >= 4.7 && < 5
-- binary
-- binary-instances
-- composite-aeson >= 0.7.3.0
-- composite-base >= 0.7.3.0
-- composite-aeson-path
-- composite-binary
-- composite-hashable
+- binary-instances >= 0.1.0.1 && < 0.2
+- composite-aeson >= 0.7.4.0 && < 0.8
+- composite-base >= 0.7.4.0 && < 0.8
+- composite-aeson-path >= 0.7.4.0 && < 0.8
+- composite-binary >= 0.7.4.0 && < 0.8
+- composite-hashable >= 0.7.4.0 && < 0.8
 - comonad
 - comonad-extras
 - doctemplates
@@ -110,14 +109,13 @@ dependencies:
 - lens
 - lens-aeson
 - lucid
-- lucid-cdn >= 0.1.1.0
+- lucid-cdn >= 0.2.0.0 && < 0.3
 - mtl
 - rio
 - pandoc
 - pandoc-types
-- path
 - path-extensions >= 0.1.0.1
-- shake
+- path
 - shake-plus >= 0.3.0.0
 - shake-plus-extended >= 0.2.0.0
 - sitemap-gen

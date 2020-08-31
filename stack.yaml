@@ -1,10 +1,7 @@
-resolver: nightly-2020-08-27
+resolver: nightly-2020-08-30
 packages:
 - .
 extra-deps:
-- composite-aeson-path-0.7.4.0
-- composite-binary-0.7.4.0
-- composite-hashable-0.7.4.0
 - commonmark-0.1.0.2
 - commonmark-extensions-0.2.0.1
 - commonmark-pandoc-0.2.0.0

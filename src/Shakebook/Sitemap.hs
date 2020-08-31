@@ -1,7 +1,5 @@
 {- |
    Module     : Shakebook.Sitemap
-   Copyright  : Copyright (C) 2020 Daniel Firth
-   Maintainer : Daniel Firth <dan.firth@homotopic.tech>
    License    : MIT
    Stability  : experimental
 

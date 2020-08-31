@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           shakebook
-version:        0.12.0.0
+version:        0.13.0.0
 synopsis:       Shake-based technical documentation generator; HTML & PDF
 description:    Shakebook is a documentation generator aimed at covering all the bases for mathematical, technical and scientific diagrams and typesetting. Shakebook provides combinators for taking markdown files and combining them into documents, but allowing the user to control how. Shakebook provides general combinators for templating single pages, cofree comonads for representing tables of contents, and zipper comonads for representing pagers.
 category:       Web
@@ -40,19 +40,18 @@ library
   default-extensions: BangPatterns BinaryLiterals BlockArguments ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingVia DoAndIfThenElse EmptyDataDecls ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NamedFieldPuns NoImplicitPrelude OverloadedStrings PartialTypeSignatures PatternGuards PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeOperators TypeSynonymInstances ViewPatterns
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -fno-warn-orphans -fprint-potential-instances -Wredundant-constraints
   build-depends:
-      aeson
+      aeson >=1.4.7.0 && <1.6
     , aeson-better-errors
     , aeson-with >=0.1.1.0
     , base >=4.7 && <5
-    , binary
-    , binary-instances
+    , binary-instances >=0.1.0.1 && <0.2
     , comonad
     , comonad-extras
-    , composite-aeson >=0.7.3.0
-    , composite-aeson-path
-    , composite-base >=0.7.3.0
-    , composite-binary
-    , composite-hashable
+    , composite-aeson >=0.7.4.0 && <0.8
+    , composite-aeson-path >=0.7.4.0 && <0.8
+    , composite-base >=0.7.4.0 && <0.8
+    , composite-binary >=0.7.4.0 && <0.8
+    , composite-hashable >=0.7.4.0 && <0.8
     , doctemplates
     , feed
     , free
@@ -62,14 +61,13 @@ library
     , lens
     , lens-aeson
     , lucid
-    , lucid-cdn >=0.1.1.0
+    , lucid-cdn >=0.2.0.0 && <0.3
     , mtl
     , pandoc
     , pandoc-types
     , path
     , path-extensions >=0.1.0.1
     , rio
-    , shake
     , shake-plus >=0.3.0.0
     , shake-plus-extended >=0.2.0.0
     , sitemap-gen
@@ -91,19 +89,18 @@ test-suite shakebook-test
   default-extensions: BangPatterns BinaryLiterals BlockArguments ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingVia DoAndIfThenElse EmptyDataDecls ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NamedFieldPuns NoImplicitPrelude OverloadedStrings PartialTypeSignatures PatternGuards PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeOperators TypeSynonymInstances ViewPatterns
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -fno-warn-orphans -fprint-potential-instances -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aeson
+      aeson >=1.4.7.0 && <1.6
     , aeson-better-errors
     , aeson-with >=0.1.1.0
     , base >=4.7 && <5
-    , binary
-    , binary-instances
+    , binary-instances >=0.1.0.1 && <0.2
     , comonad
     , comonad-extras
-    , composite-aeson >=0.7.3.0
-    , composite-aeson-path
-    , composite-base >=0.7.3.0
-    , composite-binary
-    , composite-hashable
+    , composite-aeson >=0.7.4.0 && <0.8
+    , composite-aeson-path >=0.7.4.0 && <0.8
+    , composite-base >=0.7.4.0 && <0.8
+    , composite-binary >=0.7.4.0 && <0.8
+    , composite-hashable >=0.7.4.0 && <0.8
     , doctemplates
     , feed
     , free
@@ -113,14 +110,13 @@ test-suite shakebook-test
     , lens
     , lens-aeson
     , lucid
-    , lucid-cdn >=0.1.1.0
+    , lucid-cdn >=0.2.0.0 && <0.3
     , mtl
     , pandoc
     , pandoc-types
     , path
     , path-extensions >=0.1.0.1
     , rio
-    , shake
     , shake-plus >=0.3.0.0
     , shake-plus-extended >=0.2.0.0
     , shakebook

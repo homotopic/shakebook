@@ -1,7 +1,5 @@
 {- |
    Module     : Shakebook.Defaults
-   Copyright  : Copyright (C) 2020 Daniel Firth
-   Maintainer : Daniel Firth <dan.firth@homotopic.tech
    License    : MIT
    Stability  : experimental
 
@@ -59,6 +57,6 @@ defaultCdnImports = do
   bootstrapCSS_5_0_0_alpha1
   bootstrapJS_5_0_0_alpha1
   fontawesome_4_7_0
-  mathjax_3_0_5
+  mathjax_3_1_0
   jquery_3_5_1
   popper_2_4_4
