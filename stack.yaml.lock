@@ -5,27 +5,6 @@
 
 packages:
 - completed:
-    hackage: composite-aeson-path-0.7.4.0@sha256:c8d47db27c0bef72e37478d3abaea856e073ff8ead96914f239a84b89145b630,1252
-    pantry-tree:
-      size: 184
-      sha256: b62fd521499c24ead3c50de73963496425b3b29162a7f6f3e7e884e12529cbb9
-  original:
-    hackage: composite-aeson-path-0.7.4.0
-- completed:
-    hackage: composite-binary-0.7.4.0@sha256:9fb8e125ac9497d8b7cdb34f7cae6c6b54fb8ab159fa9e37224610447da007b0,1252
-    pantry-tree:
-      size: 183
-      sha256: 98a1e4f72a6a33fab09302b3a52afbcc2dd42e39e2006a7e0670569e4a783a3c
-  original:
-    hackage: composite-binary-0.7.4.0
-- completed:
-    hackage: composite-hashable-0.7.4.0@sha256:7cda6449a2b4bbb5a44d0838b2bc898acbabac3dab11f78f2b2d3b3ce0be63ac,1266
-    pantry-tree:
-      size: 187
-      sha256: fb973f1f5ed9b5e085f5543007548db4a3801e11fd5fac488dc6f5a500eb18f1
-  original:
-    hackage: composite-hashable-0.7.4.0
-- completed:
     hackage: commonmark-0.1.0.2@sha256:fbff7a2ade0ce7d699964a87f765e503a3a9e22542c05f0f02ba7aad64e38af4,3278
     pantry-tree:
       size: 1346
@@ -62,7 +41,7 @@ packages:
     hackage: slick-1.0.1.1
 snapshots:
 - completed:
-    size: 523649
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/27.yaml
-    sha256: 95012648db1b2180e3d7e0a3d44bc2a61b6854028382674724fee7ffa24300c3
-  original: nightly-2020-08-27
+    size: 526492
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/30.yaml
+    sha256: 884c2a520fe9d9c0447cfb076852dcb1da1002c5e6e9ade3352a072e3f5a2648
+  original: nightly-2020-08-30
