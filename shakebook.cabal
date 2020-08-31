@@ -23,6 +23,7 @@ library
   exposed-modules:
       Shakebook
       Shakebook.Aeson
+      Shakebook.Composite
       Shakebook.Conventions
       Shakebook.Defaults
       Shakebook.Feed

@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 import           Composite.Aeson
 import           Composite.Record
@@ -14,9 +15,9 @@ import qualified RIO.ByteString.Lazy             as LBS
 import           RIO.List
 import qualified RIO.Text                        as T
 import           Shakebook                       hiding ((:->))
-import           Shakebook.Utils
 import           Test.Tasty
 import           Test.Tasty.Golden
+import Shakebook.Composite (prependXStep, XStep)
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -71,14 +72,19 @@ loadRawDoc = loadMarkdownWith rawDocJsonFormat
 deriveUrl :: MonadThrow m => Path Rel File -> m Text
 deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder
 
-stage1Post :: (MonadAction m, MonadThrow m) => (Tag -> m Text) -> Record RawPost -> m (Record Stage1Post)
-stage1Post f x = do
-  u <- deriveUrl $ view fSrcPath x
-  k <- mapM (deriveTagLink f . Tag) $ view fTags x
-  return $ view fPosted x :*: k :*: defaultDeriveTeaser (view fContent x) :*: u :*: x
+type Stage1PostExtras = FPrettyDate : FTagLinks : FTeaser : FUrl : '[]
 
-stage1Doc :: MonadThrow m => Record RawDoc -> m (Record Stage1Doc)
-stage1Doc = rtraverseToPush (deriveUrl . view fSrcPath)
+stage1PostExtras :: (MonadAction m, MonadThrow m) => XStep m RawPost Stage1PostExtras
+stage1PostExtras = pure . view fPosted
+               ::& mapM (deriveTagLink tagRoot . Tag) . view fTags
+               ::& pure . defaultDeriveTeaser . view fContent
+               ::& deriveUrl . view fSrcPath
+               ::& XRNil
+
+type Stage1DocExtras = FUrl : '[]
+
+stage1DocExtras :: MonadThrow m => XStep m RawDoc Stage1DocExtras
+stage1DocExtras = deriveUrl . view fSrcPath ::& XRNil
 
 enrichment :: Record Enrichment
 enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
@@ -104,7 +110,7 @@ buildPostIndex = myBuildPage "post-list" postIndexPageJsonFields
 
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
 docsRules dir toc = do
-  as <- mapM (loadRawDoc >=> stage1Doc) (fmap (sourceFolder </>) toc)
+  as <- mapM (loadRawDoc >=> prependXStep stage1DocExtras) (fmap (sourceFolder </>) toc)
   nav <- toHtmlFragmentM $ renderDocNav as
   sequence_ $ as =>> \(x :< xs) -> do
     out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)
@@ -112,7 +118,7 @@ docsRules dir toc = do
     buildDoc v (outputFolder </> out)
 
 postIndex :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
-postIndex = batchLoadIndex (loadRawPost >=> stage1Post tagRoot)
+postIndex = batchLoadIndex (loadRawPost >=> prependXStep stage1PostExtras)
 
 recentPosts :: Int -> PostSet -> [Record Stage1Post]
 recentPosts x y = take x (Ix.toDescList (Proxy @Posted) y)
@@ -169,7 +175,6 @@ postIndexRules nav title postset root = do
     k' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl k)
     s' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD root
     copyFileChanged (outputFolder </> k') (outputFolder </> s')
-
 
 postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do

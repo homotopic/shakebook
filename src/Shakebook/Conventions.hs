@@ -28,10 +28,10 @@ import           RIO
 import qualified RIO.Text                   as T
 import           RIO.Time
 import           Shakebook.Aeson
+import qualified Shakebook.Composite        as C
 import qualified Shakebook.Feed             as Atom
 import           Shakebook.Lucid
 import           Shakebook.Sitemap
-import           Shakebook.Utils
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
@@ -119,7 +119,7 @@ fromYearMonth :: YearMonth -> UTCTime
 fromYearMonth (YearMonth (y,m)) = UTCTime (fromGregorian y m 1) 0
 
 deriveTagLink :: Monad m => (Tag -> m Text) -> Tag -> m (Record Link)
-deriveTagLink f x = rtraverseToSnd (f . Tag) (unTag x)
+deriveTagLink f x = C.traverseToSnd (f . Tag) (unTag x)
 
 type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
 
