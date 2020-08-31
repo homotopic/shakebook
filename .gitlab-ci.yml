@@ -20,5 +20,5 @@ stages:
 build:
   stage: build
   script:
-  - nix-build -A shakebook -K --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark"
-  - nix-store -qR --include-outputs $(nix-store -q --deriver $(nix-build -A shakebook -K -- builders "ssh;//eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark")) | cachix push shakebook
+  - nix run nixpkgs.nix-build-uncached -c nix-build-uncached -A shakebook --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark"
+  - nix-store -qR --include-outputs $(nix-store -q --deriver ./result) | cachix push shakebook
