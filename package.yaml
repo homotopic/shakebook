@@ -94,10 +94,10 @@ dependencies:
 - base >= 4.7 && < 5
 - binary
 - binary-instances
-- composite-aeson >= 0.7.3.0
-- composite-base >= 0.7.3.0
-- composite-aeson-path
-- composite-binary
+- composite-aeson >= 0.7.4.0 && < 0.8
+- composite-base >= 0.7.4.0 && <0.8
+- composite-aeson-path >= 0.7.4.0 && < 0.8
+- composite-binary >= 0.7.4.0 && < 0.8
 - composite-hashable
 - comonad
 - comonad-extras
@@ -110,7 +110,7 @@ dependencies:
 - lens
 - lens-aeson
 - lucid
-- lucid-cdn >= 0.1.1.0
+- lucid-cdn >= 0.2.0.0 && < 0.3
 - mtl
 - rio
 - pandoc
