@@ -21,5 +21,5 @@ build:
   stage: build
   script:
   - export BUILD_CMD="nix run nixpkgs.nix-build-uncached -c nix-build-uncached -A shakebook --builders \"ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark\""
-  - $(BUILD_CMD)
-  - nix-store -qR --include-outputs $(nix-store -q --deriver $(BUILD_CMD)) | cachix push shakebook
+  - $BUILD_CMD
+  - nix-store -qR --include-outputs $(nix-store -q --deriver $BUILD_CMD) | cachix push shakebook
