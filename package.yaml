@@ -88,16 +88,16 @@ tests:
     - tasty-golden
 
 dependencies:
-- aeson
+- aeson >= 1.4.7.0 && < 1.6
 - aeson-better-errors
 - aeson-with >= 0.1.1.0
 - base >= 4.7 && < 5
-- binary-instances
+- binary-instances >= 0.1.0.1 && < 0.2
 - composite-aeson >= 0.7.4.0 && < 0.8
-- composite-base >= 0.7.4.0 && <0.8
+- composite-base >= 0.7.4.0 && < 0.8
 - composite-aeson-path >= 0.7.4.0 && < 0.8
 - composite-binary >= 0.7.4.0 && < 0.8
-- composite-hashable
+- composite-hashable >= 0.7.4.0 && < 0.8
 - comonad
 - comonad-extras
 - doctemplates
@@ -114,9 +114,8 @@ dependencies:
 - rio
 - pandoc
 - pandoc-types
-- path
 - path-extensions >= 0.1.0.1
-- shake
+- path
 - shake-plus >= 0.3.0.0
 - shake-plus-extended >= 0.2.0.0
 - sitemap-gen
