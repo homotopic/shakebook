@@ -12,11 +12,11 @@ toFst f x = f x :*: x :*: RNil
 toSnd :: (a -> b) -> a -> Record (s :-> a : s' :-> b : '[])
 toSnd f x = x :*: f x :*: RNil
 
-fmapToFst :: (a -> b) -> f a -> f (Record (s :-> a, s' :-> b, : '[]))
-fmapToFst :: (a -> b) -> f a -> f (Record (s :-> a, s' :-> b, : '[]))
+fmapToFst :: Functor f => (a -> b) -> f a -> f (Record (s :-> b : s' :-> a : '[]))
+fmapToFst = fmap . toFst
 
-fmapToSnd :: (a -> b) -> f a -> f (Record (s :-> a, s' :-> b, : '[]))
-fmapToSnd :: (a -> b) -> f a -> f (Record (s :-> a, s' :-> b, : '[]))
+fmapToSnd :: Functor f => (a -> b) -> f a -> f (Record (s :-> a : s' :-> b : '[]))
+fmapToSnd = fmap . toSnd
 
 traverseToFst :: Applicative m => (a -> m b) -> a -> m (Record (s :-> b : s' :-> a : '[]))
 traverseToFst f x =  (:*: x :*: RNil) <$> f x
@@ -28,10 +28,7 @@ fanout :: (x -> a) -> (x -> b) -> x -> Record (s :-> a : s' :-> b : '[])
 fanout f g x = f x :*: g x :*: RNil
 
 fanoutM :: Applicative m => (x -> m a) -> (x -> m b) -> x -> m (Record (s :-> a : s' :-> b : '[]))
-fanoutM f g x = do
-  y <- f x
-  z <- g x
-  return $ y :*: z :*: RNil
+fanoutM f g x = (\y z -> y :*: z :*: RNil) <$> f x <*> g x
 
 newtype RSource r m a = RSource { runSource :: Record r -> m a }
 
