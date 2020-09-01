@@ -32,7 +32,6 @@ library
       Shakebook.Pandoc
       Shakebook.Sitemap
       Shakebook.Url
-      Shakebook.Utils
   other-modules:
       Paths_shakebook
   hs-source-dirs:
@@ -73,7 +72,6 @@ library
     , sitemap-gen
     , skylighting
     , slick
-    , split
     , stache
     , vinyl
     , zipper-extra >=0.1.3.0
