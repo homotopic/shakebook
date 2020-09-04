@@ -1,5 +1,19 @@
 <div class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
   <nav class="td-sidebar-nav pt-2 pl-4">
-  {{{toc}}}
+  {{#toc}}
+  <ul>
+    {{#head}}<li><a href={{{url}}}>{{{id}}}</a></li>{{/head}}
+    <ul>
+    {{#tail}}
+      {{#head}}<li><a href={{{url}}}>{{{id}}}</a></li>{{/head}}
+      <ul>
+      {{#tail}}
+        {{#head}}<li><a href={{{url}}}>{{{id}}}</a></li>{{/head}}
+      {{/tail}}
+      </ul>
+    {{/tail}}
+    </ul>
+  </ul>
+  {{/toc}}
   </nav>
 </div>

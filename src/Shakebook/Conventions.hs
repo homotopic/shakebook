@@ -66,7 +66,8 @@ withLensesAndProxies [d|
   type FTagLinks      = "tag-links"    :-> [Record Link]
   type FTeaser        = "teaser"       :-> Text
   type FTitle         = "title"        :-> Text
-  type FToc           = "toc"          :-> HtmlFragment
+  type FTocHtml       = "toc"          :-> HtmlFragment
+  type FTocCF         = "toc"          :-> Cofree [] (Record Link)
   |]
 
 sbDisplayDateTimeJsonFormat :: JsonFormat e UTCTime
@@ -87,13 +88,13 @@ type Stage1Post = FPrettyDate : FTagLinks : FTeaser : FUrl : RawPost
 
 type Stage1Doc = FUrl : RawDoc
 
-type IndexPage x = FPageLinks : FToc : FTitle : FUrl : FItems x : FPageNo : '[]
+type IndexPage x = FPageLinks : FTocCF : FTitle : FUrl : FItems x : FPageNo : '[]
 
 type PostIndexPage = IndexPage Stage1Post
 
-type FinalDoc = FToc : FSubsections Stage1Doc : Stage1Doc
+type FinalDoc = FTocCF : FSubsections Stage1Doc : Stage1Doc
 
-type FinalPost = FToc : Stage1Post
+type FinalPost = FTocCF : Stage1Post
 
 type MainPage = FRecentPosts Stage1Post : RawSingle
 
@@ -185,20 +186,22 @@ type ExtraFields = FCdnImports
                  : FSocialLinks
                  : FTagLinks
                  : FTeaser
-                 : FToc
+                 : FTocHtml
+                 : FTocCF
                  : '[]
 
 extraFields :: Rec (JsonField e) ExtraFields
-extraFields =  (field htmlJsonFormat                  :: JsonField e FCdnImports)
-            :& (field styleJsonFormat                 :: JsonField e FHighlighting)
-            :& (field htmlJsonFormat                  :: JsonField e FPageLinks)
-            :& (field integralJsonFormat              :: JsonField e FPageNo)
-            :& (field sbDisplayDateTimeJsonFormat     :: JsonField e FPrettyDate)
-            :& (field textJsonFormat                  :: JsonField e FSiteTitle)
-            :& (field (listJsonFormat linkJsonFormat) :: JsonField e FSocialLinks)
-            :& (field (listJsonFormat linkJsonFormat) :: JsonField e FTagLinks)
-            :& (field textJsonFormat                  :: JsonField e FTeaser)
-            :& (field htmlJsonFormat                  :: JsonField e FToc)
+extraFields =  (field htmlJsonFormat                    :: JsonField e FCdnImports)
+            :& (field styleJsonFormat                   :: JsonField e FHighlighting)
+            :& (field htmlJsonFormat                    :: JsonField e FPageLinks)
+            :& (field integralJsonFormat                :: JsonField e FPageNo)
+            :& (field sbDisplayDateTimeJsonFormat       :: JsonField e FPrettyDate)
+            :& (field textJsonFormat                    :: JsonField e FSiteTitle)
+            :& (field (listJsonFormat linkJsonFormat)   :: JsonField e FSocialLinks)
+            :& (field (listJsonFormat linkJsonFormat)       :: JsonField e FTagLinks)
+            :& (field textJsonFormat                        :: JsonField e FTeaser)
+            :& (field htmlJsonFormat                        :: JsonField e FTocHtml)
+            :& (field (cofreeListJsonFormat linkJsonFormat) :: JsonField e FTocCF)
             :& RNil
 
 listCastElemsFormat :: (RMap a, RecordToJsonObject a, RecordFromJson a, a <: b) => JsonFormatRecord e b -> JsonFormat e [Record a]

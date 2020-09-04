@@ -41,7 +41,7 @@ packages:
     hackage: slick-1.0.1.1
 snapshots:
 - completed:
-    size: 526492
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/30.yaml
-    sha256: 884c2a520fe9d9c0447cfb076852dcb1da1002c5e6e9ade3352a072e3f5a2648
-  original: nightly-2020-08-30
+    size: 528636
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/9/3.yaml
+    sha256: 9dac40ef83b087f8f5c4b32a3400b54f6fc058fd7648e46bbfcb60765b135646
+  original: nightly-2020-09-03

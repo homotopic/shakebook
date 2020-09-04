@@ -4,6 +4,7 @@
 import           Composite.Aeson
 import           Composite.Record
 import qualified Data.IxSet.Typed                as Ix
+import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
 import           Data.Vinyl                      hiding (RElem)
 import           Development.Shake.Plus.Extended
@@ -17,7 +18,7 @@ import qualified RIO.Text                        as T
 import           Shakebook                       hiding ((:->))
 import           Test.Tasty
 import           Test.Tasty.Golden
-import Shakebook.Composite (prependXStep, XStep)
+import Shakebook.Composite as C
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -111,7 +112,7 @@ buildPostIndex = myBuildPage "post-list" postIndexPageJsonFields
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
 docsRules dir toc = do
   as <- mapM (loadRawDoc >=> prependXStep stage1DocExtras) (fmap (sourceFolder </>) toc)
-  nav <- toHtmlFragmentM $ renderDocNav as
+  let nav = createDocNav as
   sequence_ $ as =>> \(x :< xs) -> do
     out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)
     let v = nav :*: (extract <$> xs) :*: x
@@ -157,12 +158,24 @@ renderBlogNav x = ul_ $ li_ $ do
   renderLink "Blog" "/posts/"
   renderIxSetGroupDescBy renderMonthLink renderTitleLink (Down . view fPosted) x
 
+createBlogNav :: MonadThrow m => PostSet -> m (Cofree [] (Record Link))
+createBlogNav xs = do
+  let x = ("Blog" :*: "/posts/" :*: RNil)
+  y <- Ix.toDescCofreeListM (C.fanoutM monthRoot (return . defaultPrettyMonthFormat . fromYearMonth))
+                            (C.fanout (view fTitle) (view fUrl))
+                            (Down . view fPosted)
+                            xs
+  return (x :< y)
+
+createDocNav :: Cofree [] (Record Stage1Doc) -> Cofree [] (Record Link)
+createDocNav = fmap (C.fanout (view fTitle) (view fUrl))
+
 indexPages :: MonadThrow m => PostSet -> Text -> m (Zipper [] (Record (FUrl : FItems Stage1Post : FPageNo : '[])))
 indexPages postIx f = do
   p <- paginate' postsPerPage $ Ix.toDescList (Proxy @Posted) postIx
   return $ p =>> \a -> f <> "pages/" <> T.pack (show $ pos a + 1) :*: extract a :*: pos a + 1 :*: RNil
 
-postIndexRules :: MonadSB r m => HtmlFragment -> Text -> PostSet -> Text -> m ()
+postIndexRules :: MonadSB r m => Cofree [] (Record Link) -> Text -> PostSet -> Text -> m ()
 postIndexRules nav title postset root = do
     ys <- indexPages postset root
     sequence_ $ ys =>> \xs' -> do
@@ -179,7 +192,7 @@ postIndexRules nav title postset root = do
 postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
   postsIx <- postIndex dir fp
-  nav     <- toHtmlFragmentM $ renderBlogNav postsIx
+  nav     <- createBlogNav postsIx
   let postsZ = Ix.toDescList (Proxy @Posted) postsIx
   forM_ postsZ $ \x -> do
     out <- stripProperPrefix sourceFolder =<< replaceExtension ".html" (view fSrcPath x)

@@ -93,7 +93,7 @@ dependencies:
 - aeson-better-errors
 - aeson-with >= 0.1.1.0
 - base >= 4.7 && < 5
-- binary-instances >= 0.1.0.1 && < 0.2
+- binary-instances >= 1.0.0.1 && < 1.1
 - composite-aeson >= 0.7.4.0 && < 0.8
 - composite-base >= 0.7.4.0 && < 0.8
 - composite-aeson-path >= 0.7.4.0 && < 0.8
