@@ -160,12 +160,12 @@ renderBlogNav x = ul_ $ li_ $ do
 
 createBlogNav :: MonadThrow m => PostSet -> m (Cofree [] (Record Link))
 createBlogNav xs = do
-  let x = ("Blog" :*: "/posts/" :*: RNil)
+  let x = "Blog" :*: "/posts/" :*: RNil
   y <- Ix.toDescCofreeListM (C.fanoutM monthRoot (return . defaultPrettyMonthFormat . fromYearMonth))
                             (C.fanout (view fTitle) (view fUrl))
                             (Down . view fPosted)
                             xs
-  return (x :< y)
+  return $ x :< y
 
 createDocNav :: Cofree [] (Record Stage1Doc) -> Cofree [] (Record Link)
 createDocNav = fmap (C.fanout (view fTitle) (view fUrl))
@@ -207,7 +207,7 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
 
 sitemapRules :: MonadSB r m => PostSet -> Path Rel File -> m ()
 sitemapRules xs out = cacheAction ("sitemap" :: T.Text, out) $
-  LBS.writeFile (toFilePath $ outputFolder </> out) $ renderSitemap $ Sitemap $ fmap (asSitemapUrl baseUrl) $ Ix.toList xs
+  LBS.writeFile (toFilePath $ outputFolder </> out) $ renderSitemap $ Sitemap $ (asSitemapUrl baseUrl) <$> Ix.toList xs
 
 buildRules = do
   mainPageRules

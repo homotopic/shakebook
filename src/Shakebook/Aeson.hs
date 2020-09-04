@@ -31,6 +31,7 @@ styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (St
 
 cofreeListJsonFormat :: JsonFormat e a -> JsonFormat e (Cofree [] a)
 cofreeListJsonFormat f = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor cofreeObjectFormat (throwCustomError WriteOnlyJsonField) where
-    cofreeObjectFormat = \(x :< xs) -> object $ [ "head" A..= toJsonWithFormat f x] <> (
-                                   case xs of [] -> []
-                                              _ ->  ["tail" A..= Array (V.fromList $ cofreeObjectFormat <$> xs) ])
+    cofreeObjectFormat = \(x :< xs) -> object $ [
+      "head" A..= toJsonWithFormat f x] <> (
+        case xs of [] -> []
+                   _  -> ["tail" A..= Array (V.fromList $ cofreeObjectFormat <$> xs) ])

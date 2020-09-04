@@ -43,7 +43,7 @@ runSourceI :: Functor m => RSource r m a -> Record r -> m (Identity a)
 runSourceI x = fmap Identity . runSource x
 
 runXStep :: (IsoXRec (RSource a m) b, Applicative m) => XStep m a b -> Record a -> m (Record b)
-runXStep x y = rtraverse (flip runSourceI y) (fromXRec x)
+runXStep x y = rtraverse (`runSourceI` y) (fromXRec x)
 
 prependXStep :: (IsoXRec (RSource a m) b, Applicative m) => XStep m a b -> Record a -> m (Record (b ++ a))
-prependXStep f x = fmap (<+> x) $ runXStep f x
+prependXStep f x = (<+> x) <$> runXStep f x
