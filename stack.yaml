@@ -5,6 +5,8 @@ extra-deps:
 - commonmark-0.1.0.2
 - commonmark-extensions-0.2.0.1
 - commonmark-pandoc-0.2.0.0
+- composite-tuple-0.1.0.0
+- composite-xstep-0.1.0.0
 - pandoc-2.10.1
 - slick-1.0.1.1
 allow-newer: true

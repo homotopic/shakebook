@@ -18,7 +18,8 @@ import qualified RIO.Text                        as T
 import           Shakebook                       hiding ((:->))
 import           Test.Tasty
 import           Test.Tasty.Golden
-import Shakebook.Composite as C
+import qualified Composite.Record.Tuple as C
+import Composite.XStep
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -75,7 +76,7 @@ deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceF
 
 type Stage1PostExtras = FPrettyDate : FTagLinks : FTeaser : FUrl : '[]
 
-stage1PostExtras :: (MonadAction m, MonadThrow m) => XStep m RawPost Stage1PostExtras
+stage1PostExtras :: (MonadAction m, MonadThrow m) => XStep' m RawPost Stage1PostExtras
 stage1PostExtras = pure . view fPosted
                ::& mapM (deriveTagLink tagRoot . Tag) . view fTags
                ::& pure . defaultDeriveTeaser . view fContent
@@ -84,7 +85,7 @@ stage1PostExtras = pure . view fPosted
 
 type Stage1DocExtras = FUrl : '[]
 
-stage1DocExtras :: MonadThrow m => XStep m RawDoc Stage1DocExtras
+stage1DocExtras :: MonadThrow m => XStep' m RawDoc Stage1DocExtras
 stage1DocExtras = deriveUrl . view fSrcPath ::& XRNil
 
 enrichment :: Record Enrichment

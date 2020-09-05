@@ -13,6 +13,7 @@ module Shakebook.Conventions where
 import           Composite.Aeson
 import           Composite.Aeson.Path
 import           Composite.Record
+import qualified Composite.Record.Tuple     as C
 import           Composite.TH
 import           Control.Comonad.Cofree
 import           Control.Comonad.Store
@@ -28,7 +29,6 @@ import           RIO
 import qualified RIO.Text                   as T
 import           RIO.Time
 import           Shakebook.Aeson
-import qualified Shakebook.Composite        as C
 import qualified Shakebook.Feed             as Atom
 import           Shakebook.Lucid
 import           Shakebook.Sitemap

@@ -99,6 +99,8 @@ dependencies:
 - composite-aeson-path >= 0.7.4.0 && < 0.8
 - composite-binary >= 0.7.4.0 && < 0.8
 - composite-hashable >= 0.7.4.0 && < 0.8
+- composite-tuple
+- composite-xstep
 - comonad
 - comonad-extras
 - doctemplates

@@ -26,6 +26,20 @@ packages:
   original:
     hackage: commonmark-pandoc-0.2.0.0
 - completed:
+    hackage: composite-tuple-0.1.0.0@sha256:91c52a85f6fcee54a17b1cd20c68180aac9e19f6d11c2d3febffc6a1ef504e35,986
+    pantry-tree:
+      size: 282
+      sha256: 1aa9ce4cb35bf352a86b0502eadc485b895b4322fe508594ae35bc14825de9d6
+  original:
+    hackage: composite-tuple-0.1.0.0
+- completed:
+    hackage: composite-xstep-0.1.0.0@sha256:6773a65d69769f3b3dc27b5e33557e94f7b5b6d9c18641e2aaa7903a0dbc5137,1037
+    pantry-tree:
+      size: 276
+      sha256: 2e9ea90a18cac4138545a77b8f2275566f3b04e4aa0c1a9611ff19751e1007d7
+  original:
+    hackage: composite-xstep-0.1.0.0
+- completed:
     hackage: pandoc-2.10.1@sha256:23d7ec480c7cb86740475a419d6ca4819987b6dd23bbae9b50bc3d42a7ed2f9f,36933
     pantry-tree:
       size: 89646
