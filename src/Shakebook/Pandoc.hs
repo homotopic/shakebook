@@ -5,7 +5,6 @@
 
 Pandoc utilities lifted to `MonadAction`.
 -}
-{-# LANGUAGE TemplateHaskell #-}
 module Shakebook.Pandoc where
 
 import           Control.Comonad
