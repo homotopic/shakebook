@@ -11,7 +11,6 @@ module Shakebook.Pandoc where
 import           Control.Comonad
 import           Control.Comonad.Cofree
 import           Data.Aeson
-import           Data.Aeson.With
 import           Development.Shake.Plus hiding ((:->))
 import           RIO
 import qualified RIO.ByteString.Lazy    as LBS
@@ -28,7 +27,6 @@ import Composite.Aeson
 import Composite.Record
 import Text.Pandoc.Throw
 import Data.Vinyl.TypeLevel
-import Shakebook.Aeson
 import Data.Vinyl hiding (RElem)
 import Composite.TH
 import Composite.Aeson.Throw
@@ -38,32 +36,6 @@ newtype PandocActionException = PandocActionException String
 
 instance Exception PandocActionException where
   displayException (PandocActionException s) = s
-
--- | Natural transformation from `PandocIO` to a `MonadAction`
-runPandocA :: (MonadAction m, MonadThrow m) => PandocIO a -> m a
-runPandocA p = do
-  result <- liftIO $ runIO p
-  either throwM return result
-
--- | Run a Pandoc reader as a Shake action.
-readFilePandoc :: (MonadAction m, MonadThrow m) => (ReaderOptions -> Text -> PandocIO Pandoc) -> ReaderOptions -> Path b File -> m Pandoc
-readFilePandoc run ropts src = readFile' src >>= runPandocA . run ropts
-
--- | Read a markdown file and return a `Pandoc` as an Action.
-readMarkdownFile :: (MonadAction m, MonadThrow m) => ReaderOptions -> Path b File -> m Pandoc
-readMarkdownFile = readFilePandoc readMarkdown
-
--- | Read a mediawiki file and return a `Pandoc` as an Action.
-readMediaWikiFile :: (MonadAction m, MonadThrow m) => ReaderOptions -> Path b File -> m Pandoc
-readMediaWikiFile = readFilePandoc readMediaWiki
-
--- | Read a LaTeX file and return a `Pandoc` as an Action.
-readLaTeXFile :: (MonadAction m, MonadThrow m) => ReaderOptions -> Path b File -> m Pandoc
-readLaTeXFile = readFilePandoc readLaTeX
-
--- | Read a CSV file and return a `Pandoc` as an Action.
-readCSVFile :: (MonadAction m, MonadThrow m) => ReaderOptions -> Path b File -> m Pandoc
-readCSVFile = readFilePandoc readCSV
 
 -- | Find all the images in a `Pandoc` data structure and call `Development.Shake.Plus.need` on them.
 needPandocImagesIn :: (MonadAction m, MonadThrow m) => Path Rel Dir -> Pandoc -> m ()
@@ -76,7 +48,7 @@ needPandocImagesIn outDir pdoc =
 -- | Make a pdflatex in an `Action`.
 makePDFLaTeX :: (MonadAction m, MonadThrow m) => WriterOptions -> Pandoc -> m LBS.ByteString
 makePDFLaTeX wopts p = do
-  f <- runPandocA $ do
+  f <- runPandocIOThrow $ do
     t <- compileDefaultTemplate "latex"
     makePDF "pdflatex" [] writeLaTeX wopts { writerTemplate = Just t } p
   either (throwM . PandocActionException . show) return f

@@ -20,7 +20,6 @@ import           Test.Tasty
 import           Test.Tasty.Golden
 import qualified Composite.Record.Tuple as C
 import Composite.XStep
-import Composite.Aeson.Throw
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
