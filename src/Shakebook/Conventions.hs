@@ -137,6 +137,9 @@ instance (Ord (Record xs), RElem FTags xs, RElem FPosted xs) => Ix.Indexable '[T
                       (Ix.ixFun (pure . Posted . view fPosted))
                       (Ix.ixFun (pure . toYearMonth . view fPosted))
 
+recentPosts :: Int -> PostSet -> [Record Stage1Post]
+recentPosts x y = take x (Ix.toDescList (Proxy @Posted) y)
+
 asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
 asSitemapUrl baseUrl x = SitemapUrl {
    sitemapLocation = baseUrl <> view fUrl x
@@ -260,3 +263,5 @@ postIndexPageJsonFields = rcast allFields
 
 enrichedRecordJsonFormat :: (RMap a, RecordToJsonObject a, RecordFromJson a) => Rec (JsonField e) a -> JsonFormat e (Record (Enrichment ++ a))
 enrichedRecordJsonFormat = recordJsonFormat . (enrichmentFields <+>)
+
+type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)

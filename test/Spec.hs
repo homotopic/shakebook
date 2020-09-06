@@ -1,15 +1,16 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import           Composite.Aeson
 import           Composite.Record
+import qualified Composite.Record.Tuple          as C
+import           Composite.XStep
 import qualified Data.IxSet.Typed                as Ix
 import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
 import           Data.Vinyl                      hiding (RElem)
 import           Development.Shake.Plus.Extended
 import           Development.Shake.Plus.Forward
-import           Lucid
 import           Path.Extensions
 import           RIO
 import qualified RIO.ByteString.Lazy             as LBS
@@ -18,15 +19,28 @@ import qualified RIO.Text                        as T
 import           Shakebook                       hiding ((:->))
 import           Test.Tasty
 import           Test.Tasty.Golden
-import qualified Composite.Record.Tuple as C
-import Composite.XStep
-import Text.Compdoc
+import           Text.Compdoc
 
-sourceFolder :: Path Rel Dir
-sourceFolder = $(mkRelDir "test/site")
+sourceDir :: Path Rel Dir
+sourceDir = $(mkRelDir "test/site")
 
-outputFolder :: Path Rel Dir
-outputFolder = $(mkRelDir "test/public")
+outputDir :: Path Rel Dir
+outputDir = $(mkRelDir "test/public")
+
+docsDir :: Path Rel Dir
+docsDir = $(mkRelDir "docs")
+
+postsDir :: Path Rel Dir
+postsDir = $(mkRelDir "posts")
+
+tagsDir :: Path Rel Dir
+tagsDir = $(mkRelDir "tags")
+
+monthsDir :: Path Rel Dir
+monthsDir = $(mkRelDir "months")
+
+templatesDir :: Path Rel Dir
+templatesDir = $(mkRelDir "templates")
 
 baseUrl :: Text
 baseUrl = "http://blanky.test"
@@ -56,15 +70,13 @@ mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
            ,"youtube" :*: "http://youtube.com/blanky-site-nowhere" :*: RNil
            ,"gitlab"  :*: "http://gitlab.com/blanky-site-nowhere" :*: RNil]
 
-type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
-
 loadMarkdownWith :: (ShakeValue (Record (Compdoc a)), MonadSB r m) => JsonFormat Void (Record a) -> Path Rel File -> m (Record (Compdoc a))
 loadMarkdownWith f x = cacheAction ("loader" :: Text, x) $ do
   logInfo $ "Loading " <> displayShow (toFilePath x)
   readMarkdownFile defaultMarkdownReaderOptions defaultHtml5WriterOptions f x
 
 deriveUrl :: MonadThrow m => Path Rel File -> m Text
-deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder
+deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceDir
 
 stage1PostExtras :: (MonadAction m, MonadThrow m) => Path Rel File -> XStep' m RawPost Stage1PostExtras
 stage1PostExtras x = pure . view fPosted
@@ -82,7 +94,7 @@ enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment d
 myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x)
             => PName -> Rec (JsonField e) x -> Record x -> Path Rel File -> m ()
 myBuildPage t f x out = do
-  k <- compileMustacheDir' t $(mkRelDir "test/site/templates")
+  k <- compileMustacheDir' t (sourceDir </> templatesDir)
   let l' = renderMustache' k (enrichedRecordJsonFormat f) (enrichment <+> x)
   writeFile' out l'
 
@@ -100,23 +112,15 @@ buildPostIndex = myBuildPage "post-list" postIndexPageJsonFields
 
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
 docsRules dir toc = do
-  as <- mapM (\x -> loadMarkdownWith rawDocMetaJsonFormat x >>= prependXStep (stage1DocExtras x)) (fmap (sourceFolder </>) toc)
+  as <- mapM (\x -> loadMarkdownWith rawDocMetaJsonFormat x >>= prependXStep (stage1DocExtras x)) (fmap (sourceDir </>) toc)
   let nav = createDocNav as
   sequence_ $ as =>> \(x :< xs) -> do
     out <- fromGroundedUrlF (view fUrl x)
     let v = nav :*: (extract <$> xs) :*: x
-    buildDoc v (outputFolder </> out)
+    buildDoc v (outputDir </> out)
 
 postIndex :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postIndex = batchLoadIndex (\x -> loadMarkdownWith rawPostMetaJsonFormat x >>= prependXStep (stage1PostExtras x))
-
-recentPosts :: Int -> PostSet -> [Record Stage1Post]
-recentPosts x y = take x (Ix.toDescList (Proxy @Posted) y)
-
-postsDir  = $(mkRelDir "posts/")
-docsDir  = $(mkRelDir "docs/")
-tagsDir   = postsDir </> $(mkRelDir "tags/")
-monthsDir = postsDir </> $(mkRelDir "months/")
 
 postsRoot :: Text
 postsRoot  = toGroundedUrl postsDir
@@ -132,20 +136,10 @@ mainPageExtras xs = recentPosts numRecentPosts xs :*: RNil
 
 mainPageRules :: MonadSB r m => m ()
 mainPageRules = do
-  postIx <- postIndex sourceFolder ["posts/*.md"]
-  x <- loadMarkdownWith rawSingleMetaJsonFormat $ sourceFolder </> $(mkRelFile "index.md")
+  postIx <- postIndex sourceDir ["posts/*.md"]
+  x <- loadMarkdownWith rawSingleMetaJsonFormat $ sourceDir </> $(mkRelFile "index.md")
   let x' = mainPageExtras postIx <+> x
-  buildIndex x' $ outputFolder </> $(mkRelFile "index.html")
-
-renderMonthLink :: MonadThrow m => YearMonth -> HtmlT m ()
-renderMonthLink x = do
-  u <- lift $ monthRoot x
-  renderLink (defaultPrettyMonthFormat . fromYearMonth $ x) u
-
-renderBlogNav :: MonadThrow m => PostSet -> HtmlT m ()
-renderBlogNav x = ul_ $ li_ $ do
-  renderLink "Blog" "/posts/"
-  renderIxSetGroupDescBy renderMonthLink renderTitleLink (Down . view fPosted) x
+  buildIndex x' $ outputDir </> $(mkRelFile "index.html")
 
 createBlogNav :: MonadThrow m => PostSet -> m (Cofree [] (Record Link))
 createBlogNav xs = do
@@ -166,17 +160,17 @@ indexPages postIx f = do
 
 postIndexRules :: MonadSB r m => Cofree [] (Record Link) -> Text -> PostSet -> Text -> m ()
 postIndexRules nav title postset root = do
-    ys <- indexPages postset root
-    sequence_ $ ys =>> \xs' -> do
-      let x = extract xs'
-      out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
-      ps <- toHtmlFragmentM $ renderPageLinks numPageNeighbours ys
-      let x' = ps :*: nav :*: title :*: x
-      buildPostIndex x' (outputFolder </> out)
-    let k = extract $ seek 0 ys
-    k' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl k)
-    s' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD root
-    copyFileChanged (outputFolder </> k') (outputFolder </> s')
+  ys <- indexPages postset root
+  sequence_ $ ys =>> \xs' -> do
+    let x = extract xs'
+    out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
+    ps <- toHtmlFragmentM $ renderPageLinks numPageNeighbours ys
+    let x' = ps :*: nav :*: title :*: x
+    buildPostIndex x' (outputDir </> out)
+  let k = extract $ seek 0 ys
+  k' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl k)
+  s' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD root
+  copyFileChanged (outputDir </> k') (outputDir </> s')
 
 postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
@@ -186,7 +180,7 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
   forM_ postsZ $ \x -> do
     out <- fromGroundedUrlF (view fUrl x)
     let x' = nav :*: x
-    buildPost x' (outputFolder </> out)
+    buildPost x' (outputDir </> out)
   postIndexRules nav "Posts" postsIx postsRoot
   forM_ (Ix.indexKeys postsIx) $ \t@(Tag t') ->
     tagRoot t >>= postIndexRules nav ("Posts tagged " <> t') (postsIx Ix.@+ [t])
@@ -196,12 +190,12 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
 
 sitemapRules :: MonadSB r m => PostSet -> Path Rel File -> m ()
 sitemapRules xs out = cacheAction ("sitemap" :: T.Text, out) $
-  LBS.writeFile (toFilePath $ outputFolder </> out) $ renderSitemap $ Sitemap $ asSitemapUrl baseUrl <$> Ix.toList xs
+  LBS.writeFile (toFilePath $ outputDir </> out) $ renderSitemap $ Sitemap $ asSitemapUrl baseUrl <$> Ix.toList xs
 
 buildRules = do
   mainPageRules
-  xs <- postRules sourceFolder ["posts/*.md"]
-  docsRules sourceFolder tableOfContents
+  xs <- postRules sourceDir ["posts/*.md"]
+  docsRules sourceDir tableOfContents
   sitemapRules xs $(mkRelFile "sitemap.xml")
 
 tests :: [FilePath] -> TestTree
