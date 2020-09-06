@@ -26,6 +26,13 @@ packages:
   original:
     hackage: commonmark-pandoc-0.2.0.0
 - completed:
+    hackage: compdoc-0.1.0.0@sha256:50534053f4d9c9af528b1813900806d8c829a05157e62c37d702d2910a30b2b1,911
+    pantry-tree:
+      size: 263
+      sha256: 76dbcb09c57ed20e84906cbcfc351c2494257be02f0107be563709f8f885827b
+  original:
+    hackage: compdoc-0.1.0.0
+- completed:
     hackage: composite-aeson-throw-0.1.0.0@sha256:0fc5f4ea1b243b0cf3b28168e3e7e67706bf03d1c1e7998c5816f1f58c0665fe,842
     pantry-tree:
       size: 285

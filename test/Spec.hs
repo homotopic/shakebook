@@ -20,6 +20,7 @@ import           Test.Tasty
 import           Test.Tasty.Golden
 import qualified Composite.Record.Tuple as C
 import Composite.XStep
+import Text.Compdoc
 
 sourceFolder :: Path Rel Dir
 sourceFolder = $(mkRelDir "test/site")
@@ -60,7 +61,7 @@ type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThr
 loadMarkdownWith :: (ShakeValue (Record (Compdoc a)), MonadSB r m) => JsonFormat Void (Record a) -> Path Rel File -> m (Record (Compdoc a))
 loadMarkdownWith f x = cacheAction ("loader" :: Text, x) $ do
   logInfo $ "Loading " <> displayShow (toFilePath x)
-  loadMarkdownAsJSON defaultMarkdownReaderOptions defaultHtml5WriterOptions f x
+  readMarkdownFile defaultMarkdownReaderOptions defaultHtml5WriterOptions f x
 
 deriveUrl :: MonadThrow m => Path Rel File -> m Text
 deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceFolder

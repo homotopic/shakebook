@@ -45,6 +45,7 @@ library
     , binary-instances >=1.0.0.1 && <1.1
     , comonad
     , comonad-extras
+    , compdoc
     , composite-aeson >=0.7.4.0 && <0.8
     , composite-aeson-path >=0.7.4.0 && <0.8
     , composite-aeson-throw
@@ -96,6 +97,7 @@ test-suite shakebook-test
     , binary-instances >=1.0.0.1 && <1.1
     , comonad
     , comonad-extras
+    , compdoc
     , composite-aeson >=0.7.4.0 && <0.8
     , composite-aeson-path >=0.7.4.0 && <0.8
     , composite-aeson-throw

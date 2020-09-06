@@ -32,7 +32,7 @@ import           Shakebook.Aeson
 import qualified Shakebook.Feed             as Atom
 import           Shakebook.Lucid
 import           Shakebook.Sitemap
-import Shakebook.Pandoc
+import Text.Compdoc
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
