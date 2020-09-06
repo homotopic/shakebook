@@ -101,6 +101,7 @@ dependencies:
 - composite-hashable >= 0.7.4.0 && < 0.8
 - composite-tuple
 - composite-xstep
+- composite-aeson-throw
 - comonad
 - comonad-extras
 - doctemplates
@@ -116,13 +117,13 @@ dependencies:
 - mtl
 - rio
 - pandoc
+- pandoc-throw
 - pandoc-types
 - path-extensions >= 0.1.0.1
 - path
 - shake-plus >= 0.3.0.0
 - shake-plus-extended >= 0.2.0.0
 - sitemap-gen
-- slick
 - skylighting
 - stache
 - vinyl

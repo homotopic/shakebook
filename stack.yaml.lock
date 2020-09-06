@@ -26,6 +26,13 @@ packages:
   original:
     hackage: commonmark-pandoc-0.2.0.0
 - completed:
+    hackage: composite-aeson-throw-0.1.0.0@sha256:0fc5f4ea1b243b0cf3b28168e3e7e67706bf03d1c1e7998c5816f1f58c0665fe,842
+    pantry-tree:
+      size: 285
+      sha256: e0e5ca696a4012c333d9bd6860d9169ee6dd45c6a30d5de850dda57e93a69a8c
+  original:
+    hackage: composite-aeson-throw-0.1.0.0
+- completed:
     hackage: composite-tuple-0.1.0.0@sha256:91c52a85f6fcee54a17b1cd20c68180aac9e19f6d11c2d3febffc6a1ef504e35,986
     pantry-tree:
       size: 282
@@ -46,6 +53,13 @@ packages:
       sha256: 08c8b20356152b9ee8161bacafda2dc1bed13d7db4cbf38ab040c1977b2d28d5
   original:
     hackage: pandoc-2.10.1
+- completed:
+    hackage: pandoc-throw-0.1.0.0@sha256:9cfa3dd0d8a3673d1c568dc6c710c70aad408e129bd83c40828e8b44fe87ffa7,775
+    pantry-tree:
+      size: 271
+      sha256: cf5534ef586aa2fb2f211c425cb824b788e3a96acd9e6b02a2d217604e492e33
+  original:
+    hackage: pandoc-throw-0.1.0.0
 - completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:

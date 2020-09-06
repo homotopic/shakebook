@@ -32,6 +32,7 @@ import           Shakebook.Aeson
 import qualified Shakebook.Feed             as Atom
 import           Shakebook.Lucid
 import           Shakebook.Sitemap
+import Shakebook.Pandoc
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
@@ -45,7 +46,6 @@ linkJsonFormat = recordJsonFormat $ field textJsonFormat :& field textJsonFormat
 
 withLensesAndProxies [d|
   type FCdnImports    = "cdn-imports"  :-> HtmlFragment
-  type FContent       = "content"      :-> Text
   type FDescription   = "description"  :-> Text
   type FHighlighting  = "highlighting" :-> StyleFragment
   type FImage         = "image"        :-> Maybe Text
@@ -76,17 +76,25 @@ sbDisplayDateTimeJsonFormat = dateTimeJsonFormat defaultTimeLocale (regularDateT
 sbShortDateJsonFormat :: JsonFormat e UTCTime
 sbShortDateJsonFormat = dateTimeJsonFormat defaultTimeLocale (regularDateTimeFormat "%F" "yyyy-mm-dd" :| [])
 
-type BasicMD = FSrcPath : FContent : '[]
+type RawDocMeta = FModified : FTitle : FDescription : '[]
 
-type RawDoc = FModified : FTitle : FDescription : BasicMD
+type RawPostMeta = FPosted : FImage : FTitle : FTags : '[]
 
-type RawPost = FPosted : FImage : FTitle : FTags : BasicMD
+type RawSingleMeta = FImage : FTitle : '[]
 
-type RawSingle = FImage : FTitle : BasicMD
+type RawDoc = Compdoc RawDocMeta
 
-type Stage1Post = FPrettyDate : FTagLinks : FTeaser : FUrl : RawPost
+type RawPost = Compdoc RawPostMeta
 
-type Stage1Doc = FUrl : RawDoc
+type RawSingle = Compdoc RawSingleMeta
+
+type Stage1PostExtras = FPrettyDate : FTagLinks : FTeaser : FUrl : '[]
+
+type Stage1DocExtras = FUrl : '[]
+
+type Stage1Post = Stage1PostExtras ++ RawPost
+
+type Stage1Doc = Stage1DocExtras ++ RawDoc
 
 type IndexPage x = FPageLinks : FTocCF : FTitle : FUrl : FItems x : FPageNo : '[]
 
@@ -124,7 +132,7 @@ deriveTagLink f x = C.traverseToSnd (f . Tag) (unTag x)
 
 type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
 
-instance Ix.Indexable '[Tag, Posted, YearMonth] (Record Stage1Post) where
+instance (Ord (Record xs), RElem FTags xs, RElem FPosted xs) => Ix.Indexable '[Tag, Posted, YearMonth] (Record xs) where
   indices = Ix.ixList (Ix.ixFun (fmap Tag . view fTags))
                       (Ix.ixFun (pure . Posted . view fPosted))
                       (Ix.ixFun (pure . toYearMonth . view fPosted))
@@ -224,14 +232,14 @@ type StandardFields = BasicFields ++ ExtraFields ++ CompositeFields
 allFields :: Rec (JsonField e) StandardFields
 allFields = basicFields <+> extraFields <+> compositeFields
 
-rawPostJsonFormat :: JsonFormat e (Record RawPost)
-rawPostJsonFormat = recordJsonFormat $ rcast basicFields
+rawPostMetaJsonFormat :: JsonFormat e (Record RawPostMeta)
+rawPostMetaJsonFormat = recordJsonFormat $ rcast basicFields
 
-rawDocJsonFormat :: JsonFormat e (Record RawDoc)
-rawDocJsonFormat = recordJsonFormat $ rcast basicFields
+rawDocMetaJsonFormat :: JsonFormat e (Record RawDocMeta)
+rawDocMetaJsonFormat = recordJsonFormat $ rcast basicFields
 
-rawSingleJsonFormat :: JsonFormat e (Record RawSingle)
-rawSingleJsonFormat = recordJsonFormat $ rcast basicFields
+rawSingleMetaJsonFormat :: JsonFormat e (Record RawSingleMeta)
+rawSingleMetaJsonFormat = recordJsonFormat $ rcast basicFields
 
 type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
 

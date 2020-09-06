@@ -9,29 +9,24 @@ import           RIO
 import qualified RIO.Vector as V
 import           Shakebook.Lucid
 
-newtype AesonParseException a = AesonParseException a
-  deriving (Eq, Show, Ord)
-
-
-instance (Typeable a, Show a) => Exception (AesonParseException a)
-
-parseValue' :: MonadThrow m => JsonFormat Void x -> Value -> m x
-parseValue' f v = do
-  let a = parseValue (fromJsonWithFormat f) v
-  either (throwM . AesonParseException) return a
-
 data WriteOnlyJsonField = WriteOnlyJsonField
   deriving Show
 
+noRead = throwCustomError WriteOnlyJsonField
+
+writeOnlyJsonFormat :: (a -> Value) -> JsonFormat e a
+writeOnlyJsonFormat f = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor f noRead
+
 htmlJsonFormat :: JsonFormat e HtmlFragment
-htmlJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . unHtmlFragment) (throwCustomError WriteOnlyJsonField)
+htmlJsonFormat = writeOnlyJsonFormat $ String . unHtmlFragment
 
 styleJsonFormat :: JsonFormat e StyleFragment
-styleJsonFormat = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor (String . unStyleFragment) (throwCustomError WriteOnlyJsonField)
+styleJsonFormat = writeOnlyJsonFormat $ String . unStyleFragment
 
 cofreeListJsonFormat :: JsonFormat e a -> JsonFormat e (Cofree [] a)
-cofreeListJsonFormat f = jsonFormatWithoutCustomError $ JsonFormat $ JsonProfunctor cofreeObjectFormat (throwCustomError WriteOnlyJsonField) where
-    cofreeObjectFormat = \(x :< xs) -> object $ [
-      "head" A..= toJsonWithFormat f x] <> (
-        case xs of [] -> []
-                   _  -> ["tail" A..= Array (V.fromList $ cofreeObjectFormat <$> xs) ])
+cofreeListJsonFormat f = writeOnlyJsonFormat $ p where
+                           p = \(x :< xs) -> object $ ["head" A..= toJsonWithFormat f x] <> (
+                                                  case xs of
+                                                    [] -> []
+                                                    _  -> ["tail" A..= Array (V.fromList $ p <$> xs) ]
+                                                   )
