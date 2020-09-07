@@ -144,7 +144,7 @@ mainPageRules = do
 createBlogNav :: PostSet -> Cofree [] (Record Link)
 createBlogNav xs = ("Blog" :*: "/posts/" :*: RNil)
                 :< Ix.toDescCofreeList
-                    (C.fanout monthRoot (defaultPrettyMonthFormat . fromYearMonth))
+                    (C.fanout (defaultPrettyMonthFormat . fromYearMonth) monthRoot)
                     (C.fanout (view fTitle) (view fUrl))
                     (Down . view fPosted)
                     xs
