@@ -80,7 +80,7 @@ deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceD
 
 stage1PostExtras :: (MonadAction m, MonadThrow m) => Path Rel File -> XStep' m RawPost Stage1PostExtras
 stage1PostExtras x = pure . view fPosted
-                 ::& mapM (deriveTagLink tagRoot . Tag) . view fTags
+                 ::& pure . map (deriveTagLink tagRoot . Tag) . view fTags
                  ::& pure . defaultDeriveTeaser . view fContent
                  ::& deriveUrl . const x
                  ::& XRNil
@@ -125,11 +125,11 @@ postIndex = batchLoadIndex (\x -> loadMarkdownWith rawPostMetaJsonFormat x >>= p
 postsRoot :: Text
 postsRoot  = toGroundedUrl postsDir
 
-tagRoot :: MonadThrow m => Tag -> m Text
-tagRoot = return . toGroundedUrl . ((postsDir </>) tagsDir </>) <=< parseRelDir . T.unpack . unTag
+tagRoot :: Tag -> Text
+tagRoot = (\x -> toGroundedUrl (postsDir </> tagsDir) <> x <> "/") . unTag
 
-monthRoot :: MonadThrow m => YearMonth -> m Text
-monthRoot = return . toGroundedUrl . ((postsDir </>) monthsDir </>) <=< parseRelDir . T.unpack . defaultMonthUrlFormat . fromYearMonth
+monthRoot :: YearMonth -> Text
+monthRoot = (\x -> toGroundedUrl (postsDir </> monthsDir) <> x <> "/") . defaultMonthUrlFormat . fromYearMonth
 
 mainPageExtras :: PostSet -> Record (FRecentPosts Stage1Post : '[])
 mainPageExtras xs = recentPosts numRecentPosts xs :*: RNil
@@ -141,14 +141,13 @@ mainPageRules = do
   let x' = mainPageExtras postIx <+> x
   buildIndex x' $ outputDir </> $(mkRelFile "index.html")
 
-createBlogNav :: MonadThrow m => PostSet -> m (Cofree [] (Record Link))
-createBlogNav xs = do
-  let x = "Blog" :*: "/posts/" :*: RNil
-  y <- Ix.toDescCofreeListM (C.fanoutM monthRoot (return . defaultPrettyMonthFormat . fromYearMonth))
-                            (C.fanout (view fTitle) (view fUrl))
-                            (Down . view fPosted)
-                            xs
-  return $ x :< y
+createBlogNav :: PostSet -> Cofree [] (Record Link)
+createBlogNav xs = ("Blog" :*: "/posts/" :*: RNil)
+                :< Ix.toDescCofreeList
+                    (C.fanout monthRoot (defaultPrettyMonthFormat . fromYearMonth))
+                    (C.fanout (view fTitle) (view fUrl))
+                    (Down . view fPosted)
+                    xs
 
 createDocNav :: Cofree [] (Record Stage1Doc) -> Cofree [] (Record Link)
 createDocNav = fmap (C.fanout (view fTitle) (view fUrl))
@@ -175,7 +174,7 @@ postIndexRules nav title postset root = do
 postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
 postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
   postsIx <- postIndex dir fp
-  nav     <- createBlogNav postsIx
+  let nav = createBlogNav postsIx
   let postsZ = Ix.toDescList (Proxy @Posted) postsIx
   forM_ postsZ $ \x -> do
     out <- fromGroundedUrlF (view fUrl x)
@@ -183,9 +182,9 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
     buildPost x' (outputDir </> out)
   postIndexRules nav "Posts" postsIx postsRoot
   forM_ (Ix.indexKeys postsIx) $ \t@(Tag t') ->
-    tagRoot t >>= postIndexRules nav ("Posts tagged " <> t') (postsIx Ix.@+ [t])
+    postIndexRules nav ("Posts tagged " <> t') (postsIx Ix.@+ [t]) (tagRoot t)
   forM_ (Ix.indexKeys postsIx) \ym@(YearMonth _) ->
-    monthRoot ym >>= postIndexRules nav ("Posts from " <> defaultPrettyMonthFormat (fromYearMonth ym)) (postsIx Ix.@+ [ym])
+    postIndexRules nav ("Posts from " <> defaultPrettyMonthFormat (fromYearMonth ym)) (postsIx Ix.@+ [ym]) (monthRoot ym)
   return postsIx
 
 sitemapRules :: MonadSB r m => PostSet -> Path Rel File -> m ()

@@ -127,8 +127,8 @@ toYearMonth = (\(a, b, _) -> YearMonth (a, b)) . toGregorian . utctDay
 fromYearMonth :: YearMonth -> UTCTime
 fromYearMonth (YearMonth (y,m)) = UTCTime (fromGregorian y m 1) 0
 
-deriveTagLink :: Monad m => (Tag -> m Text) -> Tag -> m (Record Link)
-deriveTagLink f x = C.traverseToSnd (f . Tag) (unTag x)
+deriveTagLink :: (Tag -> Text) -> Tag -> Record Link
+deriveTagLink f x = C.toSnd (f . Tag) (unTag x)
 
 type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
 
