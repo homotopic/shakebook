@@ -126,10 +126,10 @@ postsRoot :: Text
 postsRoot  = toGroundedUrl postsDir
 
 tagRoot :: MonadThrow m => Tag -> m Text
-tagRoot = return . toGroundedUrl . (tagsDir </>) <=< parseRelDir . T.unpack . unTag
+tagRoot = return . toGroundedUrl . ((postsDir </>) tagsDir </>) <=< parseRelDir . T.unpack . unTag
 
 monthRoot :: MonadThrow m => YearMonth -> m Text
-monthRoot = return . toGroundedUrl . (monthsDir </>) <=< parseRelDir . T.unpack . defaultMonthUrlFormat . fromYearMonth
+monthRoot = return . toGroundedUrl . ((postsDir </>) monthsDir </>) <=< parseRelDir . T.unpack . defaultMonthUrlFormat . fromYearMonth
 
 mainPageExtras :: PostSet -> Record (FRecentPosts Stage1Post : '[])
 mainPageExtras xs = recentPosts numRecentPosts xs :*: RNil
