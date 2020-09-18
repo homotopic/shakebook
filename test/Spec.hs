@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Composite.Aeson
@@ -127,18 +126,6 @@ myBuildPage t f x out = do
   let l' = renderMustache' k (enrichedRecordJsonFormat f) (enrichment <+> x)
   writeFile' out l'
 
-buildIndex :: MonadSB r m => Record MainPage -> Path Rel File -> m ()
-buildIndex = myBuildPage "index" mainPageJsonFields
-
-buildPost :: MonadSB r m => Record FinalPost -> Path Rel File -> m ()
-buildPost = myBuildPage "post" finalPostJsonFields
-
-buildDoc :: MonadSB r m => Record FinalDoc -> Path Rel File -> m ()
-buildDoc = myBuildPage "docs" finalDocJsonFields
-
-buildPostIndex :: MonadSB r m => Record (Routed (IndexPage (Routed Stage1Post))) -> Path Rel File -> m ()
-buildPostIndex = myBuildPage "post-list" postIndexPageJsonFields
-
 -- Rules
 
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
@@ -148,15 +135,14 @@ docsRules dir toc = do
   sequence_ $ as =>> \(x :< xs) -> do
     out <- fromGroundedUrlF (view fUrl x)
     let v = nav :*: (extract <$> xs) :*: x
-    buildDoc v (outputDir </> out)
+    myBuildPage "docs" finalDocJsonFields v (outputDir </> out)
 
 mainPageRules :: MonadSB r m => m ()
 mainPageRules = do
   postIx <- postIndex sourceDir ["posts/*.md"]
   x <- loadMarkdownWith rawSingleMetaJsonFormat $ sourceDir </> $(mkRelFile "index.md")
   let x' = mainPageExtras postIx <+> x
-  buildIndex x' $ outputDir </> $(mkRelFile "index.html")
-
+  myBuildPage "index" mainPageJsonFields x' $ outputDir </> $(mkRelFile "index.html")
 
 postIndexRules :: MonadSB r m => Cofree [] (Record Link) -> Text -> PostSet -> Text -> m ()
 postIndexRules nav title postset root = do
@@ -167,7 +153,7 @@ postIndexRules nav title postset root = do
     out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
     ps <- toHtmlFragmentM $ renderPageLinks numPageNeighbours ys'
     let x' = val @"page-links" ps :& val @"toc" nav :& val @"title" title :& x
-    buildPostIndex (rcast x') (outputDir </> out)
+    myBuildPage "post-list" postIndexPageJsonFields (rcast x') (outputDir </> out)
   let k = extract $ seek 0 ys'
   k' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl k)
   s' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD root
@@ -181,7 +167,7 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
   forM_ postsZ $ \x -> do
     out <- fromGroundedUrlF (view fUrl x)
     let x' = nav :*: x
-    buildPost x' $ outputDir </> out
+    myBuildPage "post" finalPostJsonFields x' $ outputDir </> out
   postIndexRules nav "Posts" postsIx postsRoot
   forM_ (Ix.indexKeys postsIx) $ \t@(Tag t') ->
     postIndexRules nav ("Posts tagged " <> t') (postsIx Ix.@+ [t]) (tagRoot t)
