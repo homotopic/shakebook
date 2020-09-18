@@ -33,6 +33,7 @@ import qualified Shakebook.Feed             as Atom
 import           Shakebook.Lucid
 import           Shakebook.Sitemap
 import Text.Compdoc
+import Control.Comonad.Zipper.Extra
 
 withLensesAndProxies [d|
   type FId            = "id"           :-> Text
@@ -88,23 +89,23 @@ type RawPost = Compdoc RawPostMeta
 
 type RawSingle = Compdoc RawSingleMeta
 
-type Stage1PostExtras = FPrettyDate : FTagLinks : FTeaser : FUrl : '[]
-
-type Stage1DocExtras = FUrl : '[]
+type Stage1PostExtras = FPrettyDate : FTagLinks : FTeaser : '[]
 
 type Stage1Post = Stage1PostExtras ++ RawPost
 
-type Stage1Doc = Stage1DocExtras ++ RawDoc
+type IndexPage x = FPageLinks : FTocCF : FTitle : FItems x : FPageNo : '[]
 
-type IndexPage x = FPageLinks : FTocCF : FTitle : FUrl : FItems x : FPageNo : '[]
+type PostIndexPage = Routed (IndexPage (Routed Stage1Post))
 
-type PostIndexPage = IndexPage Stage1Post
+type FinalDoc = FTocCF : FSubsections (Routed RawDoc) : Routed RawDoc
 
-type FinalDoc = FTocCF : FSubsections Stage1Doc : Stage1Doc
+type FinalPost = FTocCF : Routed Stage1Post
 
-type FinalPost = FTocCF : Stage1Post
+type MainPage = FRecentPosts (Routed Stage1Post) : RawSingle
 
-type MainPage = FRecentPosts Stage1Post : RawSingle
+type Routed x = FUrl : x
+
+type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
 
 -- | Tag indices for a `Post` for use with `IxSet`.
 newtype Tag = Tag { unTag :: Text }
@@ -130,15 +131,13 @@ fromYearMonth (YearMonth (y,m)) = UTCTime (fromGregorian y m 1) 0
 deriveTagLink :: (Tag -> Text) -> Tag -> Record Link
 deriveTagLink f x = C.toSnd (f . Tag) (unTag x)
 
-type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record Stage1Post)
-
 instance (Ord (Record xs), RElem FTags xs, RElem FPosted xs) => Ix.Indexable '[Tag, Posted, YearMonth] (Record xs) where
   indices = Ix.ixList (Ix.ixFun (fmap Tag . view fTags))
                       (Ix.ixFun (pure . Posted . view fPosted))
                       (Ix.ixFun (pure . toYearMonth . view fPosted))
 
-recentPosts :: Int -> PostSet -> [Record Stage1Post]
-recentPosts x y = take x (Ix.toDescList (Proxy @Posted) y)
+mostRecentPosted :: Ix.IsIndexOf Posted ixs => Int -> Ix.IxSet ixs xs -> [xs]
+mostRecentPosted x = take x . Ix.toDescList (Proxy @Posted)
 
 asSitemapUrl :: (RElem FUrl xs, RElem FPosted xs) => Text -> Record xs -> SitemapUrl
 asSitemapUrl baseUrl x = SitemapUrl {
@@ -218,17 +217,17 @@ extraFields =  (field htmlJsonFormat                    :: JsonField e FCdnImpor
 listCastElemsFormat :: (RMap a, RecordToJsonObject a, RecordFromJson a, a <: b) => JsonFormatRecord e b -> JsonFormat e [Record a]
 listCastElemsFormat = listJsonFormat . recordJsonFormat . rcast
 
-type CompositeFields = FItems Stage1Post
-                     : FSubsections Stage1Doc
-                     : FRecentPosts Stage1Post
+type CompositeFields = FItems (Routed Stage1Post)
+                     : FSubsections (Routed RawDoc)
+                     : FRecentPosts (Routed Stage1Post)
                      : '[]
 
 compositeFields :: Rec (JsonField e) CompositeFields
 compositeFields = let x = extraFields <+> basicFields
-                  in (field (listCastElemsFormat x) :: JsonField e (FItems Stage1Post))
-                 :& (field (listCastElemsFormat x) :: JsonField e (FSubsections Stage1Doc))
-                 :& (field (listCastElemsFormat x) :: JsonField e (FRecentPosts Stage1Post))
-                 :& RNil
+                  in (field (listCastElemsFormat x) :: JsonField e (FItems (Routed Stage1Post)))
+                  :& (field (listCastElemsFormat x) :: JsonField e (FSubsections (Routed RawDoc)))
+                  :& (field (listCastElemsFormat x) :: JsonField e (FRecentPosts (Routed Stage1Post)))
+                  :& RNil
 
 type StandardFields = BasicFields ++ ExtraFields ++ CompositeFields
 
@@ -243,8 +242,6 @@ rawDocMetaJsonFormat = recordJsonFormat $ rcast basicFields
 
 rawSingleMetaJsonFormat :: JsonFormat e (Record RawSingleMeta)
 rawSingleMetaJsonFormat = recordJsonFormat $ rcast basicFields
-
-type Enrichment = FSocialLinks : FCdnImports : FHighlighting : FSiteTitle : '[]
 
 enrichmentFields :: Rec (JsonField e) Enrichment
 enrichmentFields = rcast allFields
@@ -265,3 +262,9 @@ enrichedRecordJsonFormat :: (RMap a, RecordToJsonObject a, RecordFromJson a) => 
 enrichedRecordJsonFormat = recordJsonFormat . (enrichmentFields <+>)
 
 type MonadSB r m = (MonadReader r m, HasLogFunc r, MonadUnliftAction m, MonadThrow m)
+
+indexPagesBy :: (MonadThrow m, Ix.IsIndexOf a ixs) => Proxy a -> Int -> Ix.IxSet ixs (Record xs) -> m (Zipper [] (Record (FItems xs : FPageNo : '[])))
+indexPagesBy k i ixset = do
+  p <- paginate' i $ Ix.toDescList k ixset
+  return $ p =>> \a -> extract a :*: pos a + 1 :*: RNil
+
