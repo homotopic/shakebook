@@ -114,9 +114,6 @@ createBlogNav xs = ("Blog" :*: postsRoot :*: RNil)
                     (Down . view fPosted)
                     xs
 
-createDocNav :: Cofree [] (Record (Routed RawDoc)) -> Cofree [] (Record Link)
-createDocNav = fmap (C.fanout (view fTitle) (view fUrl))
-
 -- Stache Builders
 
 myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x)
@@ -137,11 +134,10 @@ docsRules dir toc = do
     let v = nav :*: (extract <$> xs) :*: x
     myBuildPage "docs" finalDocJsonFields v (outputDir </> out)
 
-mainPageRules :: MonadSB r m => m ()
-mainPageRules = do
-  postIx <- postIndex sourceDir ["posts/*.md"]
+mainPageRules :: MonadSB r m => PostSet -> m ()
+mainPageRules postsIx = do
   x <- loadMarkdownWith rawSingleMetaJsonFormat $ sourceDir </> $(mkRelFile "index.md")
-  let x' = mainPageExtras postIx <+> x
+  let x' = mainPageExtras postsIx <+> x
   myBuildPage "index" mainPageJsonFields x' $ outputDir </> $(mkRelFile "index.html")
 
 postIndexRules :: MonadSB r m => Cofree [] (Record Link) -> Text -> PostSet -> Text -> m ()
@@ -181,8 +177,8 @@ sitemapRules xs out = cacheAction ("sitemap" :: T.Text, out) $
 
 buildRules :: MonadSB r m => m ()
 buildRules = do
-  mainPageRules
   xs <- postRules sourceDir ["posts/*.md"]
+  mainPageRules xs
   docsRules sourceDir tableOfContents
   sitemapRules xs $(mkRelFile "sitemap.xml")
 

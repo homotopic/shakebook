@@ -268,3 +268,6 @@ indexPagesBy k i ixset = do
   p <- paginate' i $ Ix.toDescList k ixset
   return $ p =>> \a -> extract a :*: pos a + 1 :*: RNil
 
+createDocNav :: (RElem FTitle xs, RElem FUrl xs) => Cofree [] (Record xs) -> Cofree [] (Record Link)
+createDocNav = fmap (C.fanout (view fTitle) (view fUrl))
+

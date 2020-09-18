@@ -2,12 +2,6 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
 ><url
 ><loc
->http://blanky.test/posts/foo.html</loc
-><lastmod
->2020-04-28T00:00:00+00:00</lastmod
-></url
-><url
-><loc
 >http://blanky.test/posts/bar.html</loc
 ><lastmod
 >2020-06-01T00:00:00+00:00</lastmod
@@ -17,6 +11,12 @@
 >http://blanky.test/posts/baz.html</loc
 ><lastmod
 >2020-06-28T00:00:00+00:00</lastmod
+></url
+><url
+><loc
+>http://blanky.test/posts/foo.html</loc
+><lastmod
+>2020-04-28T00:00:00+00:00</lastmod
 ></url
 ><url
 ><loc
