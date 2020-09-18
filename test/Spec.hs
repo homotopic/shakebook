@@ -20,6 +20,9 @@ import           Shakebook                       hiding ((:->))
 import           Test.Tasty
 import           Test.Tasty.Golden
 import           Text.Compdoc
+import Path.Utils
+
+-- Config --
 
 sourceDir :: Path Rel Dir
 sourceDir = $(mkRelDir "test/site")
@@ -70,13 +73,40 @@ mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
            ,"youtube" :*: "http://youtube.com/blanky-site-nowhere" :*: RNil
            ,"gitlab"  :*: "http://gitlab.com/blanky-site-nowhere" :*: RNil]
 
+postsRoot :: Text
+postsRoot = "/posts/"
+
+tagRoot :: Tag -> Text
+tagRoot = (\x -> "/posts/tags/" <> x <> "/") . unTag
+
+monthRoot :: YearMonth -> Text
+monthRoot = (\x -> "/posts/months/" <> x <> "/") . defaultMonthUrlFormat . fromYearMonth
+
+enrichment :: Record Enrichment
+enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
+
+-- Loaders
+
 loadMarkdownWith :: (ShakeValue (Record (Compdoc a)), MonadSB r m) => JsonFormat Void (Record a) -> Path Rel File -> m (Record (Compdoc a))
 loadMarkdownWith f x = cacheAction ("loader" :: Text, x) $ do
   logInfo $ "Loading " <> displayShow (toFilePath x)
   readMarkdownFile defaultMarkdownReaderOptions defaultHtml5WriterOptions f x
 
+postIndex :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
+postIndex = batchLoadIndex (\x -> loadMarkdownWith rawPostMetaJsonFormat x >>= prependXStep (stage1PostExtras x))
+
+indexPages :: MonadThrow m => PostSet -> Text -> m (Zipper [] (Record (FUrl : FItems Stage1Post : FPageNo : '[])))
+indexPages postIx f = do
+  p <- paginate' postsPerPage $ Ix.toDescList (Proxy @Posted) postIx
+  return $ p =>> \a -> f <> "pages/" <> T.pack (show $ pos a + 1) :*: extract a :*: pos a + 1 :*: RNil
+
+-- Extras
+
 deriveUrl :: MonadThrow m => Path Rel File -> m Text
 deriveUrl = fmap toGroundedUrl . withHtmlExtension <=< stripProperPrefix sourceDir
+
+mainPageExtras :: PostSet -> Record (FRecentPosts Stage1Post : '[])
+mainPageExtras xs = recentPosts numRecentPosts xs :*: RNil
 
 stage1PostExtras :: (MonadAction m, MonadThrow m) => Path Rel File -> XStep' m RawPost Stage1PostExtras
 stage1PostExtras x = pure . view fPosted
@@ -85,11 +115,21 @@ stage1PostExtras x = pure . view fPosted
                  ::& deriveUrl . const x
                  ::& XRNil
 
-stage1DocExtras :: MonadThrow m => Path Rel File -> XStep' m RawDoc Stage1DocExtras
-stage1DocExtras x = deriveUrl . const x ::& XRNil
+stage1DocExtras :: MonadThrow m => Path Rel File -> Record RawDoc -> m (Record Stage1DocExtras)
+stage1DocExtras x y = fmap C.singleton . deriveUrl $ x
 
-enrichment :: Record Enrichment
-enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
+createBlogNav :: PostSet -> Cofree [] (Record Link)
+createBlogNav xs = ("Blog" :*: postsRoot :*: RNil)
+                :< Ix.toDescCofreeList
+                    (C.fanout (defaultPrettyMonthFormat . fromYearMonth) monthRoot)
+                    (C.fanout (view fTitle) (view fUrl))
+                    (Down . view fPosted)
+                    xs
+
+createDocNav :: Cofree [] (Record Stage1Doc) -> Cofree [] (Record Link)
+createDocNav = fmap (C.fanout (view fTitle) (view fUrl))
+
+-- Stache Builders
 
 myBuildPage :: (MonadAction m, RMap x, RecordToJsonObject x, RecordFromJson x)
             => PName -> Rec (JsonField e) x -> Record x -> Path Rel File -> m ()
@@ -110,29 +150,19 @@ buildDoc = myBuildPage "docs" finalDocJsonFields
 buildPostIndex :: MonadSB r m => Record (IndexPage Stage1Post) -> Path Rel File -> m ()
 buildPostIndex = myBuildPage "post-list" postIndexPageJsonFields
 
+-- Rules
+
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
 docsRules dir toc = do
-  as <- mapM (\x -> loadMarkdownWith rawDocMetaJsonFormat x >>= prependXStep (stage1DocExtras x)) (fmap (sourceDir </>) toc)
+  as <- forM (sourceDir </$> toc) $ \x -> do
+    k <- loadMarkdownWith rawDocMetaJsonFormat x
+    l <- stage1DocExtras x k
+    return $ l <+> k
   let nav = createDocNav as
   sequence_ $ as =>> \(x :< xs) -> do
     out <- fromGroundedUrlF (view fUrl x)
     let v = nav :*: (extract <$> xs) :*: x
     buildDoc v (outputDir </> out)
-
-postIndex :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
-postIndex = batchLoadIndex (\x -> loadMarkdownWith rawPostMetaJsonFormat x >>= prependXStep (stage1PostExtras x))
-
-postsRoot :: Text
-postsRoot  = toGroundedUrl postsDir
-
-tagRoot :: Tag -> Text
-tagRoot = (\x -> toGroundedUrl (postsDir </> tagsDir) <> x <> "/") . unTag
-
-monthRoot :: YearMonth -> Text
-monthRoot = (\x -> toGroundedUrl (postsDir </> monthsDir) <> x <> "/") . defaultMonthUrlFormat . fromYearMonth
-
-mainPageExtras :: PostSet -> Record (FRecentPosts Stage1Post : '[])
-mainPageExtras xs = recentPosts numRecentPosts xs :*: RNil
 
 mainPageRules :: MonadSB r m => m ()
 mainPageRules = do
@@ -141,21 +171,6 @@ mainPageRules = do
   let x' = mainPageExtras postIx <+> x
   buildIndex x' $ outputDir </> $(mkRelFile "index.html")
 
-createBlogNav :: PostSet -> Cofree [] (Record Link)
-createBlogNav xs = ("Blog" :*: "/posts/" :*: RNil)
-                :< Ix.toDescCofreeList
-                    (C.fanout (defaultPrettyMonthFormat . fromYearMonth) monthRoot)
-                    (C.fanout (view fTitle) (view fUrl))
-                    (Down . view fPosted)
-                    xs
-
-createDocNav :: Cofree [] (Record Stage1Doc) -> Cofree [] (Record Link)
-createDocNav = fmap (C.fanout (view fTitle) (view fUrl))
-
-indexPages :: MonadThrow m => PostSet -> Text -> m (Zipper [] (Record (FUrl : FItems Stage1Post : FPageNo : '[])))
-indexPages postIx f = do
-  p <- paginate' postsPerPage $ Ix.toDescList (Proxy @Posted) postIx
-  return $ p =>> \a -> f <> "pages/" <> T.pack (show $ pos a + 1) :*: extract a :*: pos a + 1 :*: RNil
 
 postIndexRules :: MonadSB r m => Cofree [] (Record Link) -> Text -> PostSet -> Text -> m ()
 postIndexRules nav title postset root = do

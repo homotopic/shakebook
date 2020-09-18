@@ -117,6 +117,7 @@ dependencies:
 - lucid-cdn >= 0.2.0.0 && < 0.3
 - mtl
 - rio
+- path-utils
 - pandoc
 - pandoc-throw
 - pandoc-types

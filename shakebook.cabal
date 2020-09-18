@@ -70,6 +70,7 @@ library
     , pandoc-types
     , path
     , path-extensions >=0.1.0.1
+    , path-utils
     , rio
     , shake-plus >=0.3.0.0
     , shake-plus-extended >=0.2.0.0
@@ -122,6 +123,7 @@ test-suite shakebook-test
     , pandoc-types
     , path
     , path-extensions >=0.1.0.1
+    , path-utils
     , rio
     , shake-plus >=0.3.0.0
     , shake-plus-extended >=0.2.0.0

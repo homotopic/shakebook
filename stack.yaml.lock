@@ -40,20 +40,6 @@ packages:
   original:
     hackage: composite-aeson-throw-0.1.0.0
 - completed:
-    hackage: composite-tuple-0.1.0.0@sha256:91c52a85f6fcee54a17b1cd20c68180aac9e19f6d11c2d3febffc6a1ef504e35,986
-    pantry-tree:
-      size: 282
-      sha256: 1aa9ce4cb35bf352a86b0502eadc485b895b4322fe508594ae35bc14825de9d6
-  original:
-    hackage: composite-tuple-0.1.0.0
-- completed:
-    hackage: composite-xstep-0.1.0.0@sha256:6773a65d69769f3b3dc27b5e33557e94f7b5b6d9c18641e2aaa7903a0dbc5137,1037
-    pantry-tree:
-      size: 276
-      sha256: 2e9ea90a18cac4138545a77b8f2275566f3b04e4aa0c1a9611ff19751e1007d7
-  original:
-    hackage: composite-xstep-0.1.0.0
-- completed:
     hackage: pandoc-2.10.1@sha256:23d7ec480c7cb86740475a419d6ca4819987b6dd23bbae9b50bc3d42a7ed2f9f,36933
     pantry-tree:
       size: 89646
@@ -68,6 +54,13 @@ packages:
   original:
     hackage: pandoc-throw-0.1.0.0
 - completed:
+    hackage: path-utils-0.1.0.0@sha256:eb6364db115390c1ae15e4c0f4888cfd0e2e66d4378c9e2d3be8541605823513,1022
+    pantry-tree:
+      size: 264
+      sha256: bd67b226c760a39a18957dc97985968b3203ba8972ecc9271aa72df3a9866c46
+  original:
+    hackage: path-utils-0.1.0.0
+- completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
       size: 601
@@ -76,7 +69,7 @@ packages:
     hackage: slick-1.0.1.1
 snapshots:
 - completed:
-    size: 528636
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/9/3.yaml
-    sha256: 9dac40ef83b087f8f5c4b32a3400b54f6fc058fd7648e46bbfcb60765b135646
-  original: nightly-2020-09-03
+    size: 531502
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/9/18.yaml
+    sha256: edd0f8d6cfbb25109c95f4d6a3126f0ff5b9a03e38b1926e6c5245cf7ed43f49
+  original: nightly-2020-09-18

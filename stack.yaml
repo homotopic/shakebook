@@ -1,4 +1,4 @@
-resolver: nightly-2020-09-03
+resolver: nightly-2020-09-18
 packages:
 - .
 extra-deps:
@@ -7,10 +7,9 @@ extra-deps:
 - commonmark-pandoc-0.2.0.0
 - compdoc-0.1.0.0
 - composite-aeson-throw-0.1.0.0
-- composite-tuple-0.1.0.0
-- composite-xstep-0.1.0.0
 - pandoc-2.10.1
 - pandoc-throw-0.1.0.0
+- path-utils-0.1.0.0
 - slick-1.0.1.1
 allow-newer: true
 nix:
