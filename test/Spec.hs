@@ -1,8 +1,10 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Composite.Aeson
 import           Composite.Record
 import qualified Composite.Record.Tuple          as C
+import           Composite.Record.Tuple (pattern (:|:))
 import qualified Data.IxSet.Typed                as Ix
 import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
@@ -55,9 +57,10 @@ postsPerPage :: Int
 postsPerPage = 5
 
 mySocial :: [Record Link]
-mySocial = ["twitter" :*: "http://twitter.com/blanky-site-nowhere" :*: RNil
-           ,"youtube" :*: "http://youtube.com/blanky-site-nowhere" :*: RNil
-           ,"gitlab"  :*: "http://gitlab.com/blanky-site-nowhere" :*: RNil]
+mySocial = [ "twitter" :|: "http://twitter.com/blanky-site-nowhere"
+           , "youtube" :|: "http://youtube.com/blanky-site-nowhere"
+           , "gitlab"  :|: "http://gitlab.com/blanky-site-nowhere"
+           ]
 
 postsRoot :: Text
 postsRoot = "/posts/"

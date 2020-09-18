@@ -40,6 +40,13 @@ packages:
   original:
     hackage: composite-aeson-throw-0.1.0.0
 - completed:
+    hackage: composite-tuple-0.1.2.0@sha256:e11f425fbe6689e6f29380576f4e5495fb2ecb6eef466a9d419706ce5570804e,986
+    pantry-tree:
+      size: 282
+      sha256: 5a20916f802e374d974a38a066b734950a4fd7857e2b90c3a2affb08d7754ca4
+  original:
+    hackage: composite-tuple-0.1.2.0
+- completed:
     hackage: pandoc-2.10.1@sha256:23d7ec480c7cb86740475a419d6ca4819987b6dd23bbae9b50bc3d42a7ed2f9f,36933
     pantry-tree:
       size: 89646
