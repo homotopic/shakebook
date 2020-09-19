@@ -119,16 +119,17 @@ myBuildPage t f x out = do
   let l' = renderMustache' k (enrichedRecordJsonFormat f) (enrichment <+> x)
   writeFile' out l'
 
+buildFromRoute t f x = do
+  out <- fromGroundedUrlF $ view fUrl x
+  myBuildPage t f (rcast x) (outputDir </> out)
 -- Rules
 
 docsRules :: MonadSB r m => Path Rel Dir -> Cofree [] (Path Rel File) -> m ()
 docsRules dir toc = do
   as <- docTree dir toc
   let nav = createDocNav as
-  sequence_ $ as =>> \(x :< xs) -> do
-    out <- fromGroundedUrlF (view fUrl x)
-    let v = nav :*: (extract <$> xs) :*: x
-    myBuildPage "docs" finalDocJsonFields v (outputDir </> out)
+  let as' = as =>> \(x :< xs) -> val @"toc" nav :& val @"subsections" (extract <$> xs) :& x
+  forM_ as' $ buildFromRoute "docs" finalDocJsonFields
 
 mainPageRules :: MonadSB r m => PostSet -> m ()
 mainPageRules postsIx = do
@@ -145,10 +146,9 @@ postIndexRules nav title postset root = do
   let ys' = flip fmap ys $ \x -> val @"url" (pageRoot root $ view fPageNo x) :& x
   sequence_ $ ys' =>> \xs' -> do
     let x = extract xs'
-    out <- deriveIndexHtmlF $ view fUrl x
     ps <- toHtmlFragmentM $ renderPageLinks numPageNeighbours ys'
     let x' = val @"page-links" ps :& val @"toc" nav :& val @"title" title :& x
-    myBuildPage "post-list" postIndexPageJsonFields (rcast x') (outputDir </> out)
+    buildFromRoute "post-list" postIndexPageJsonFields x'
   k' <- deriveIndexHtmlF $ view fUrl $ extract $ seek 0 ys'
   s' <- deriveIndexHtmlF root
   copyFileChanged (outputDir </> k') (outputDir </> s')
@@ -158,10 +158,8 @@ postRules dir fp = cacheAction ("build" :: T.Text, (dir, fp)) $ do
   postsIx <- postIndex dir fp
   let nav = createBlogNav postsIx
   let postsZ = Ix.toDescList (Proxy @Posted) postsIx
-  forM_ postsZ $ \x -> do
-    out <- fromGroundedUrlF (view fUrl x)
-    let x' = nav :*: x
-    myBuildPage "post" finalPostJsonFields x' $ outputDir </> out
+  let postsZ' = fmap (\x -> val @"toc" nav :& x) postsZ
+  forM_ postsZ' $ buildFromRoute "post" finalPostJsonFields
   postIndexRules nav "Posts" postsIx postsRoot
   forM_ (Ix.indexKeys postsIx) $ \t@(Tag t') ->
     postIndexRules nav ("Posts tagged " <> t') (postsIx Ix.@+ [t]) (tagRoot t)
