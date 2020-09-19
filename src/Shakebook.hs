@@ -7,12 +7,17 @@ Module exports for Shakebook. Re-exports everything in this package
 as well as shake-plus, aeson and comonad utilities.
 -}
 module Shakebook (
-  module Control.Comonad.Cofree
+  module Composite.Aeson
+, module Composite.Record
+, module Control.Comonad.Cofree
 , module Control.Comonad.Store
 , module Control.Comonad.Store.Zipper
 , module Control.Comonad.Zipper.Extra
 , module Data.Aeson
+, module Data.Vinyl
 , module Development.Shake.Plus
+, module Development.Shake.Plus.Extended
+, module Development.Shake.Plus.Forward
 , module Shakebook.Aeson
 , module Shakebook.Conventions
 , module Shakebook.Defaults
@@ -23,8 +28,11 @@ module Shakebook (
 , module Shakebook.Sitemap
 , module Shakebook.Url
 , module Text.Pandoc.Highlighting
+, module Text.Compdoc
 ) where
 
+import Composite.Aeson
+import Composite.Record
 import Composite.Record.Binary ()
 import Composite.Record.Hashable ()
 import Control.Comonad.Cofree
@@ -32,7 +40,10 @@ import Control.Comonad.Store
 import Control.Comonad.Store.Zipper
 import Control.Comonad.Zipper.Extra
 import Data.Aeson
-import Development.Shake.Plus
+import Data.Vinyl             hiding (RElem, rlens, rlens')
+import Development.Shake.Plus hiding ((:->))
+import Development.Shake.Plus.Extended
+import Development.Shake.Plus.Forward
 import Shakebook.Aeson
 import Shakebook.Conventions
 import Shakebook.Defaults
@@ -42,4 +53,5 @@ import Shakebook.Mustache
 import Shakebook.Pandoc
 import Shakebook.Sitemap
 import Shakebook.Url
+import Text.Compdoc
 import Text.Pandoc.Highlighting

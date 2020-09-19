@@ -1,24 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-import           Composite.Aeson
-import           Composite.Record
 import qualified Composite.Record.Tuple          as C
 import           Composite.Record.Tuple (pattern (:|:))
-import qualified Data.IxSet.Typed                as Ix
-import qualified Data.IxSet.Typed.Conversions    as Ix
 import           Data.List.Split
-import           Data.Vinyl                      hiding (RElem)
-import           Development.Shake.Plus.Extended
-import           Development.Shake.Plus.Forward
 import           Path.Extensions
 import           RIO
 import qualified RIO.ByteString.Lazy             as LBS
 import           RIO.List
 import qualified RIO.Text                        as T
-import           Shakebook                       hiding ((:->))
+import           Shakebook
+import qualified Shakebook.IxSet                 as Ix
 import           Test.Tasty
 import           Test.Tasty.Golden
-import           Text.Compdoc
 import Path.Utils
 
 -- Config --

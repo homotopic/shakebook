@@ -26,6 +26,7 @@ library
       Shakebook.Conventions
       Shakebook.Defaults
       Shakebook.Feed
+      Shakebook.IxSet
       Shakebook.Lucid
       Shakebook.Mustache
       Shakebook.Pandoc

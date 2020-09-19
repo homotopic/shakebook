@@ -17,9 +17,9 @@ import           Text.Pandoc.Definition
 import           Text.Pandoc.Options
 import           Text.Pandoc.PDF
 import           Text.Pandoc.Templates
+import           Text.Pandoc.Throw
 import           Text.Pandoc.Walk
 import           Text.Pandoc.Writers
-import Text.Pandoc.Throw
 
 newtype PandocActionException = PandocActionException String
     deriving (Show, Eq, Typeable)
