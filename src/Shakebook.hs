@@ -9,6 +9,7 @@ as well as shake-plus, aeson and comonad utilities.
 module Shakebook (
   module Composite.Aeson
 , module Composite.Record
+, module Composite.Record.Tuple
 , module Control.Comonad.Cofree
 , module Control.Comonad.Store
 , module Control.Comonad.Store.Zipper
@@ -18,6 +19,7 @@ module Shakebook (
 , module Development.Shake.Plus
 , module Development.Shake.Plus.Extended
 , module Development.Shake.Plus.Forward
+, module Path.Utils
 , module Shakebook.Aeson
 , module Shakebook.Conventions
 , module Shakebook.Defaults
@@ -35,6 +37,7 @@ import Composite.Aeson
 import Composite.Record
 import Composite.Record.Binary ()
 import Composite.Record.Hashable ()
+import Composite.Record.Tuple (pattern (:|:))
 import Control.Comonad.Cofree
 import Control.Comonad.Store
 import Control.Comonad.Store.Zipper
@@ -44,6 +47,7 @@ import Data.Vinyl             hiding (RElem, rlens, rlens')
 import Development.Shake.Plus hiding ((:->))
 import Development.Shake.Plus.Extended
 import Development.Shake.Plus.Forward
+import Path.Utils
 import Shakebook.Aeson
 import Shakebook.Conventions
 import Shakebook.Defaults

@@ -1,18 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-import qualified Composite.Record.Tuple          as C
-import           Composite.Record.Tuple (pattern (:|:))
 import           Data.List.Split
 import           Path.Extensions
 import           RIO
-import qualified RIO.ByteString.Lazy             as LBS
+import qualified RIO.ByteString.Lazy as LBS
 import           RIO.List
-import qualified RIO.Text                        as T
+import qualified RIO.Text            as T
 import           Shakebook
-import qualified Shakebook.IxSet                 as Ix
+import qualified Shakebook.IxSet     as Ix
+import qualified Shakebook.Tuple     as C
 import           Test.Tasty
 import           Test.Tasty.Golden
-import Path.Utils
 
 -- Config --
 
