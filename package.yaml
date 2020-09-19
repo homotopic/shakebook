@@ -50,6 +50,7 @@ default-extensions:
 - OverloadedStrings
 - PartialTypeSignatures
 - PatternGuards
+- PatternSynonyms
 - PolyKinds
 - RankNTypes
 - RecordWildCards

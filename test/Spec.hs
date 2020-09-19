@@ -65,10 +65,13 @@ postsRoot :: Text
 postsRoot = "/posts/"
 
 tagRoot :: Tag -> Text
-tagRoot = (\x -> "/posts/tags/" <> x <> "/") . unTag
+tagRoot x = "/posts/tags/" <> unTag x <> "/"
 
 monthRoot :: YearMonth -> Text
-monthRoot = (\x -> "/posts/months/" <> x <> "/") . defaultMonthUrlFormat . fromYearMonth
+monthRoot x = "/posts/months/" <> (defaultMonthUrlFormat . fromYearMonth $ x) <> "/"
+
+pageRoot :: Text -> Int -> Text
+pageRoot x i = x <> "pages/" <> (T.pack . show $ i) <> "/"
 
 enrichment :: Record Enrichment
 enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
@@ -142,19 +145,21 @@ mainPageRules postsIx = do
   let x' = mainPageExtras postsIx <+> x
   myBuildPage "index" mainPageJsonFields x' $ outputDir </> $(mkRelFile "index.html")
 
+deriveIndexHtmlF :: MonadThrow m => Text -> m (Path Rel File)
+deriveIndexHtmlF = fmap (</> $(mkRelFile "index.html")) . fromGroundedUrlD
+
 postIndexRules :: MonadSB r m => Cofree [] (Record Link) -> Text -> PostSet -> Text -> m ()
 postIndexRules nav title postset root = do
   ys <- indexPagesBy (Proxy @Posted) postsPerPage postset
-  let ys' = flip fmap ys $ \x -> val @"url" (root <> "pages/" <> (T.pack . show $ view fPageNo x)) :& x
+  let ys' = flip fmap ys $ \x -> val @"url" (pageRoot root $ view fPageNo x) :& x
   sequence_ $ ys' =>> \xs' -> do
     let x = extract xs'
-    out <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl x)
+    out <- deriveIndexHtmlF $ view fUrl x
     ps <- toHtmlFragmentM $ renderPageLinks numPageNeighbours ys'
     let x' = val @"page-links" ps :& val @"toc" nav :& val @"title" title :& x
     myBuildPage "post-list" postIndexPageJsonFields (rcast x') (outputDir </> out)
-  let k = extract $ seek 0 ys'
-  k' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD (view fUrl k)
-  s' <- (</> $(mkRelFile "index.html")) <$> fromGroundedUrlD root
+  k' <- deriveIndexHtmlF $ view fUrl $ extract $ seek 0 ys'
+  s' <- deriveIndexHtmlF root
   copyFileChanged (outputDir </> k') (outputDir </> s')
 
 postRules :: MonadSB r m => Path Rel Dir -> [FilePattern] -> m PostSet
