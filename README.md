@@ -1,7 +1,6 @@
-# Shakebook - Static Site & Technical Documentation Generator
+# Shakebook - Static Site & Technical Documentation Prelude
 
-Shakebook is a collection of data handlers, shake rules and useful conventions
-for generating technical documentation and blogs. This is the API library.
+Shakebook is a replacement prelude specifically for static site and technical documentation generation.
 
 To get started you can use the template repository at http://gitlab.com/shakebook-template/shakebook-template
 
