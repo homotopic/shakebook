@@ -97,13 +97,15 @@ dependencies:
 - binary-instances >= 1.0.0.1 && < 1.1
 - compdoc
 - composite-aeson >= 0.7.4.0 && < 0.8
-- composite-base >= 0.7.4.0 && < 0.8
+- composite-aeson-cofree-list
 - composite-aeson-path >= 0.7.4.0 && < 0.8
+- composite-aeson-throw
+- composite-aeson-writeonly
+- composite-base >= 0.7.4.0 && < 0.8
 - composite-binary >= 0.7.4.0 && < 0.8
 - composite-hashable >= 0.7.4.0 && < 0.8
 - composite-tuple
 - composite-xstep
-- composite-aeson-throw
 - comonad
 - comonad-extras
 - doctemplates

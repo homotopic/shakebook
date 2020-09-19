@@ -33,12 +33,26 @@ packages:
   original:
     hackage: compdoc-0.1.0.0
 - completed:
+    hackage: composite-aeson-cofree-list-0.1.0.0@sha256:dacb56f0116c91a82064f2d1ee6135548dbb83216b5d78ec0d414c6a8a3cf7d7,865
+    pantry-tree:
+      size: 303
+      sha256: 5c0019925f9ffe9382fa51980ede9cf9b954a5d5cf39c83201e5cdc81510a043
+  original:
+    hackage: composite-aeson-cofree-list-0.1.0.0
+- completed:
     hackage: composite-aeson-throw-0.1.0.0@sha256:0fc5f4ea1b243b0cf3b28168e3e7e67706bf03d1c1e7998c5816f1f58c0665fe,842
     pantry-tree:
       size: 285
       sha256: e0e5ca696a4012c333d9bd6860d9169ee6dd45c6a30d5de850dda57e93a69a8c
   original:
     hackage: composite-aeson-throw-0.1.0.0
+- completed:
+    hackage: composite-aeson-writeonly-0.1.0.0@sha256:fdd878f0e0bda81afb3d0f9dd25f09515543a076838e9edbab10d74aa952ff7a,837
+    pantry-tree:
+      size: 293
+      sha256: 4e593cb6bccd41625536ff7def11d9faab9d74d8dafdfb2420006b2db5879538
+  original:
+    hackage: composite-aeson-writeonly-0.1.0.0
 - completed:
     hackage: pandoc-2.10.1@sha256:23d7ec480c7cb86740475a419d6ca4819987b6dd23bbae9b50bc3d42a7ed2f9f,36933
     pantry-tree:

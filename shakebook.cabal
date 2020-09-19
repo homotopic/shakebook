@@ -49,8 +49,10 @@ library
     , comonad-extras
     , compdoc
     , composite-aeson >=0.7.4.0 && <0.8
+    , composite-aeson-cofree-list
     , composite-aeson-path >=0.7.4.0 && <0.8
     , composite-aeson-throw
+    , composite-aeson-writeonly
     , composite-base >=0.7.4.0 && <0.8
     , composite-binary >=0.7.4.0 && <0.8
     , composite-hashable >=0.7.4.0 && <0.8
@@ -102,8 +104,10 @@ test-suite shakebook-test
     , comonad-extras
     , compdoc
     , composite-aeson >=0.7.4.0 && <0.8
+    , composite-aeson-cofree-list
     , composite-aeson-path >=0.7.4.0 && <0.8
     , composite-aeson-throw
+    , composite-aeson-writeonly
     , composite-base >=0.7.4.0 && <0.8
     , composite-binary >=0.7.4.0 && <0.8
     , composite-hashable >=0.7.4.0 && <0.8
