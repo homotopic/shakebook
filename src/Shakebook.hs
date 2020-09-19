@@ -18,6 +18,7 @@ module Shakebook (
 , module Data.Vinyl
 , module Development.Shake.Plus
 , module Development.Shake.Plus.Extended
+, module Development.Shake.Plus.Extended.Simple
 , module Development.Shake.Plus.Forward
 , module Path.Utils
 , module Shakebook.Aeson
@@ -46,6 +47,7 @@ import Data.Aeson
 import Data.Vinyl             hiding (RElem, rlens, rlens')
 import Development.Shake.Plus hiding ((:->))
 import Development.Shake.Plus.Extended
+import Development.Shake.Plus.Extended.Simple
 import Development.Shake.Plus.Forward
 import Path.Utils
 import Shakebook.Aeson
