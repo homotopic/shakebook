@@ -65,7 +65,11 @@ pageRoot :: Text -> Int -> Text
 pageRoot x i = x <> "pages/" <> (T.pack . show $ i) <> "/"
 
 enrichment :: Record Enrichment
-enrichment = mySocial :*: toHtmlFragment defaultCdnImports :*: toStyleFragment defaultHighlighting :*: siteTitle :*: RNil
+enrichment = val @"social"        mySocial
+          :& val @"cdn-imports"   defaultCdnImports
+          :& val @"highlighting"  defaultHighlighting
+          :& val @"site-title"    siteTitle
+          :& RNil
 
 type PostSet = Ix.IxSet '[Tag, Posted, YearMonth] (Record (Routed Stage1Post))
 
@@ -185,9 +189,6 @@ tests xs = testGroup "Rendering Tests" $
 
 main :: IO ()
 main = do
-  lo <- logOptionsHandle stderr True
-  (lf, dlf) <- newLogFunc (setLogMinLevel LevelInfo lo)
   let shOpts = shakeOptions { shakeLintInside = ["\\"]}
-  shakeArgsForward shOpts lf buildRules
+  runLoggedShakeForward shOpts buildRules
   findByExtension [".html", ".xml"] "test/golden" >>= defaultMain . tests
-  dlf

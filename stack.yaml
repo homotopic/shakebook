@@ -12,6 +12,7 @@ extra-deps:
 - pandoc-2.10.1
 - pandoc-throw-0.1.0.0
 - path-utils-0.1.0.0
+- shake-plus-extended-0.4.1.0
 - slick-1.0.1.1
 allow-newer: true
 nix:

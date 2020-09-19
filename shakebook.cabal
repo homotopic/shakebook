@@ -77,7 +77,7 @@ library
     , path-utils
     , rio
     , shake-plus >=0.3.0.0
-    , shake-plus-extended >=0.2.0.0
+    , shake-plus-extended >=0.4.1.0
     , sitemap-gen
     , skylighting
     , stache
@@ -132,7 +132,7 @@ test-suite shakebook-test
     , path-utils
     , rio
     , shake-plus >=0.3.0.0
-    , shake-plus-extended >=0.2.0.0
+    , shake-plus-extended >=0.4.1.0
     , shakebook
     , sitemap-gen
     , skylighting

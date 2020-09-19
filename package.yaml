@@ -127,7 +127,7 @@ dependencies:
 - path-extensions >= 0.1.0.1
 - path
 - shake-plus >= 0.3.0.0
-- shake-plus-extended >= 0.2.0.0
+- shake-plus-extended >= 0.4.1.0
 - sitemap-gen
 - skylighting
 - stache

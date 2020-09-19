@@ -75,6 +75,13 @@ packages:
   original:
     hackage: path-utils-0.1.0.0
 - completed:
+    hackage: shake-plus-extended-0.4.1.0@sha256:31488bea5f3215f93615bc6da6b7aa33fd78133c1acf69a138120cf9c1f6b8f1,2008
+    pantry-tree:
+      size: 645
+      sha256: 3736faedc41a6b32037968ebad38ffcfd01a64271768b75f0e6d26963911058e
+  original:
+    hackage: shake-plus-extended-0.4.1.0
+- completed:
     hackage: slick-1.0.1.1@sha256:bd27d2237126f8883b14c4a1e6c19b6640ed8dae5ba18e9eb8877c1ee23d5c1e,1307
     pantry-tree:
       size: 601

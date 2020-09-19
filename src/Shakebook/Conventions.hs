@@ -61,7 +61,7 @@ withLensesAndProxies [d|
   type FRecentPosts x = "recent-posts" :-> [Record x]
   type FSiteTitle     = "site-title"   :-> Text
   type FSrcPath       = "src-path"     :-> Path Rel File
-  type FSocialLinks   = "social-links" :-> [Record Link]
+  type FSocialLinks   = "social"       :-> [Record Link]
   type FSubsections x = "subsections"  :-> [Record x]
   type FTags          = "tags"         :-> [Text]
   type FTagLinks      = "tag-links"    :-> [Record Link]

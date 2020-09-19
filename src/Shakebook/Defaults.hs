@@ -7,7 +7,6 @@ Seom sensible default settings for certain shakebook functions.
 -}
 module Shakebook.Defaults where
 
-import           Lucid
 import           Lucid.CDN
 import           RIO
 import           RIO.List.Partial
@@ -15,6 +14,7 @@ import qualified RIO.Map                  as M
 import qualified RIO.Text                 as T
 import qualified RIO.Text.Partial         as T
 import           RIO.Time
+import           Shakebook.Lucid
 import           Text.DocTemplates
 import           Text.Pandoc.Definition
 import           Text.Pandoc.Highlighting
@@ -29,8 +29,8 @@ defaultPrettyMonthFormat = T.pack . formatTime defaultTimeLocale "%B, %Y"
 defaultPrettyTimeFormat :: UTCTime -> Text
 defaultPrettyTimeFormat = T.pack . formatTime defaultTimeLocale "%A, %B %d, %Y"
 
-defaultHighlighting :: Style
-defaultHighlighting = pygments
+defaultHighlighting :: StyleFragment
+defaultHighlighting = toStyleFragment pygments
 
 defaultMarkdownReaderOptions :: ReaderOptions
 defaultMarkdownReaderOptions = def { readerExtensions = pandocExtensions }
@@ -52,8 +52,8 @@ defaultVideoReplacement baseUrl x = Str $ "[Video available at [" <> baseUrl <> 
 defaultDeriveTeaser :: Text -> Text
 defaultDeriveTeaser = head . T.splitOn "<!-- more -->"
 
-defaultCdnImports :: Html ()
-defaultCdnImports = do
+defaultCdnImports :: HtmlFragment
+defaultCdnImports = toHtmlFragment $ do
   bootstrapCSS_5_0_0_alpha1
   bootstrapJS_5_0_0_alpha1
   fontawesome_4_7_0
