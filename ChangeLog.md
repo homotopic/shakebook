@@ -1,5 +1,13 @@
 # Changelog for Shakebook
 
+## (v0.13.0.0)
+
+* Completely unrecognizable rework.
+* Shakebook will now function as a prelude for site building.
+* Recommended style changed to forward mode.
+* Changed mustache library to stache.
+* Now exports IxSet as a separate module.
+
 ## (v0.12.0.0)
 
 * Standardize top level strategy for supplying template values as follows:
