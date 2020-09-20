@@ -16,6 +16,7 @@ module Shakebook (
 , module Control.Comonad.Zipper.Extra
 , module Data.Aeson
 , module Data.Vinyl
+, module Data.Vinyl.TypeLevel
 , module Development.Shake.Plus
 , module Development.Shake.Plus.Extended
 , module Development.Shake.Plus.Extended.Simple
@@ -45,6 +46,7 @@ import Control.Comonad.Store.Zipper
 import Control.Comonad.Zipper.Extra
 import Data.Aeson
 import Data.Vinyl             hiding (RElem, rlens, rlens')
+import Data.Vinyl.TypeLevel   hiding (RDelete)
 import Development.Shake.Plus hiding ((:->))
 import Development.Shake.Plus.Extended
 import Development.Shake.Plus.Extended.Simple
