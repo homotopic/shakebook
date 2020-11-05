@@ -4,21 +4,19 @@ before_script:
 - export LC_ALL=C.UTF-8
 - nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
 - nix-channel --update
-- nix-env -iA nixpkgs.cachix
-- nix-env -iA nixpkgs.cacert
-- nix-env -iA nixpkgs.openssh
-- cachix use iohk
-- cachix use shakebook
-- mkdir -p /root/.ssh
-- echo "$NIXBUILD_SSH_KEY" > /root/.ssh/id_ed25519
-- chmod 600 /root/.ssh/id_ed25519
-- echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" >> /root/.ssh/known_hosts
+- nix-env -iA nixpkgs.stack
+- nix-env -iA nixpkgs.hlint
 
 stages:
+- lint
 - build
+
+hlint:
+  stage: lint
+  script:
+  - hlint .
 
 build:
   stage: build
   script:
-  - nix-build -A shakebook --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark"
-  - nix-store -qR --include-outputs $(nix-store -q --deriver ./result) | cachix push shakebook
+  - stack --nix build --ghc-options "-Wall -Werror"
